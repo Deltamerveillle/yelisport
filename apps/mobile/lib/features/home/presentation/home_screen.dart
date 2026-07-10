@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yelisport/features/auth/presentation/auth_providers.dart';
 import 'package:yelisport/features/profile/presentation/profile_providers.dart';
+import 'package:yelisport/features/sports/presentation/sport_detail_screen.dart';
 import 'package:yelisport/features/sports/presentation/sports_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -46,6 +47,17 @@ class HomeScreen extends ConsumerWidget {
                     if (user?.email != null) Text(user!.email!),
                     const SizedBox(height: 24),
                     Text('Sports', style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 12),
+                    TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Rechercher un sport',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        ref.read(sportSearchProvider.notifier).state = value;
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -68,18 +80,31 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              data: (items) => SliverList.separated(
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final sport = items[index];
-                  return ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.sports_soccer)),
-                    title: Text(sport.name),
-                    subtitle: sport.description == null ? null : Text(sport.description!),
+              data: (items) {
+                if (items.isEmpty) {
+                  return const SliverFillRemaining(
+                    child: Center(child: Text('Aucun sport trouvé.')),
                   );
-                },
-              ),
+                }
+                return SliverList.separated(
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final sport = items[index];
+                    return ListTile(
+                      leading: const CircleAvatar(child: Icon(Icons.sports_soccer)),
+                      title: Text(sport.name),
+                      subtitle: sport.description == null ? null : Text(sport.description!),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => SportDetailScreen(slug: sport.slug),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ],
         ),
