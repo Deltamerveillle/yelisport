@@ -26,3 +26,8 @@ class NotFoundError(ApplicationError):
 class UnauthorizedError(ApplicationError):
     status_code = 401
     code = "unauthorized"
+
+
+class ConflictError(ApplicationError):
+    status_code = 409
+    code = "conflict"
