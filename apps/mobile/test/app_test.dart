@@ -6,6 +6,7 @@ import 'package:yelisport/features/auth/data/auth_repository.dart';
 import 'package:yelisport/features/auth/presentation/auth_providers.dart';
 import 'package:yelisport/features/auth/presentation/sign_in_screen.dart';
 import 'package:yelisport/features/events/domain/sport_event.dart';
+import 'package:yelisport/features/events/presentation/event_tile.dart';
 import 'package:yelisport/features/profile/domain/user_profile.dart';
 import 'package:yelisport/features/sports/domain/sport.dart';
 
@@ -79,5 +80,34 @@ void main() {
     });
     expect(event.title, 'Football du samedi');
     expect(event.capacity, 20);
+  });
+
+  testWidgets('event tile displays details and triggers its action', (tester) async {
+    var tapped = false;
+    final event = SportEvent(
+      id: 'event-id',
+      sportId: 'sport-id',
+      organizerId: 'user-id',
+      title: 'Basket du dimanche',
+      location: 'Cocody',
+      startsAt: DateTime.utc(2026, 7, 12, 10),
+      endsAt: DateTime.utc(2026, 7, 12, 12),
+      capacity: 12,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: EventTile(
+            event: event,
+            actionLabel: "S'inscrire",
+            onAction: () => tapped = true,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Basket du dimanche'), findsOneWidget);
+    expect(find.text('12 places'), findsOneWidget);
+    await tester.tap(find.text("S'inscrire"));
+    expect(tapped, isTrue);
   });
 }

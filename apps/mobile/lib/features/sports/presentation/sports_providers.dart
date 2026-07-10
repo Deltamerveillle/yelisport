@@ -10,6 +10,11 @@ final sportsRepositoryProvider = Provider<SportsRepository>(
 
 final sportSearchProvider = StateProvider.autoDispose<String>((ref) => '');
 
+final allSportsProvider = FutureProvider.autoDispose<List<Sport>>((ref) {
+  ref.watch(authStateProvider);
+  return ref.watch(sportsRepositoryProvider).listSports();
+});
+
 final sportsProvider = FutureProvider.autoDispose<List<Sport>>((ref) {
   ref.watch(authStateProvider);
   final search = ref.watch(sportSearchProvider).trim();

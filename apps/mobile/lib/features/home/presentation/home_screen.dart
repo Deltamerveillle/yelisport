@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yelisport/features/auth/presentation/auth_providers.dart';
+import 'package:yelisport/features/events/presentation/events_screen.dart';
+import 'package:yelisport/features/events/presentation/my_events_screen.dart';
 import 'package:yelisport/features/profile/presentation/profile_providers.dart';
 import 'package:yelisport/features/sports/presentation/sport_detail_screen.dart';
 import 'package:yelisport/features/sports/presentation/sports_providers.dart';
@@ -45,6 +47,30 @@ class HomeScreen extends ConsumerWidget {
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     if (user?.email != null) Text(user!.email!),
+                    const SizedBox(height: 18),
+                    Wrap(
+                      spacing: 10,
+                      children: [
+                        FilledButton.icon(
+                          icon: const Icon(Icons.event),
+                          label: const Text('Événements'),
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const EventsScreen(),
+                            ),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.event_available),
+                          label: const Text('Mes événements'),
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const MyEventsScreen(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 24),
                     Text('Sports', style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 12),
