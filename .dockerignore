@@ -1,0 +1,10 @@
+.git
+.github
+.env
+.dart_tool
+.venv
+**/__pycache__
+**/.pytest_cache
+**/build
+**/coverage
+docs

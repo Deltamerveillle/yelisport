@@ -1,0 +1,18 @@
+name: CD
+name: CD
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deployment-not-configured:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Deployment is intentionally gated until the hosting target is approved."
+on:
+  workflow_dispatch:
+
+jobs: {}

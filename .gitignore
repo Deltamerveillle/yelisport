@@ -1,0 +1,45 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+coverage/
+pubspec.lock
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+htmlcov/
+
+# Secrets and certificates
+*.pem
+*.key
+secrets/
+
+# Logs and runtime data
+*.log
+tmp/
+data/
+
+# Infrastructure
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
