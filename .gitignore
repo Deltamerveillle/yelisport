@@ -36,7 +36,7 @@ secrets/
 # Logs and runtime data
 *.log
 tmp/
-data/
+/data/
 
 # Infrastructure
 .terraform/
