@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:yelisport/features/auth/data/auth_repository.dart';
 import 'package:yelisport/features/auth/presentation/auth_providers.dart';
 import 'package:yelisport/features/auth/presentation/sign_in_screen.dart';
+import 'package:yelisport/features/events/domain/sport_event.dart';
 import 'package:yelisport/features/profile/domain/user_profile.dart';
 import 'package:yelisport/features/sports/domain/sport.dart';
 
@@ -62,5 +63,21 @@ void main() {
     });
     expect(profile.displayName, 'Awa');
     expect(profile.locale, 'fr');
+  });
+
+  test('parses an event returned by the API', () {
+    final event = SportEvent.fromJson({
+      'id': 'event-id',
+      'sport_id': 'sport-id',
+      'organizer_id': 'user-id',
+      'title': 'Football du samedi',
+      'description': 'Match amical',
+      'location': 'Abidjan',
+      'starts_at': '2026-07-12T10:00:00Z',
+      'ends_at': '2026-07-12T12:00:00Z',
+      'capacity': 20,
+    });
+    expect(event.title, 'Football du samedi');
+    expect(event.capacity, 20);
   });
 }

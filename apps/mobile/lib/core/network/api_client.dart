@@ -41,4 +41,29 @@ class ApiClient {
     );
     return response.data ?? const {};
   }
+
+  Future<Map<String, dynamic>> postObject(
+    String path, {
+    Map<String, dynamic>? data,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      path,
+      data: data,
+      options: Options(headers: _authHeaders()),
+    );
+    return response.data ?? const {};
+  }
+
+  Future<Map<String, dynamic>> deleteObject(String path) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      path,
+      options: Options(headers: _authHeaders()),
+    );
+    return response.data ?? const {};
+  }
+
+  Map<String, String>? _authHeaders() {
+    final token = _supabase.auth.currentSession?.accessToken;
+    return token == null ? null : {'Authorization': 'Bearer $token'};
+  }
 }
