@@ -37,3 +37,17 @@ make lint       # lance Ruff, Mypy et, si disponible, Flutter Analyze
 La semaine 1 fournit le socle exécutable et observable. L'étape 2 ajoute Supabase
 Auth, les tables `users`, `profiles` et `sports`, leurs politiques RLS et les
 migrations PostgreSQL. Voir `docs/database/data-model.md` pour le démarrage local.
+
+## Application Flutter
+
+L'application initialise Supabase Auth, conserve la session et transmet son jeton
+Bearer à l'API pour charger le catalogue des sports. En développement local :
+
+```bash
+flutter run \
+  --dart-define=SUPABASE_URL=http://localhost:54321 \
+  --dart-define=SUPABASE_ANON_KEY=<anon-key> \
+  --dart-define=API_BASE_URL=http://localhost:8080/api/v1
+```
+
+Sur l'émulateur Android, remplacer `localhost` par `10.0.2.2`.
