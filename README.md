@@ -34,5 +34,6 @@ make test       # lance les tests Python et, si disponible, Flutter
 make lint       # lance Ruff, Mypy et, si disponible, Flutter Analyze
 ```
 
-La semaine 1 fournit un socle exécutable et observable. Les fonctionnalités métier
-sont développées à partir de la semaine 2 du plan produit.
+La semaine 1 fournit le socle exécutable et observable. L'étape 2 ajoute Supabase
+Auth, les tables `users`, `profiles` et `sports`, leurs politiques RLS et les
+migrations PostgreSQL. Voir `docs/database/data-model.md` pour le démarrage local.

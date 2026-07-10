@@ -10,10 +10,18 @@ from app.schemas.auth import AuthSession, AuthUser, SignUpResponse
 
 
 class AuthService:
-    def __init__(self, settings: Settings | None = None, client: Client | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        client: Client | None = None,
+        admin_client: Client | None = None,
+    ) -> None:
         self.settings = settings or get_settings()
         self.client = client or create_client(
             self.settings.supabase_url, self.settings.supabase_anon_key
+        )
+        self.admin_client = admin_client or create_client(
+            self.settings.supabase_url, self.settings.supabase_service_role_key
         )
 
     def sign_up(self, email: str, password: str, display_name: str | None) -> SignUpResponse:
@@ -72,7 +80,7 @@ class AuthService:
 
     def sign_out(self, access_token: str) -> None:
         try:
-            self.client.auth.admin.sign_out(access_token)
+            self.admin_client.auth.admin.sign_out(access_token)
         except Exception as exc:
             raise ApplicationError(
                 "Déconnexion impossible", code="signout_failed", status_code=400
