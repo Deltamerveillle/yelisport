@@ -9,6 +9,7 @@ import 'package:yelisport/features/events/domain/sport_event.dart';
 import 'package:yelisport/features/events/presentation/event_tile.dart';
 import 'package:yelisport/features/profile/domain/user_profile.dart';
 import 'package:yelisport/features/sports/domain/sport.dart';
+import 'package:yelisport/features/settings/domain/user_settings.dart';
 
 class FakeAuthGateway implements AuthGateway {
   @override
@@ -109,5 +110,15 @@ void main() {
     expect(find.text('12 places'), findsOneWidget);
     await tester.tap(find.text("S'inscrire"));
     expect(tapped, isTrue);
+  });
+
+  test('parses user settings with safe defaults', () {
+    final settings = UserSettings.fromJson({
+      'language': 'fr',
+      'dark_mode': true,
+      'notifications_enabled': false,
+    });
+    expect(settings.darkMode, isTrue);
+    expect(settings.notificationsEnabled, isFalse);
   });
 }
