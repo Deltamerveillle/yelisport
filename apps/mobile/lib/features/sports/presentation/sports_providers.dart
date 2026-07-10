@@ -8,7 +8,20 @@ final sportsRepositoryProvider = Provider<SportsRepository>(
   (ref) => SportsRepository(ref.watch(apiClientProvider)),
 );
 
+final sportSearchProvider = StateProvider.autoDispose<String>((ref) => '');
+
 final sportsProvider = FutureProvider.autoDispose<List<Sport>>((ref) {
   ref.watch(authStateProvider);
-  return ref.watch(sportsRepositoryProvider).listSports();
+  final search = ref.watch(sportSearchProvider).trim();
+  if (search.length == 1) return Future.value(const []);
+  return ref
+      .watch(sportsRepositoryProvider)
+      .listSports(search: search.isEmpty ? null : search);
 });
+
+final sportDetailProvider = FutureProvider.autoDispose.family<Sport, String>(
+  (ref, slug) {
+    ref.watch(authStateProvider);
+    return ref.watch(sportsRepositoryProvider).getSport(slug);
+  },
+);
