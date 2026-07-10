@@ -61,10 +61,16 @@ void main() {
     final profile = UserProfile.fromJson({
       'user_id': 'user-id',
       'display_name': 'Awa',
+      'biography': 'Passionnée de sport.',
+      'city': 'Abidjan',
+      'country': "Côte d'Ivoire",
+      'avatar_url': 'https://example.test/avatar.jpg',
       'locale': 'fr',
     });
     expect(profile.displayName, 'Awa');
     expect(profile.locale, 'fr');
+    expect(profile.city, 'Abidjan');
+    expect(profile.country, "Côte d'Ivoire");
   });
 
   test('parses an event returned by the API', () {
