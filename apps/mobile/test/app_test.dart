@@ -18,11 +18,11 @@ class FakeAuthGateway implements AuthGateway {
   @override
   Future<void> signOut() async {}
   @override
-  Future<void> signUp({
+  Future<bool> signUp({
     required String email,
     required String password,
     required String displayName,
-  }) async {}
+  }) async => false;
 }
 
 void main() {

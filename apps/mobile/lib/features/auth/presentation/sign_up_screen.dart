@@ -32,12 +32,21 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       _error = null;
     });
     try {
-      await ref.read(authRepositoryProvider).signUp(
+      final confirmationRequired = await ref.read(authRepositoryProvider).signUp(
             email: _email.text,
             password: _password.text,
             displayName: _name.text,
           );
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        if (confirmationRequired) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Consultez votre email pour confirmer votre compte.'),
+            ),
+          );
+        }
+        Navigator.of(context).pop();
+      }
     } catch (_) {
       if (mounted) setState(() => _error = 'Création du compte impossible.');
     } finally {

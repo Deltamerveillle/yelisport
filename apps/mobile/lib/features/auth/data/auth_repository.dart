@@ -4,7 +4,7 @@ abstract interface class AuthGateway {
   Session? get currentSession;
   Stream<AuthState> get authChanges;
 
-  Future<void> signUp({
+  Future<bool> signUp({
     required String email,
     required String password,
     required String displayName,
@@ -25,16 +25,17 @@ class AuthRepository implements AuthGateway {
   Stream<AuthState> get authChanges => _client.auth.onAuthStateChange;
 
   @override
-  Future<void> signUp({
+  Future<bool> signUp({
     required String email,
     required String password,
     required String displayName,
   }) async {
-    await _client.auth.signUp(
+    final response = await _client.auth.signUp(
       email: email.trim(),
       password: password,
       data: {'display_name': displayName.trim()},
     );
+    return response.session == null;
   }
 
   @override
