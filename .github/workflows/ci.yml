@@ -1,5 +1,4 @@
 name: CI
-name: CI
 
 on:
   push:
@@ -53,9 +52,3 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose config --quiet
-on:
-  pull_request:
-  push:
-    branches: [main, develop]
-
-jobs: {}

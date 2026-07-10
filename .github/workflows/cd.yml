@@ -1,5 +1,4 @@
 name: CD
-name: CD
 
 on:
   workflow_dispatch:
@@ -12,7 +11,3 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "Deployment is intentionally gated until the hosting target is approved."
-on:
-  workflow_dispatch:
-
-jobs: {}
