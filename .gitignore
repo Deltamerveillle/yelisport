@@ -37,6 +37,8 @@ secrets/
 *.log
 tmp/
 /data/
+/services/ai/app/data/
+**/data/.gitkeep
 
 # Infrastructure
 .terraform/
