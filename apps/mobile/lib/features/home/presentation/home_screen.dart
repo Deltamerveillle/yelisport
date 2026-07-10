@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yelisport/features/auth/presentation/auth_providers.dart';
+import 'package:yelisport/features/profile/presentation/profile_providers.dart';
 import 'package:yelisport/features/sports/presentation/sports_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -9,7 +10,9 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sports = ref.watch(sportsProvider);
+    final profile = ref.watch(profileProvider);
     final user = ref.watch(authRepositoryProvider).currentSession?.user;
+    final displayName = profile.valueOrNull?.displayName;
     return Scaffold(
       appBar: AppBar(
         title: const Text('YeliSport'),
@@ -34,7 +37,12 @@ class HomeScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Bienvenue', style: Theme.of(context).textTheme.headlineMedium),
+                    Text(
+                      displayName != null && displayName.isNotEmpty
+                          ? 'Bienvenue, $displayName'
+                          : 'Bienvenue',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
                     if (user?.email != null) Text(user!.email!),
                     const SizedBox(height: 24),
                     Text('Sports', style: Theme.of(context).textTheme.titleLarge),

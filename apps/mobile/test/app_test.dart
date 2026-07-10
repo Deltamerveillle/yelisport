@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:yelisport/features/auth/data/auth_repository.dart';
 import 'package:yelisport/features/auth/presentation/auth_providers.dart';
 import 'package:yelisport/features/auth/presentation/sign_in_screen.dart';
+import 'package:yelisport/features/profile/domain/user_profile.dart';
 import 'package:yelisport/features/sports/domain/sport.dart';
 
 class FakeAuthGateway implements AuthGateway {
@@ -51,5 +52,15 @@ void main() {
     });
     expect(sport.slug, 'football');
     expect(sport.name, 'Football');
+  });
+
+  test('parses the profile automatically created by Supabase', () {
+    final profile = UserProfile.fromJson({
+      'user_id': 'user-id',
+      'display_name': 'Awa',
+      'locale': 'fr',
+    });
+    expect(profile.displayName, 'Awa');
+    expect(profile.locale, 'fr');
   });
 }
