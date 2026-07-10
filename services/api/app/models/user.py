@@ -35,6 +35,9 @@ class Profile(Base):
     last_name: Mapped[str | None] = mapped_column(String(80))
     birth_date: Mapped[date | None] = mapped_column(Date)
     avatar_url: Mapped[str | None] = mapped_column(Text)
+    biography: Mapped[str | None] = mapped_column(Text)
+    city: Mapped[str | None] = mapped_column(String(120))
+    country: Mapped[str | None] = mapped_column(String(120))
     locale: Mapped[str] = mapped_column(String(10), default="fr", server_default="fr")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
