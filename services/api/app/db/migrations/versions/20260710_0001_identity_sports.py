@@ -27,7 +27,12 @@ def upgrade() -> None:
     op.create_index("ix_users_email", "users", ["email"], unique=True)
     op.create_table(
         "profiles",
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column(
+            "user_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="CASCADE"),
+            primary_key=True,
+        ),
         sa.Column("display_name", sa.String(80)),
         sa.Column("first_name", sa.String(80)),
         sa.Column("last_name", sa.String(80)),

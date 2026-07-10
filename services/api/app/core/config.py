@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     log_level: str = "INFO"
     database_url: str = "postgresql+asyncpg://yelisport:change-me@postgres:5432/yelisport"
+    supabase_url: str = "http://supabase_kong_yelisport:8000"
+    supabase_anon_key: str = "change-me"
+    supabase_service_role_key: str = "change-me"
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:8080"])
 
     @field_validator("cors_origins", mode="before")
@@ -34,6 +37,10 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def supabase_configured(self) -> bool:
+        return self.supabase_anon_key != "change-me"
 
 
 @lru_cache
