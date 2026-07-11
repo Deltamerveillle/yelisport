@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yelisport/features/events/presentation/event_tile.dart';
 import 'package:yelisport/features/events/presentation/events_providers.dart';
+import 'package:yelisport/features/favorites/presentation/favorites_providers.dart';
 
 class MyEventsScreen extends ConsumerWidget {
   const MyEventsScreen({super.key});
@@ -27,6 +28,7 @@ class MyEventsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final events = ref.watch(myEventsProvider);
+    final favorites = ref.watch(favoriteEventIdsProvider).valueOrNull ?? const <String>{};
     return Scaffold(
       appBar: AppBar(title: const Text('Mes événements')),
       body: events.when(
@@ -43,6 +45,15 @@ class MyEventsScreen extends ConsumerWidget {
                 itemCount: items.length,
                 itemBuilder: (context, index) => EventTile(
                   event: items[index],
+                  isFavorite: favorites.contains(items[index].id),
+                  onFavorite: () async {
+                    final id = items[index].id;
+                    await ref.read(favoritesRepositoryProvider).toggleEvent(
+                          id,
+                          favorite: !favorites.contains(id),
+                        );
+                    ref.invalidate(favoriteEventIdsProvider);
+                  },
                   actionLabel: "Annuler l'inscription",
                   onAction: () => _cancel(context, ref, items[index].id),
                 ),

@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yelisport/features/auth/presentation/auth_providers.dart';
 import 'package:yelisport/features/events/presentation/events_screen.dart';
 import 'package:yelisport/features/events/presentation/my_events_screen.dart';
+import 'package:yelisport/features/favorites/presentation/favorites_providers.dart';
+import 'package:yelisport/features/favorites/presentation/favorites_screen.dart';
 import 'package:yelisport/features/profile/presentation/profile_providers.dart';
+import 'package:yelisport/features/profile/presentation/profile_screen.dart';
+import 'package:yelisport/features/settings/presentation/settings_screen.dart';
 import 'package:yelisport/features/sports/presentation/sport_detail_screen.dart';
 import 'package:yelisport/features/sports/presentation/sports_providers.dart';
 
@@ -15,15 +19,33 @@ class HomeScreen extends ConsumerWidget {
     final sports = ref.watch(sportsProvider);
     final profile = ref.watch(profileProvider);
     final user = ref.watch(authRepositoryProvider).currentSession?.user;
+    final favoriteSports =
+        ref.watch(favoriteSportIdsProvider).valueOrNull ?? const <String>{};
     final displayName = profile.valueOrNull?.displayName;
     return Scaffold(
       appBar: AppBar(
         title: const Text('YeliSport'),
         actions: [
           IconButton(
-            tooltip: 'Se déconnecter',
-            onPressed: () => ref.read(authRepositoryProvider).signOut(),
-            icon: const Icon(Icons.logout),
+            tooltip: 'Mes favoris',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const FavoritesScreen()),
+            ),
+            icon: const Icon(Icons.favorite),
+          ),
+          IconButton(
+            tooltip: 'Mon profil',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
+            ),
+            icon: const Icon(Icons.person),
+          ),
+          IconButton(
+            tooltip: 'Paramètres',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+            ),
+            icon: const Icon(Icons.settings),
           ),
         ],
       ),
@@ -121,7 +143,29 @@ class HomeScreen extends ConsumerWidget {
                       leading: const CircleAvatar(child: Icon(Icons.sports_soccer)),
                       title: Text(sport.name),
                       subtitle: sport.description == null ? null : Text(sport.description!),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: favoriteSports.contains(sport.id)
+                                ? 'Retirer des favoris'
+                                : 'Ajouter aux favoris',
+                            icon: Icon(
+                              favoriteSports.contains(sport.id)
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                            ),
+                            onPressed: () async {
+                              await ref.read(favoritesRepositoryProvider).toggleSport(
+                                    sport.id,
+                                    favorite: !favoriteSports.contains(sport.id),
+                                  );
+                              ref.invalidate(favoriteSportIdsProvider);
+                            },
+                          ),
+                          const Icon(Icons.chevron_right),
+                        ],
+                      ),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => SportDetailScreen(slug: sport.slug),

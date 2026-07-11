@@ -4,6 +4,7 @@ import 'package:yelisport/features/events/presentation/create_event_screen.dart'
 import 'package:yelisport/features/events/presentation/event_tile.dart';
 import 'package:yelisport/features/events/presentation/events_providers.dart';
 import 'package:yelisport/features/events/presentation/my_events_screen.dart';
+import 'package:yelisport/features/favorites/presentation/favorites_providers.dart';
 
 class EventsScreen extends ConsumerWidget {
   const EventsScreen({super.key});
@@ -29,6 +30,7 @@ class EventsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final events = ref.watch(upcomingEventsProvider);
+    final favorites = ref.watch(favoriteEventIdsProvider).valueOrNull ?? const <String>{};
     return Scaffold(
       appBar: AppBar(
         title: const Text('Événements'),
@@ -67,6 +69,15 @@ class EventsScreen extends ConsumerWidget {
                   itemCount: items.length,
                   itemBuilder: (context, index) => EventTile(
                     event: items[index],
+                    isFavorite: favorites.contains(items[index].id),
+                    onFavorite: () async {
+                      final id = items[index].id;
+                      await ref.read(favoritesRepositoryProvider).toggleEvent(
+                            id,
+                            favorite: !favorites.contains(id),
+                          );
+                      ref.invalidate(favoriteEventIdsProvider);
+                    },
                     actionLabel: "S'inscrire",
                     onAction: () => _register(context, ref, items[index].id),
                   ),

@@ -7,12 +7,16 @@ class EventTile extends StatelessWidget {
     required this.event,
     required this.actionLabel,
     required this.onAction,
+    this.isFavorite = false,
+    this.onFavorite,
     super.key,
   });
 
   final SportEvent event;
   final String actionLabel;
   final VoidCallback? onAction;
+  final bool isFavorite;
+  final VoidCallback? onFavorite;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +28,18 @@ class EventTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(event.title, style: Theme.of(context).textTheme.titleMedium),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(event.title, style: Theme.of(context).textTheme.titleMedium),
+                ),
+                IconButton(
+                  tooltip: isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris',
+                  onPressed: onFavorite,
+                  icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+                ),
+              ],
+            ),
             const SizedBox(height: 6),
             Text('$date · ${event.location}'),
             Text('${event.capacity} places'),
