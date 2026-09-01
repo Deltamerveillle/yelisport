@@ -31,3 +31,8 @@ class UnauthorizedError(ApplicationError):
 class ConflictError(ApplicationError):
     status_code = 409
     code = "conflict"
+
+
+class ForbiddenError(ApplicationError):
+    status_code = 403
+    code = "forbidden"
