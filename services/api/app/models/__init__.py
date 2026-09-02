@@ -3,6 +3,7 @@
 from app.models.event import Event, EventRegistration, RegistrationStatus
 from app.models.sport import Sport
 from app.models.user import Profile, User
+from app.models.user_role import UserRole
 from app.models.user_preferences import FavoriteEvent, FavoriteSport, UserSettings
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     "RegistrationStatus",
     "Sport",
     "User",
+    "UserRole",
     "UserSettings",
 ]

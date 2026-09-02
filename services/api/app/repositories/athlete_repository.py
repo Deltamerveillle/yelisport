@@ -18,9 +18,19 @@ class AthleteRepository:
         await self.session.flush()
         return athlete
 
-    async def get_by_id(self, athlete_id: uuid.UUID) -> Athlete | None:
-        """Get an athlete by ID."""
-        return await self.session.scalar(select(Athlete).where(Athlete.id == athlete_id))
+    async def get_by_id(
+        self,
+        athlete_id: uuid.UUID,
+        *,
+        for_update: bool = False,
+    ) -> Athlete | None:
+        """Get an athlete by ID, optionally locking the row."""
+        query = select(Athlete).where(Athlete.id == athlete_id)
+
+        if for_update:
+            query = query.with_for_update()
+
+        return await self.session.scalar(query)
 
     async def get_by_user_and_sport(
         self,
