@@ -16,6 +16,7 @@ class AthleteCreate(BaseModel):
     last_name: str = Field(..., min_length=1, max_length=100)
     nationality: str | None = Field(None, max_length=100)
     country: str | None = Field(None, max_length=100)
+    residence_country_id: uuid.UUID | None = None
     city: str | None = Field(None, max_length=100)
     biography: str | None = None
 
@@ -29,6 +30,7 @@ class AthleteUpdate(BaseModel):
     last_name: str | None = Field(None, min_length=1, max_length=100)
     nationality: str | None = Field(None, max_length=100)
     country: str | None = Field(None, max_length=100)
+    residence_country_id: uuid.UUID | None = None
     city: str | None = Field(None, max_length=100)
     biography: str | None = None
 
@@ -45,6 +47,7 @@ class AthleteResponse(BaseModel):
     last_name: str
     nationality: str | None
     country: str | None
+    residence_country_id: uuid.UUID | None
     city: str | None
     biography: str | None
     created_at: datetime

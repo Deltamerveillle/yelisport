@@ -3,8 +3,11 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import athlete_passports
+from app.api.v1.endpoints import athlete_country_eligibilities
+from app.api.v1.endpoints import countries
 from app.api.v1.endpoints import discover_videos
 from app.api.v1.endpoints import subscriptions
+from app.api.v1.endpoints import sms_nations
 from app.api.v1.endpoints.athletes import router as athletes_router
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.events import router as events_router
@@ -18,7 +21,10 @@ router.include_router(sports_router)
 router.include_router(events_router)
 router.include_router(athletes_router)
 router.include_router(athlete_passports.router)
+router.include_router(athlete_country_eligibilities.router)
+router.include_router(countries.router)
 router.include_router(discover_videos.router)
+router.include_router(sms_nations.router)
 
 router.include_router(
     subscriptions.router,

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies.auth import CurrentUser
 from app.db.session import get_db_session
 from app.repositories.athlete_repository import AthleteRepository
+from app.repositories.country_repository import CountryRepository
 from app.schemas.athlete import AthleteCreate, AthleteResponse, AthleteUpdate
 from app.services.athlete_service import AthleteService
 
@@ -27,7 +28,10 @@ async def create_athlete(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> AthleteResponse:
     """Create an athlete profile owned by the authenticated user."""
-    service = AthleteService(AthleteRepository(session))
+    service = AthleteService(
+        AthleteRepository(session),
+        CountryRepository(session),
+    )
 
     try:
         athlete = await service.create_athlete(
@@ -48,7 +52,10 @@ async def list_athletes(
 ) -> list[AthleteResponse]:
     """List all athletes."""
     del current_user
-    service = AthleteService(AthleteRepository(session))
+    service = AthleteService(
+        AthleteRepository(session),
+        CountryRepository(session),
+    )
     athletes = await service.list_athletes()
     return [AthleteResponse.model_validate(athlete) for athlete in athletes]
 
@@ -61,7 +68,10 @@ async def list_user_athletes(
 ) -> list[AthleteResponse]:
     """List athlete profiles belonging to a specific user."""
     del current_user
-    service = AthleteService(AthleteRepository(session))
+    service = AthleteService(
+        AthleteRepository(session),
+        CountryRepository(session),
+    )
     athletes = await service.list_user_athletes(user_id)
     return [AthleteResponse.model_validate(athlete) for athlete in athletes]
 
@@ -74,7 +84,10 @@ async def list_sport_athletes(
 ) -> list[AthleteResponse]:
     """List athlete profiles for a specific sport."""
     del current_user
-    service = AthleteService(AthleteRepository(session))
+    service = AthleteService(
+        AthleteRepository(session),
+        CountryRepository(session),
+    )
     athletes = await service.list_sport_athletes(sport_id)
     return [AthleteResponse.model_validate(athlete) for athlete in athletes]
 
@@ -87,7 +100,10 @@ async def get_athlete(
 ) -> AthleteResponse:
     """Get a specific athlete profile."""
     del current_user
-    service = AthleteService(AthleteRepository(session))
+    service = AthleteService(
+        AthleteRepository(session),
+        CountryRepository(session),
+    )
     athlete = await service.get_athlete(athlete_id)
     return AthleteResponse.model_validate(athlete)
 
@@ -100,7 +116,10 @@ async def update_athlete(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> AthleteResponse:
     """Update an athlete profile owned by the authenticated user."""
-    service = AthleteService(AthleteRepository(session))
+    service = AthleteService(
+        AthleteRepository(session),
+        CountryRepository(session),
+    )
 
     try:
         athlete = await service.update_athlete(
@@ -122,7 +141,10 @@ async def delete_athlete(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> None:
     """Delete an athlete profile owned by the authenticated user."""
-    service = AthleteService(AthleteRepository(session))
+    service = AthleteService(
+        AthleteRepository(session),
+        CountryRepository(session),
+    )
 
     try:
         await service.delete_athlete(

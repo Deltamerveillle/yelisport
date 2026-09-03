@@ -48,6 +48,7 @@ def athlete_object(
         last_name=last_name,
         nationality="Ivoirienne",
         country="Côte d'Ivoire",
+        residence_country_id=None,
         city="Abidjan",
         biography="Profil sportif SMS",
         created_at=now,
@@ -310,3 +311,182 @@ def test_update_cannot_change_sport_id(
     )
 
     assert response.status_code == 422
+
+
+# ============================================================
+# SMS Nations — normalized residence country
+# ============================================================
+
+
+class FakeAthleteRepository:
+    def __init__(self, athlete=None):
+        self.athlete = athlete
+        self.created = None
+        self.updated = None
+
+    async def get_by_user_and_sport(self, user_id, sport_id):
+        return None
+
+    async def create(self, athlete):
+        self.created = athlete
+        return athlete
+
+    async def get_by_id(self, athlete_id, *, for_update=False):
+        return self.athlete
+
+    async def update(self, athlete):
+        self.updated = athlete
+        return athlete
+
+
+class FakeCountryRepository:
+    def __init__(self, country):
+        self.country = country
+        self.requested_country_id = None
+
+    async def get_by_id(self, country_id):
+        self.requested_country_id = country_id
+        return self.country
+
+
+def test_service_create_accepts_active_residence_country() -> None:
+    import asyncio
+
+    from app.schemas.athlete import AthleteCreate
+
+    country_id = uuid.uuid4()
+
+    athlete_repository = FakeAthleteRepository()
+    country_repository = FakeCountryRepository(
+        SimpleNamespace(
+            id=country_id,
+            is_active=True,
+        )
+    )
+
+    service = AthleteService(
+        athlete_repository,
+        country_repository,
+    )
+
+    data = AthleteCreate(
+        sport_id=SPORT_ID,
+        first_name="Dramane",
+        last_name="Fofana",
+        residence_country_id=country_id,
+    )
+
+    athlete = asyncio.run(
+        service.create_athlete(
+            data,
+            USER_ID,
+        )
+    )
+
+    assert athlete.residence_country_id == country_id
+    assert country_repository.requested_country_id == country_id
+    assert athlete_repository.created is athlete
+
+
+def test_service_create_rejects_unknown_residence_country() -> None:
+    import asyncio
+
+    from app.schemas.athlete import AthleteCreate
+
+    country_id = uuid.uuid4()
+
+    service = AthleteService(
+        FakeAthleteRepository(),
+        FakeCountryRepository(None),
+    )
+
+    data = AthleteCreate(
+        sport_id=SPORT_ID,
+        first_name="Dramane",
+        last_name="Fofana",
+        residence_country_id=country_id,
+    )
+
+    with pytest.raises(
+        NotFoundError,
+        match="Residence country not found or inactive",
+    ):
+        asyncio.run(
+            service.create_athlete(
+                data,
+                USER_ID,
+            )
+        )
+
+
+def test_service_create_rejects_inactive_residence_country() -> None:
+    import asyncio
+
+    from app.schemas.athlete import AthleteCreate
+
+    country_id = uuid.uuid4()
+
+    service = AthleteService(
+        FakeAthleteRepository(),
+        FakeCountryRepository(
+            SimpleNamespace(
+                id=country_id,
+                is_active=False,
+            )
+        ),
+    )
+
+    data = AthleteCreate(
+        sport_id=SPORT_ID,
+        first_name="Dramane",
+        last_name="Fofana",
+        residence_country_id=country_id,
+    )
+
+    with pytest.raises(
+        NotFoundError,
+        match="Residence country not found or inactive",
+    ):
+        asyncio.run(
+            service.create_athlete(
+                data,
+                USER_ID,
+            )
+        )
+
+
+def test_service_update_can_clear_residence_country() -> None:
+    import asyncio
+
+    from app.schemas.athlete import AthleteUpdate
+
+    athlete = SimpleNamespace(
+        id=ATHLETE_ID,
+        user_id=USER_ID,
+        sport_id=SPORT_ID,
+        first_name="Dramane",
+        last_name="Fofana",
+        nationality="Ivoirienne",
+        country="Côte d'Ivoire",
+        residence_country_id=uuid.uuid4(),
+        city="Abidjan",
+        biography=None,
+    )
+
+    athlete_repository = FakeAthleteRepository(athlete)
+
+    service = AthleteService(
+        athlete_repository,
+        FakeCountryRepository(None),
+    )
+
+    updated = asyncio.run(
+        service.update_athlete(
+            ATHLETE_ID,
+            AthleteUpdate(residence_country_id=None),
+            USER_ID,
+        )
+    )
+
+    assert updated.residence_country_id is None
+    assert athlete_repository.updated is athlete

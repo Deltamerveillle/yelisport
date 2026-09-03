@@ -5,12 +5,37 @@ import uuid
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.models.athlete import Athlete
 from app.repositories.athlete_repository import AthleteRepository
+from app.repositories.country_repository import CountryRepository
 from app.schemas.athlete import AthleteCreate, AthleteUpdate
 
 
 class AthleteService:
-    def __init__(self, repository: AthleteRepository) -> None:
+    def __init__(
+        self,
+        repository: AthleteRepository,
+        country_repository: CountryRepository | None = None,
+    ) -> None:
         self.repository = repository
+        self.country_repository = country_repository
+
+    async def _validate_residence_country(
+        self,
+        country_id: uuid.UUID | None,
+    ) -> None:
+        if country_id is None:
+            return
+
+        if self.country_repository is None:
+            raise RuntimeError(
+                "CountryRepository is required to validate residence_country_id"
+            )
+
+        country = await self.country_repository.get_by_id(country_id)
+
+        if country is None or not country.is_active:
+            raise NotFoundError(
+                "Residence country not found or inactive"
+            )
 
     async def create_athlete(
         self,
@@ -25,6 +50,10 @@ class AthleteService:
         if existing is not None:
             raise ConflictError("Athlete profile already exists for this sport")
 
+        await self._validate_residence_country(
+            data.residence_country_id,
+        )
+
         athlete = Athlete(
             user_id=current_user_id,
             sport_id=data.sport_id,
@@ -32,6 +61,7 @@ class AthleteService:
             last_name=data.last_name,
             nationality=data.nationality,
             country=data.country,
+            residence_country_id=data.residence_country_id,
             city=data.city,
             biography=data.biography,
         )
@@ -76,6 +106,11 @@ class AthleteService:
         athlete = await self._get_owned_athlete(athlete_id, current_user_id)
 
         updates = data.model_dump(exclude_unset=True)
+
+        if "residence_country_id" in updates:
+            await self._validate_residence_country(
+                updates["residence_country_id"],
+            )
 
         for field, value in updates.items():
             setattr(athlete, field, value)

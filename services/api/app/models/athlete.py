@@ -36,6 +36,16 @@ class Athlete(Base):
     last_name: Mapped[str] = mapped_column(String(100))
     nationality: Mapped[str | None] = mapped_column(String(100))
     country: Mapped[str | None] = mapped_column(String(100))
+
+    # Normalized residence country for SMS Nations.
+    # Legacy `country` remains temporarily for backward compatibility.
+    residence_country_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("countries.id"),
+        nullable=True,
+        index=True,
+    )
+
     city: Mapped[str | None] = mapped_column(String(100))
     biography: Mapped[str | None] = mapped_column(Text)
 
