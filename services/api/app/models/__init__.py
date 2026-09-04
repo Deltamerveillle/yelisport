@@ -1,3 +1,4 @@
+from app.models.athlete_performance import AthletePerformance
 from app.models.athlete_country_eligibility import AthleteCountryEligibility
 from app.models.country import Country
 """Database models exported for Alembic discovery."""
@@ -9,6 +10,7 @@ from app.models.user_role import UserRole
 from app.models.user_preferences import FavoriteEvent, FavoriteSport, UserSettings
 
 __all__ = [
+    "AthletePerformance",
     "Country",
     "AthleteCountryEligibility",
     "Event",
