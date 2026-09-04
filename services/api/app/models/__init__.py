@@ -27,3 +27,5 @@ __all__ = [
 ]
 
 from app.models.sms_connect_interest import SMSConnectInterest
+
+from app.models.sms_connect_interest_event import SMSConnectInterestEvent

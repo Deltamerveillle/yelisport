@@ -78,3 +78,43 @@ class SMSConnectInterestResponse(BaseModel):
 
     created_at: datetime
     updated_at: datetime
+
+
+
+class SMSConnectTransitionRequest(BaseModel):
+    """Administrative SMS Connect status transition."""
+
+    model_config = ConfigDict(
+        extra="forbid"
+    )
+
+    status: Literal[
+        "under_review",
+        "approved",
+        "rejected",
+        "delivered",
+        "closed",
+    ]
+
+    note: str | None = Field(
+        default=None,
+        max_length=1000,
+    )
+
+
+class SMSConnectInterestEventResponse(BaseModel):
+    """Administrative audit event for an interest."""
+
+    model_config = ConfigDict(
+        from_attributes=True
+    )
+
+    id: uuid.UUID
+    interest_id: uuid.UUID
+
+    actor_role: str
+    from_status: InterestStatus
+    to_status: InterestStatus
+
+    note: str | None
+    created_at: datetime

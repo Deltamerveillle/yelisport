@@ -61,3 +61,26 @@ class UserRoleRepository:
             )
             .order_by(UserRole.created_at.asc())
         )
+
+
+    async def get_verified_admin_role(
+        self,
+        *,
+        user_id: uuid.UUID,
+    ) -> UserRole | None:
+        """Return an active verified SMS administrator role."""
+
+        return await self.session.scalar(
+            select(UserRole)
+            .join(
+                User,
+                User.id == UserRole.user_id,
+            )
+            .where(
+                UserRole.user_id == user_id,
+                UserRole.role == "admin",
+                UserRole.is_active.is_(True),
+                UserRole.is_verified.is_(True),
+                User.is_active.is_(True),
+            )
+        )
