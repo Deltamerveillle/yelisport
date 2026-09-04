@@ -28,6 +28,7 @@ class SMSNationAthleteResponse(BaseModel):
     category: str | None
     position: str | None
     club_name: str | None
+    league_name: str | None
     team_name: str | None
     available_for_opportunities: bool | None
 

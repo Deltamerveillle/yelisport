@@ -13,6 +13,7 @@ class AthletePassportCreate(BaseModel):
     category: str | None = Field(None, max_length=120)
     position: str | None = Field(None, max_length=120)
     club_name: str | None = Field(None, max_length=180)
+    league_name: str | None = Field(None, max_length=180)
     team_name: str | None = Field(None, max_length=180)
 
     height_cm: int | None = Field(None, gt=0, le=300)
@@ -32,6 +33,7 @@ class AthletePassportUpdate(BaseModel):
     category: str | None = Field(None, max_length=120)
     position: str | None = Field(None, max_length=120)
     club_name: str | None = Field(None, max_length=180)
+    league_name: str | None = Field(None, max_length=180)
     team_name: str | None = Field(None, max_length=180)
 
     height_cm: int | None = Field(None, gt=0, le=300)
@@ -55,6 +57,7 @@ class AthletePassportResponse(BaseModel):
     position: str | None
 
     club_name: str | None
+    league_name: str | None
     team_name: str | None
 
     height_cm: int | None

@@ -45,6 +45,7 @@ class AthletePassport(Base):
     position: Mapped[str | None] = mapped_column(String(120))
 
     club_name: Mapped[str | None] = mapped_column(String(180))
+    league_name: Mapped[str | None] = mapped_column(String(180))
     team_name: Mapped[str | None] = mapped_column(String(180))
 
     height_cm: Mapped[int | None] = mapped_column(Integer)

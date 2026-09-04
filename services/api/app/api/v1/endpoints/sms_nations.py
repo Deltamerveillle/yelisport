@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import CurrentUser
@@ -51,6 +51,10 @@ async def search_sms_nations_athletes(
         str | None,
         Query(min_length=1, max_length=150),
     ] = None,
+    league: Annotated[
+        str | None,
+        Query(min_length=1, max_length=180),
+    ] = None,
     city: Annotated[
         str | None,
         Query(min_length=1, max_length=120),
@@ -62,6 +66,14 @@ async def search_sms_nations_athletes(
         "verified",
     ]
     | None = None,
+    min_age: Annotated[
+        int | None,
+        Query(ge=1, le=100),
+    ] = None,
+    max_age: Annotated[
+        int | None,
+        Query(ge=1, le=100),
+    ] = None,
     search: Annotated[
         str | None,
         Query(min_length=2, max_length=100),
@@ -79,13 +91,23 @@ async def search_sms_nations_athletes(
     Search athletes through SMS Nations.
 
     Supports country eligibility, diaspora residence, sport,
-    discipline, category, position, club, city and availability.
+    discipline, category, position, club, city, age and availability.
 
     Personal phone, email and WhatsApp information are never
     exposed by this endpoint.
     """
 
     del current_user
+
+    if (
+        min_age is not None
+        and max_age is not None
+        and min_age > max_age
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="min_age must be less than or equal to max_age",
+        )
 
     result = await SMSNationsService(
         SMSNationsRepository(session)
@@ -97,9 +119,12 @@ async def search_sms_nations_athletes(
         category=category,
         position=position,
         club=club,
+        league=league,
         city=city,
         available_for_opportunities=available_for_opportunities,
         eligibility_status=eligibility_status,
+        min_age=min_age,
+        max_age=max_age,
         search=search,
         limit=limit,
         offset=offset,

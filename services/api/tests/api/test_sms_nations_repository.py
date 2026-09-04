@@ -77,6 +77,7 @@ async def test_search_returns_sms_nations_athlete_card():
                 "category": "Senior",
                 "position": "Attaquant",
                 "club_name": "Paris Talent FC",
+                "league_name": "Ligue 1",
                 "team_name": None,
                 "available_for_opportunities": True,
                 "eligibility_country_id": CI_ID,
@@ -219,6 +220,7 @@ async def test_result_contains_no_personal_contact_fields():
                 "category": None,
                 "position": "Attaquant",
                 "club_name": None,
+                "league_name": "Ligue 1",
                 "team_name": None,
                 "available_for_opportunities": True,
                 "eligibility_country_id": CI_ID,
@@ -242,3 +244,19 @@ async def test_result_contains_no_personal_contact_fields():
     assert not hasattr(athlete, "phone")
     assert not hasattr(athlete, "whatsapp")
     assert not hasattr(athlete, "user_id")
+
+
+@pytest.mark.asyncio
+async def test_age_filters_use_profile_birth_date():
+    session = FakeSession(total=0)
+    repository = SMSNationsRepository(session)
+
+    await repository.search_athletes(
+        min_age=16,
+        max_age=18,
+    )
+
+    sql = sql_text(session.execute_statements[0]).lower()
+
+    assert "birth_date" in sql
+    assert "profiles" in sql

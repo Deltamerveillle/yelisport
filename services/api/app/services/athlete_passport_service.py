@@ -73,6 +73,7 @@ class AthletePassportService:
             category=data.category,
             position=data.position,
             club_name=data.club_name,
+            league_name=data.league_name,
             team_name=data.team_name,
             height_cm=data.height_cm,
             weight_kg=data.weight_kg,

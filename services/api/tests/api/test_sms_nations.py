@@ -67,6 +67,7 @@ def make_row():
         category="Senior",
         position="Attaquant",
         club_name="Paris Talent FC",
+        league_name="Ligue 1",
         team_name=None,
         available_for_opportunities=True,
         eligibility_country_id=CI_ID,
@@ -220,3 +221,89 @@ def test_sms_nations_requires_authentication(client):
     )
 
     assert response.status_code in {401, 403}
+
+
+def test_age_range_is_forwarded_to_service(
+    client,
+    sms_nations_dependencies,
+    monkeypatch,
+):
+    captured = {}
+
+    async def fake_search(self, **kwargs):
+        captured.update(kwargs)
+
+        return SMSNationsSearchResult(
+            items=[],
+            total=0,
+            limit=kwargs["limit"],
+            offset=kwargs["offset"],
+        )
+
+    monkeypatch.setattr(
+        SMSNationsService,
+        "search_athletes",
+        fake_search,
+    )
+
+    response = client.get(
+        "/api/v1/sms-nations/athletes",
+        params={
+            "min_age": 16,
+            "max_age": 18,
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured["min_age"] == 16
+    assert captured["max_age"] == 18
+
+
+def test_invalid_age_range_returns_422(
+    client,
+    sms_nations_dependencies,
+):
+    response = client.get(
+        "/api/v1/sms-nations/athletes",
+        params={
+            "min_age": 20,
+            "max_age": 16,
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "min_age must be less than or equal to max_age"
+    )
+
+
+def test_league_filter_is_forwarded_to_service(
+    client,
+    sms_nations_dependencies,
+    monkeypatch,
+):
+    captured = {}
+
+    async def fake_search(self, **kwargs):
+        captured.update(kwargs)
+
+        return SMSNationsSearchResult(
+            items=[],
+            total=0,
+            limit=kwargs["limit"],
+            offset=kwargs["offset"],
+        )
+
+    monkeypatch.setattr(
+        SMSNationsService,
+        "search_athletes",
+        fake_search,
+    )
+
+    response = client.get(
+        "/api/v1/sms-nations/athletes",
+        params={"league": "Ligue 1"},
+    )
+
+    assert response.status_code == 200
+    assert captured["league"] == "Ligue 1"

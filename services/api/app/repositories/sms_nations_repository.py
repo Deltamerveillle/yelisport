@@ -1,6 +1,7 @@
 """Repository for SMS Nations athlete discovery."""
 
 import uuid
+from datetime import date
 from dataclasses import dataclass
 from typing import Any
 
@@ -39,6 +40,7 @@ class SMSNationAthleteRow:
     category: str | None
     position: str | None
     club_name: str | None
+    league_name: str | None
     team_name: str | None
     available_for_opportunities: bool | None
 
@@ -63,6 +65,25 @@ class SMSNationsSearchResult:
     offset: int
 
 
+def _birth_date_years_ago(years: int) -> date:
+    """
+    Return the calendar date exactly `years` years before today.
+
+    February 29 is normalized to February 28 when the target
+    year is not a leap year.
+    """
+    today = date.today()
+
+    try:
+        return today.replace(year=today.year - years)
+    except ValueError:
+        return today.replace(
+            year=today.year - years,
+            month=2,
+            day=28,
+        )
+
+
 class SMSNationsRepository:
     """Optimized search for Country -> Sport -> Athletes."""
 
@@ -79,9 +100,12 @@ class SMSNationsRepository:
         category: str | None = None,
         position: str | None = None,
         club: str | None = None,
+        league: str | None = None,
         city: str | None = None,
         available_for_opportunities: bool | None = None,
         eligibility_status: str | None = None,
+        min_age: int | None = None,
+        max_age: int | None = None,
         search: str | None = None,
         limit: int = 24,
         offset: int = 0,
@@ -168,6 +192,13 @@ class SMSNationsRepository:
                 )
             )
 
+        if league:
+            conditions.append(
+                AthletePassport.league_name.ilike(
+                    f"%{league.strip()}%"
+                )
+            )
+
         if city:
             conditions.append(
                 Athlete.city.ilike(f"%{city.strip()}%")
@@ -177,6 +208,21 @@ class SMSNationsRepository:
             conditions.append(
                 AthletePassport.available_for_opportunities
                 == available_for_opportunities
+            )
+
+        if min_age is not None:
+            # Athlete must have reached min_age.
+            conditions.append(
+                Profile.birth_date
+                <= _birth_date_years_ago(min_age)
+            )
+
+        if max_age is not None:
+            # Strict lower birth-date boundary ensures the athlete
+            # has not yet reached max_age + 1.
+            conditions.append(
+                Profile.birth_date
+                > _birth_date_years_ago(max_age + 1)
             )
 
         if search:
@@ -190,6 +236,7 @@ class SMSNationsRepository:
                     AthletePassport.category.ilike(needle),
                     AthletePassport.position.ilike(needle),
                     AthletePassport.club_name.ilike(needle),
+                    AthletePassport.league_name.ilike(needle),
                     AthletePassport.team_name.ilike(needle),
                 )
             )
@@ -270,6 +317,7 @@ class SMSNationsRepository:
                 AthletePassport.category,
                 AthletePassport.position,
                 AthletePassport.club_name,
+                AthletePassport.league_name,
                 AthletePassport.team_name,
                 AthletePassport.available_for_opportunities,
                 selected_eligibility.country_id.label(
