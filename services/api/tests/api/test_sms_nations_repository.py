@@ -406,3 +406,79 @@ async def test_result_exposes_only_aggregate_talent_data():
     assert not hasattr(athlete, "comments")
     assert not hasattr(athlete, "recommendation")
     assert not hasattr(athlete, "scores")
+
+
+
+@pytest.mark.asyncio
+async def test_performance_metric_filter_uses_safe_numeric_json():
+    from decimal import Decimal
+
+    session = FakeSession(total=0)
+    repository = SMSNationsRepository(session)
+
+    await repository.search_athletes(
+        performance_metric="goals",
+        min_performance_value=Decimal("10"),
+        max_performance_value=Decimal("25"),
+    )
+
+    sql = sql_text(
+        session.execute_statements[0]
+    ).lower()
+
+    assert "athlete_performances" in sql
+    assert "exists" in sql
+    assert "jsonb_typeof" in sql
+    assert "case" in sql
+    assert "goals" in sql
+    assert ">= 10" in sql
+    assert "<= 25" in sql
+
+
+@pytest.mark.asyncio
+async def test_performance_filter_supports_verification_competition_and_dates():
+    from datetime import date
+
+    session = FakeSession(total=0)
+    repository = SMSNationsRepository(session)
+
+    await repository.search_athletes(
+        performance_verification_status="verified",
+        performance_competition="Champions League",
+        performance_since=date(2026, 1, 1),
+        performance_until=date(2026, 12, 31),
+    )
+
+    sql = sql_text(
+        session.execute_statements[0]
+    ).lower()
+
+    assert "athlete_performances" in sql
+    assert "verification_status = 'verified'" in sql
+    assert "competition_name" in sql
+    assert "champions league" in sql
+    assert "performance_date >= '2026-01-01'" in sql
+    assert "performance_date <= '2026-12-31'" in sql
+
+
+@pytest.mark.asyncio
+async def test_performance_filter_is_correlated_to_athlete_and_sport():
+    session = FakeSession(total=0)
+    repository = SMSNationsRepository(session)
+
+    await repository.search_athletes(
+        performance_metric="points",
+    )
+
+    sql = sql_text(
+        session.execute_statements[0]
+    ).lower()
+
+    assert (
+        "athlete_performances.athlete_id = athletes.id"
+        in sql
+    )
+    assert (
+        "athlete_performances.sport_id = athletes.sport_id"
+        in sql
+    )

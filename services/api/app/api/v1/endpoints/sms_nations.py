@@ -1,6 +1,7 @@
 """SMS Nations athlete discovery endpoints."""
 
 import uuid
+from datetime import date
 from decimal import Decimal
 from typing import Annotated, Literal
 
@@ -84,6 +85,28 @@ async def search_sms_nations_athletes(
         Decimal | None,
         Query(ge=0, le=100),
     ] = None,
+    performance_metric: Annotated[
+        str | None,
+        Query(
+            min_length=1,
+            max_length=64,
+            pattern=r"^[a-z][a-z0-9_]{0,63}$",
+        ),
+    ] = None,
+    min_performance_value: Decimal | None = None,
+    max_performance_value: Decimal | None = None,
+    performance_verification_status: Literal[
+        "declared",
+        "documented",
+        "verified",
+    ]
+    | None = None,
+    performance_competition: Annotated[
+        str | None,
+        Query(min_length=1, max_length=180),
+    ] = None,
+    performance_since: date | None = None,
+    performance_until: date | None = None,
     search: Annotated[
         str | None,
         Query(min_length=2, max_length=100),
@@ -101,7 +124,8 @@ async def search_sms_nations_athletes(
     Search athletes through SMS Nations.
 
     Supports country eligibility, diaspora residence, sport,
-    discipline, category, position, club, league, city, age, Talent evaluation and availability.
+    discipline, category, position, club, league, city, age,
+    Talent evaluation, multisport performance and availability.
 
     Personal phone, email and WhatsApp information are never
     exposed by this endpoint.
@@ -132,6 +156,47 @@ async def search_sms_nations_athletes(
             ),
         )
 
+    if (
+        (
+            min_performance_value is not None
+            or max_performance_value is not None
+        )
+        and performance_metric is None
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "performance_metric is required when filtering "
+                "by performance value"
+            ),
+        )
+
+    if (
+        min_performance_value is not None
+        and max_performance_value is not None
+        and min_performance_value > max_performance_value
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "min_performance_value must be less than or equal "
+                "to max_performance_value"
+            ),
+        )
+
+    if (
+        performance_since is not None
+        and performance_until is not None
+        and performance_since > performance_until
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "performance_since must be less than or equal "
+                "to performance_until"
+            ),
+        )
+
     result = await SMSNationsService(
         SMSNationsRepository(session)
     ).search_athletes(
@@ -151,6 +216,15 @@ async def search_sms_nations_athletes(
         talent_evaluated=talent_evaluated,
         min_talent_score=min_talent_score,
         max_talent_score=max_talent_score,
+        performance_metric=performance_metric,
+        min_performance_value=min_performance_value,
+        max_performance_value=max_performance_value,
+        performance_verification_status=(
+            performance_verification_status
+        ),
+        performance_competition=performance_competition,
+        performance_since=performance_since,
+        performance_until=performance_until,
         search=search,
         limit=limit,
         offset=offset,

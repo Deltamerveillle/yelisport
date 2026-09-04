@@ -6,13 +6,14 @@ from decimal import Decimal
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import and_, exists, func, or_, select
+from sqlalchemy import Numeric, and_, case, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.models.athlete import Athlete
 from app.models.athlete_country_eligibility import AthleteCountryEligibility
 from app.models.athlete_passport import AthletePassport
+from app.models.athlete_performance import AthletePerformance
 from app.models.country import Country
 from app.models.discover_video import DiscoverVideo
 from app.models.sport import Sport
@@ -116,6 +117,13 @@ class SMSNationsRepository:
         talent_evaluated: bool | None = None,
         min_talent_score: Decimal | None = None,
         max_talent_score: Decimal | None = None,
+        performance_metric: str | None = None,
+        min_performance_value: Decimal | None = None,
+        max_performance_value: Decimal | None = None,
+        performance_verification_status: str | None = None,
+        performance_competition: str | None = None,
+        performance_since: date | None = None,
+        performance_until: date | None = None,
         search: str | None = None,
         limit: int = 24,
         offset: int = 0,
@@ -312,6 +320,97 @@ class SMSNationsRepository:
             conditions.append(
                 latest_talent_evaluation.c.talent_score
                 <= max_talent_score
+            )
+
+        # ----------------------------------------------------
+        # SMS Performance filters
+        #
+        # Performance is intentionally kept separate from the
+        # SMS Talent evaluation score.
+        #
+        # EXISTS avoids multiplying athlete rows when an athlete
+        # owns several performance records.
+        # ----------------------------------------------------
+
+        has_performance_filter = any(
+            value is not None
+            for value in (
+                performance_metric,
+                min_performance_value,
+                max_performance_value,
+                performance_verification_status,
+                performance_competition,
+                performance_since,
+                performance_until,
+            )
+        )
+
+        if has_performance_filter:
+            performance_filters = [
+                AthletePerformance.athlete_id == Athlete.id,
+                AthletePerformance.sport_id == Athlete.sport_id,
+            ]
+
+            if performance_verification_status is not None:
+                performance_filters.append(
+                    AthletePerformance.verification_status
+                    == performance_verification_status
+                )
+
+            if performance_competition:
+                performance_filters.append(
+                    AthletePerformance.competition_name.ilike(
+                        f"%{performance_competition.strip()}%"
+                    )
+                )
+
+            if performance_since is not None:
+                performance_filters.append(
+                    AthletePerformance.performance_date
+                    >= performance_since
+                )
+
+            if performance_until is not None:
+                performance_filters.append(
+                    AthletePerformance.performance_date
+                    <= performance_until
+                )
+
+            if performance_metric:
+                metric_json = AthletePerformance.metrics[
+                    performance_metric
+                ]
+
+                # Never cast an arbitrary JSON value directly to
+                # NUMERIC. Non-numeric JSON values become NULL.
+                metric_numeric = case(
+                    (
+                        func.jsonb_typeof(metric_json) == "number",
+                        metric_json.astext.cast(Numeric),
+                    ),
+                    else_=None,
+                )
+
+                # Supplying a metric means the matching
+                # performance must contain a numeric value.
+                performance_filters.append(
+                    func.jsonb_typeof(metric_json) == "number"
+                )
+
+                if min_performance_value is not None:
+                    performance_filters.append(
+                        metric_numeric >= min_performance_value
+                    )
+
+                if max_performance_value is not None:
+                    performance_filters.append(
+                        metric_numeric <= max_performance_value
+                    )
+
+            conditions.append(
+                exists(
+                    select(1).where(*performance_filters)
+                )
             )
 
         if search:

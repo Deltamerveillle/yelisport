@@ -442,3 +442,142 @@ def test_sms_nations_response_exposes_talent_aggregate(
     assert "comments" not in athlete
     assert "recommendation" not in athlete
     assert "scores" not in athlete
+
+
+
+def test_performance_filters_are_forwarded_to_service(
+    client,
+    sms_nations_dependencies,
+    monkeypatch,
+):
+    from datetime import date
+    from decimal import Decimal
+
+    captured = {}
+
+    async def fake_search(self, **kwargs):
+        captured.update(kwargs)
+
+        return SMSNationsSearchResult(
+            items=[],
+            total=0,
+            limit=kwargs["limit"],
+            offset=kwargs["offset"],
+        )
+
+    monkeypatch.setattr(
+        SMSNationsService,
+        "search_athletes",
+        fake_search,
+    )
+
+    response = client.get(
+        "/api/v1/sms-nations/athletes",
+        params={
+            "performance_metric": "goals",
+            "min_performance_value": "10",
+            "max_performance_value": "30",
+            "performance_verification_status": "verified",
+            "performance_competition": "Ligue 1",
+            "performance_since": "2026-01-01",
+            "performance_until": "2026-12-31",
+        },
+    )
+
+    assert response.status_code == 200
+
+    assert captured["performance_metric"] == "goals"
+    assert captured["min_performance_value"] == Decimal("10")
+    assert captured["max_performance_value"] == Decimal("30")
+    assert (
+        captured["performance_verification_status"]
+        == "verified"
+    )
+    assert captured["performance_competition"] == "Ligue 1"
+    assert captured["performance_since"] == date(2026, 1, 1)
+    assert captured["performance_until"] == date(2026, 12, 31)
+
+
+def test_performance_value_requires_metric(
+    client,
+    sms_nations_dependencies,
+):
+    response = client.get(
+        "/api/v1/sms-nations/athletes",
+        params={
+            "min_performance_value": "10",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "performance_metric is required when filtering "
+        "by performance value"
+    )
+
+
+def test_invalid_performance_metric_name_returns_422(
+    client,
+    sms_nations_dependencies,
+):
+    response = client.get(
+        "/api/v1/sms-nations/athletes",
+        params={
+            "performance_metric": "goals->evil",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_invalid_performance_value_range_returns_422(
+    client,
+    sms_nations_dependencies,
+):
+    response = client.get(
+        "/api/v1/sms-nations/athletes",
+        params={
+            "performance_metric": "goals",
+            "min_performance_value": "30",
+            "max_performance_value": "10",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "min_performance_value must be less than or equal "
+        "to max_performance_value"
+    )
+
+
+def test_invalid_performance_date_range_returns_422(
+    client,
+    sms_nations_dependencies,
+):
+    response = client.get(
+        "/api/v1/sms-nations/athletes",
+        params={
+            "performance_since": "2026-12-31",
+            "performance_until": "2026-01-01",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "performance_since must be less than or equal "
+        "to performance_until"
+    )
+
+
+def test_invalid_performance_verification_status_returns_422(
+    client,
+    sms_nations_dependencies,
+):
+    response = client.get(
+        "/api/v1/sms-nations/athletes",
+        params={
+            "performance_verification_status": "approved",
+        },
+    )
+
+    assert response.status_code == 422
