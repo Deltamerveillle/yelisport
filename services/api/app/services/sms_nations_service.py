@@ -1,6 +1,7 @@
 """Service for SMS Nations athlete discovery."""
 
 import uuid
+from decimal import Decimal
 
 from app.repositories.sms_nations_repository import (
     SMSNationsRepository,
@@ -33,6 +34,9 @@ class SMSNationsService:
         eligibility_status: str | None = None,
         min_age: int | None = None,
         max_age: int | None = None,
+        talent_evaluated: bool | None = None,
+        min_talent_score: Decimal | None = None,
+        max_talent_score: Decimal | None = None,
         search: str | None = None,
         limit: int = 24,
         offset: int = 0,
@@ -51,6 +55,9 @@ class SMSNationsService:
             eligibility_status=eligibility_status,
             min_age=min_age,
             max_age=max_age,
+            talent_evaluated=talent_evaluated,
+            min_talent_score=min_talent_score,
+            max_talent_score=max_talent_score,
             search=search,
             limit=limit,
             offset=offset,

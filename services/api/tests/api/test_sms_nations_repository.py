@@ -260,3 +260,149 @@ async def test_age_filters_use_profile_birth_date():
 
     assert "birth_date" in sql
     assert "profiles" in sql
+
+
+
+@pytest.mark.asyncio
+async def test_talent_evaluation_requires_three_submitted_scores():
+    session = FakeSession(total=0)
+    repository = SMSNationsRepository(session)
+
+    await repository.search_athletes(
+        talent_evaluated=True,
+    )
+
+    sql = sql_text(
+        session.execute_statements[0]
+    ).lower()
+
+    assert "talent_applications" in sql
+    assert "talent_evaluations" in sql
+    assert "overall_score" in sql
+    assert "submitted_at is not null" in sql
+    assert "completed_at is not null" in sql
+    assert "avg(" in sql
+    assert "count(" in sql
+    assert "= 3" in sql
+
+
+@pytest.mark.asyncio
+async def test_talent_score_filters_are_applied():
+    from decimal import Decimal
+
+    session = FakeSession(total=0)
+    repository = SMSNationsRepository(session)
+
+    await repository.search_athletes(
+        talent_evaluated=True,
+        min_talent_score=Decimal("70"),
+        max_talent_score=Decimal("90"),
+    )
+
+    sql = sql_text(
+        session.execute_statements[0]
+    ).lower()
+
+    assert "talent_score" in sql
+    assert ">= 70" in sql
+    assert "<= 90" in sql
+
+
+@pytest.mark.asyncio
+async def test_talent_unevaluated_filter_is_applied():
+    session = FakeSession(total=0)
+    repository = SMSNationsRepository(session)
+
+    await repository.search_athletes(
+        talent_evaluated=False,
+    )
+
+    sql = sql_text(
+        session.execute_statements[0]
+    ).lower()
+
+    assert "latest_talent_evaluation" in sql
+    assert "athlete_id is null" in sql
+
+
+@pytest.mark.asyncio
+async def test_latest_completed_talent_evaluation_is_selected():
+    session = FakeSession(total=0)
+    repository = SMSNationsRepository(session)
+
+    await repository.search_athletes()
+
+    sql = sql_text(
+        session.execute_statements[0]
+    ).lower()
+
+    assert "row_number()" in sql
+    assert "completed_at desc" in sql
+    assert "latest_talent_evaluation" in sql
+
+
+@pytest.mark.asyncio
+async def test_result_exposes_only_aggregate_talent_data():
+    from datetime import datetime, timezone
+    from decimal import Decimal
+
+    completed_at = datetime(
+        2026,
+        9,
+        4,
+        18,
+        30,
+        tzinfo=timezone.utc,
+    )
+
+    session = FakeSession(
+        total=1,
+        rows=[
+            {
+                "athlete_id": ATHLETE_ID,
+                "first_name": "Awa",
+                "last_name": "Kouassi",
+                "city": "Paris",
+                "avatar_url": None,
+                "sport_id": SPORT_ID,
+                "sport_slug": "football",
+                "sport_name": "Football",
+                "residence_country_id": FR_ID,
+                "residence_country_iso2": "FR",
+                "residence_country_name": "France",
+                "discipline": "Football",
+                "category": "Senior",
+                "position": "Attaquant",
+                "club_name": "Paris Talent FC",
+                "league_name": "Ligue 1",
+                "team_name": None,
+                "available_for_opportunities": True,
+                "eligibility_country_id": CI_ID,
+                "eligibility_status": "verified",
+                "eligibility_is_primary": True,
+                "discover_video_id": None,
+                "discover_video_url": None,
+                "discover_thumbnail_url": None,
+                "discover_caption": None,
+                "discover_duration_seconds": None,
+                "talent_evaluated": True,
+                "talent_score": Decimal("80.00"),
+                "talent_completed_at": completed_at,
+            }
+        ],
+    )
+
+    repository = SMSNationsRepository(session)
+
+    result = await repository.search_athletes()
+
+    athlete = result.items[0]
+
+    assert athlete.talent_evaluated is True
+    assert athlete.talent_score == Decimal("80.00")
+    assert athlete.talent_completed_at == completed_at
+
+    assert not hasattr(athlete, "evaluator_user_id")
+    assert not hasattr(athlete, "comments")
+    assert not hasattr(athlete, "recommendation")
+    assert not hasattr(athlete, "scores")

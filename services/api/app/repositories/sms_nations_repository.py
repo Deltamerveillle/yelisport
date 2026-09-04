@@ -1,7 +1,8 @@
 """Repository for SMS Nations athlete discovery."""
 
 import uuid
-from datetime import date
+from datetime import date, datetime
+from decimal import Decimal
 from dataclasses import dataclass
 from typing import Any
 
@@ -15,6 +16,8 @@ from app.models.athlete_passport import AthletePassport
 from app.models.country import Country
 from app.models.discover_video import DiscoverVideo
 from app.models.sport import Sport
+from app.models.talent_application import TalentApplication
+from app.models.talent_evaluation import TalentEvaluation
 from app.models.user import Profile
 
 
@@ -53,6 +56,10 @@ class SMSNationAthleteRow:
     discover_thumbnail_url: str | None
     discover_caption: str | None
     discover_duration_seconds: int | None
+
+    talent_evaluated: bool = False
+    talent_score: Decimal | None = None
+    talent_completed_at: datetime | None = None
 
 
 @dataclass(slots=True)
@@ -106,6 +113,9 @@ class SMSNationsRepository:
         eligibility_status: str | None = None,
         min_age: int | None = None,
         max_age: int | None = None,
+        talent_evaluated: bool | None = None,
+        min_talent_score: Decimal | None = None,
+        max_talent_score: Decimal | None = None,
         search: str | None = None,
         limit: int = 24,
         offset: int = 0,
@@ -148,6 +158,63 @@ class SMSNationsRepository:
                 DiscoverVideo.is_active.is_(True),
             )
             .subquery("latest_public_discover_video")
+        )
+
+        completed_talent_evaluations = (
+            select(
+                TalentApplication.id.label("application_id"),
+                TalentApplication.athlete_id.label("athlete_id"),
+                TalentApplication.completed_at.label("completed_at"),
+                func.avg(TalentEvaluation.overall_score).label(
+                    "talent_score"
+                ),
+            )
+            .join(
+                TalentEvaluation,
+                TalentEvaluation.application_id
+                == TalentApplication.id,
+            )
+            .where(
+                TalentApplication.completed_at.is_not(None),
+                TalentEvaluation.submitted_at.is_not(None),
+                TalentEvaluation.overall_score.is_not(None),
+            )
+            .group_by(
+                TalentApplication.id,
+                TalentApplication.athlete_id,
+                TalentApplication.completed_at,
+            )
+            .having(
+                func.count(TalentEvaluation.id) == 3
+            )
+            .subquery("completed_talent_evaluations")
+        )
+
+        ranked_talent_evaluations = (
+            select(
+                completed_talent_evaluations.c.athlete_id,
+                completed_talent_evaluations.c.talent_score,
+                completed_talent_evaluations.c.completed_at,
+                func.row_number()
+                .over(
+                    partition_by=completed_talent_evaluations.c.athlete_id,
+                    order_by=(
+                        completed_talent_evaluations.c.completed_at.desc()
+                    ),
+                )
+                .label("rn"),
+            )
+            .subquery("ranked_talent_evaluations")
+        )
+
+        latest_talent_evaluation = (
+            select(
+                ranked_talent_evaluations.c.athlete_id,
+                ranked_talent_evaluations.c.talent_score,
+                ranked_talent_evaluations.c.completed_at,
+            )
+            .where(ranked_talent_evaluations.c.rn == 1)
+            .subquery("latest_talent_evaluation")
         )
 
         conditions: list[Any] = [
@@ -223,6 +290,28 @@ class SMSNationsRepository:
             conditions.append(
                 Profile.birth_date
                 > _birth_date_years_ago(max_age + 1)
+            )
+
+        if talent_evaluated is True:
+            conditions.append(
+                latest_talent_evaluation.c.athlete_id.is_not(None)
+            )
+
+        if talent_evaluated is False:
+            conditions.append(
+                latest_talent_evaluation.c.athlete_id.is_(None)
+            )
+
+        if min_talent_score is not None:
+            conditions.append(
+                latest_talent_evaluation.c.talent_score
+                >= min_talent_score
+            )
+
+        if max_talent_score is not None:
+            conditions.append(
+                latest_talent_evaluation.c.talent_score
+                <= max_talent_score
             )
 
         if search:
@@ -344,6 +433,15 @@ class SMSNationsRepository:
                 latest_video.c.duration_seconds.label(
                     "discover_duration_seconds"
                 ),
+                (
+                    latest_talent_evaluation.c.athlete_id.is_not(None)
+                ).label("talent_evaluated"),
+                latest_talent_evaluation.c.talent_score.label(
+                    "talent_score"
+                ),
+                latest_talent_evaluation.c.completed_at.label(
+                    "talent_completed_at"
+                ),
             )
             .join(
                 Sport,
@@ -373,6 +471,11 @@ class SMSNationsRepository:
                     latest_video.c.rn == 1,
                 ),
             )
+            .outerjoin(
+                latest_talent_evaluation,
+                latest_talent_evaluation.c.athlete_id
+                == Athlete.id,
+            )
             .where(*conditions)
             .order_by(
                 Athlete.updated_at.desc(),
@@ -389,8 +492,17 @@ class SMSNationsRepository:
                 Sport.id == Athlete.sport_id,
             )
             .outerjoin(
+                Profile,
+                Profile.user_id == Athlete.user_id,
+            )
+            .outerjoin(
                 AthletePassport,
                 AthletePassport.athlete_id == Athlete.id,
+            )
+            .outerjoin(
+                latest_talent_evaluation,
+                latest_talent_evaluation.c.athlete_id
+                == Athlete.id,
             )
             .where(*conditions)
         )

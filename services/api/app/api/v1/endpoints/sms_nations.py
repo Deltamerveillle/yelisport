@@ -1,6 +1,7 @@
 """SMS Nations athlete discovery endpoints."""
 
 import uuid
+from decimal import Decimal
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -74,6 +75,15 @@ async def search_sms_nations_athletes(
         int | None,
         Query(ge=1, le=100),
     ] = None,
+    talent_evaluated: bool | None = None,
+    min_talent_score: Annotated[
+        Decimal | None,
+        Query(ge=0, le=100),
+    ] = None,
+    max_talent_score: Annotated[
+        Decimal | None,
+        Query(ge=0, le=100),
+    ] = None,
     search: Annotated[
         str | None,
         Query(min_length=2, max_length=100),
@@ -91,7 +101,7 @@ async def search_sms_nations_athletes(
     Search athletes through SMS Nations.
 
     Supports country eligibility, diaspora residence, sport,
-    discipline, category, position, club, city, age and availability.
+    discipline, category, position, club, league, city, age, Talent evaluation and availability.
 
     Personal phone, email and WhatsApp information are never
     exposed by this endpoint.
@@ -107,6 +117,19 @@ async def search_sms_nations_athletes(
         raise HTTPException(
             status_code=422,
             detail="min_age must be less than or equal to max_age",
+        )
+
+    if (
+        min_talent_score is not None
+        and max_talent_score is not None
+        and min_talent_score > max_talent_score
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "min_talent_score must be less than or equal "
+                "to max_talent_score"
+            ),
         )
 
     result = await SMSNationsService(
@@ -125,6 +148,9 @@ async def search_sms_nations_athletes(
         eligibility_status=eligibility_status,
         min_age=min_age,
         max_age=max_age,
+        talent_evaluated=talent_evaluated,
+        min_talent_score=min_talent_score,
+        max_talent_score=max_talent_score,
         search=search,
         limit=limit,
         offset=offset,

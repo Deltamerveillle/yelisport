@@ -1,6 +1,8 @@
 """Schemas for SMS Nations athlete discovery."""
 
 import uuid
+from datetime import datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -41,6 +43,10 @@ class SMSNationAthleteResponse(BaseModel):
     discover_thumbnail_url: str | None
     discover_caption: str | None
     discover_duration_seconds: int | None
+
+    talent_evaluated: bool = False
+    talent_score: Decimal | None = None
+    talent_completed_at: datetime | None = None
 
 
 class SMSNationsSearchResponse(BaseModel):

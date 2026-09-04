@@ -307,3 +307,138 @@ def test_league_filter_is_forwarded_to_service(
 
     assert response.status_code == 200
     assert captured["league"] == "Ligue 1"
+
+
+
+def test_talent_filters_are_forwarded_to_service(
+    client,
+    sms_nations_dependencies,
+    monkeypatch,
+):
+    from decimal import Decimal
+
+    captured = {}
+
+    async def fake_search(self, **kwargs):
+        captured.update(kwargs)
+
+        return SMSNationsSearchResult(
+            items=[],
+            total=0,
+            limit=kwargs["limit"],
+            offset=kwargs["offset"],
+        )
+
+    monkeypatch.setattr(
+        SMSNationsService,
+        "search_athletes",
+        fake_search,
+    )
+
+    response = client.get(
+        "/api/v1/sms-nations/athletes",
+        params={
+            "talent_evaluated": "true",
+            "min_talent_score": "70",
+            "max_talent_score": "90",
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured["talent_evaluated"] is True
+    assert captured["min_talent_score"] == Decimal("70")
+    assert captured["max_talent_score"] == Decimal("90")
+
+
+def test_invalid_talent_score_range_returns_422(
+    client,
+    sms_nations_dependencies,
+):
+    response = client.get(
+        "/api/v1/sms-nations/athletes",
+        params={
+            "min_talent_score": "90",
+            "max_talent_score": "70",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "min_talent_score must be less than or equal "
+        "to max_talent_score"
+    )
+
+
+@pytest.mark.parametrize(
+    "parameter,value",
+    [
+        ("min_talent_score", "-1"),
+        ("min_talent_score", "101"),
+        ("max_talent_score", "-1"),
+        ("max_talent_score", "101"),
+    ],
+)
+def test_talent_score_must_be_between_zero_and_100(
+    client,
+    sms_nations_dependencies,
+    parameter,
+    value,
+):
+    response = client.get(
+        "/api/v1/sms-nations/athletes",
+        params={parameter: value},
+    )
+
+    assert response.status_code == 422
+
+
+def test_sms_nations_response_exposes_talent_aggregate(
+    client,
+    sms_nations_dependencies,
+    monkeypatch,
+):
+    from datetime import datetime, timezone
+    from decimal import Decimal
+
+    row = make_row()
+    row.talent_evaluated = True
+    row.talent_score = Decimal("80.00")
+    row.talent_completed_at = datetime(
+        2026,
+        9,
+        4,
+        18,
+        30,
+        tzinfo=timezone.utc,
+    )
+
+    async def fake_search(self, **kwargs):
+        return SMSNationsSearchResult(
+            items=[row],
+            total=1,
+            limit=24,
+            offset=0,
+        )
+
+    monkeypatch.setattr(
+        SMSNationsService,
+        "search_athletes",
+        fake_search,
+    )
+
+    response = client.get(
+        "/api/v1/sms-nations/athletes"
+    )
+
+    assert response.status_code == 200
+
+    athlete = response.json()["items"][0]
+
+    assert athlete["talent_evaluated"] is True
+    assert float(athlete["talent_score"]) == 80.0
+    assert athlete["talent_completed_at"] is not None
+
+    assert "evaluator_user_id" not in athlete
+    assert "comments" not in athlete
+    assert "recommendation" not in athlete
+    assert "scores" not in athlete
