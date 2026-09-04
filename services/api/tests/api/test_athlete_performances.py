@@ -205,3 +205,119 @@ def test_list_performances(
     assert len(payload) == 1
     assert payload[0]["metrics"]["assists"] == 1
     assert payload[0]["verification_status"] == "declared"
+
+
+
+def test_performance_rejects_nested_metrics(
+    client,
+    performance_dependencies,
+):
+    response = client.post(
+        f"/api/v1/athletes/{ATHLETE_ID}/performances",
+        json={
+            "performance_date": "2026-09-04",
+            "metrics": {
+                "goals": {
+                    "first_half": 1,
+                    "second_half": 1,
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_performance_rejects_list_metric(
+    client,
+    performance_dependencies,
+):
+    response = client.post(
+        f"/api/v1/athletes/{ATHLETE_ID}/performances",
+        json={
+            "performance_date": "2026-09-04",
+            "metrics": {
+                "sprint_times": [10.4, 10.5],
+            },
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_performance_rejects_null_metric(
+    client,
+    performance_dependencies,
+):
+    response = client.post(
+        f"/api/v1/athletes/{ATHLETE_ID}/performances",
+        json={
+            "performance_date": "2026-09-04",
+            "metrics": {
+                "goals": None,
+            },
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_performance_rejects_unsafe_metric_key(
+    client,
+    performance_dependencies,
+):
+    response = client.post(
+        f"/api/v1/athletes/{ATHLETE_ID}/performances",
+        json={
+            "performance_date": "2026-09-04",
+            "metrics": {
+                "goals->evil": 2,
+            },
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_performance_accepts_safe_scalar_metrics(
+    client,
+    performance_dependencies,
+    monkeypatch,
+):
+    async def fake_create(
+        self,
+        athlete_id,
+        data,
+        current_user_id,
+    ):
+        assert data.metrics == {
+            "goals": 2,
+            "distance_km": 10.5,
+            "starter": True,
+            "result": "winner",
+        }
+
+        performance = make_performance()
+        performance.metrics = data.metrics
+        return performance
+
+    monkeypatch.setattr(
+        AthletePerformanceService,
+        "create_performance",
+        fake_create,
+    )
+
+    response = client.post(
+        f"/api/v1/athletes/{ATHLETE_ID}/performances",
+        json={
+            "performance_date": "2026-09-04",
+            "metrics": {
+                "goals": 2,
+                "distance_km": 10.5,
+                "starter": True,
+                "result": "winner",
+            },
+        },
+    )
+
+    assert response.status_code == 201

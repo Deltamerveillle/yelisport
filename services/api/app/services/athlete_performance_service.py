@@ -183,11 +183,11 @@ class AthletePerformanceService:
                 value,
             )
 
-        # Athlete edits never promote verification.
-        if performance.verification_status not in {
-            "declared",
-            "documented",
-        }:
+        # Any substantive athlete edit invalidates previous
+        # documentary review. The evidence must be reviewed again.
+        #
+        # Verified performances are already blocked above.
+        if updates:
             performance.verification_status = "declared"
 
         return await self.performances.update(

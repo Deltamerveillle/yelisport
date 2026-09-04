@@ -182,3 +182,55 @@ async def test_verified_performance_cannot_be_deleted_by_athlete():
             PERFORMANCE_ID,
             USER_ID,
         )
+
+
+
+@pytest.mark.asyncio
+async def test_documented_performance_edit_resets_to_declared(
+    monkeypatch,
+):
+    from types import SimpleNamespace
+
+    service = AthletePerformanceService(
+        SimpleNamespace()
+    )
+
+    performance = SimpleNamespace(
+        id=PERFORMANCE_ID,
+        athlete_id=ATHLETE_ID,
+        verification_status="documented",
+        summary="Original summary",
+    )
+
+    async def fake_get_owned_performance(
+        athlete_id,
+        performance_id,
+        current_user_id,
+    ):
+        return performance
+
+    async def fake_update(updated_performance):
+        return updated_performance
+
+    monkeypatch.setattr(
+        service,
+        "_get_owned_performance",
+        fake_get_owned_performance,
+    )
+    monkeypatch.setattr(
+        service.performances,
+        "update",
+        fake_update,
+    )
+
+    result = await service.update_performance(
+        ATHLETE_ID,
+        PERFORMANCE_ID,
+        AthletePerformanceUpdate(
+            summary="Updated by athlete"
+        ),
+        USER_ID,
+    )
+
+    assert result.summary == "Updated by athlete"
+    assert result.verification_status == "declared"
