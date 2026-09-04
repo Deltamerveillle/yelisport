@@ -10,6 +10,7 @@ from app.models.user_role import UserRole
 from app.models.user_preferences import FavoriteEvent, FavoriteSport, UserSettings
 
 __all__ = [
+    "SMSConnectInterest",
     "AthletePerformance",
     "Country",
     "AthleteCountryEligibility",
@@ -24,3 +25,5 @@ __all__ = [
     "UserRole",
     "UserSettings",
 ]
+
+from app.models.sms_connect_interest import SMSConnectInterest
