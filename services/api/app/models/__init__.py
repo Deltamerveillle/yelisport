@@ -31,3 +31,4 @@ from app.models.sms_connect_interest import SMSConnectInterest
 from app.models.sms_connect_interest_event import SMSConnectInterestEvent
 
 from app.models.notification import Notification
+from app.models.moderation_report import ModerationReport, ModerationReportEvent

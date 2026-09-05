@@ -334,3 +334,115 @@ async def test_public_feed_keeps_only_publishable_videos():
 
     assert result == [good]
     assert service.videos.public_args == (50, 0)
+
+
+@pytest.mark.asyncio
+async def test_request_publication_moves_video_to_published_pending():
+    existing = video(
+        publication_status="draft",
+        moderation_status="pending",
+    )
+
+    service = make_service(
+        athletes={
+            ATHLETE_ID: athlete(),
+        },
+        videos={
+            VIDEO_ID: existing,
+        },
+    )
+
+    result = await service.request_publication(
+        ATHLETE_ID,
+        VIDEO_ID,
+        USER_ID,
+    )
+
+    assert result.publication_status == "published"
+    assert result.moderation_status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_request_publication_resubmits_rejected_video():
+    existing = video(
+        publication_status="published",
+        moderation_status="rejected",
+    )
+
+    service = make_service(
+        athletes={
+            ATHLETE_ID: athlete(),
+        },
+        videos={
+            VIDEO_ID: existing,
+        },
+    )
+
+    result = await service.request_publication(
+        ATHLETE_ID,
+        VIDEO_ID,
+        USER_ID,
+    )
+
+    assert result.publication_status == "published"
+    assert result.moderation_status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_approved_video_edit_resets_moderation_to_pending():
+    existing = video(
+        caption="Original",
+        publication_status="published",
+        moderation_status="approved",
+    )
+
+    service = make_service(
+        athletes={
+            ATHLETE_ID: athlete(),
+        },
+        videos={
+            VIDEO_ID: existing,
+        },
+    )
+
+    result = await service.update_video(
+        ATHLETE_ID,
+        VIDEO_ID,
+        DiscoverVideoUpdate(
+            caption="Nouvelle version",
+        ),
+        USER_ID,
+    )
+
+    assert result.caption == "Nouvelle version"
+    assert result.publication_status == "published"
+    assert result.moderation_status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_approved_video_unchanged_value_keeps_approval():
+    existing = video(
+        caption="Même texte",
+        publication_status="published",
+        moderation_status="approved",
+    )
+
+    service = make_service(
+        athletes={
+            ATHLETE_ID: athlete(),
+        },
+        videos={
+            VIDEO_ID: existing,
+        },
+    )
+
+    result = await service.update_video(
+        ATHLETE_ID,
+        VIDEO_ID,
+        DiscoverVideoUpdate(
+            caption="Même texte",
+        ),
+        USER_ID,
+    )
+
+    assert result.moderation_status == "approved"

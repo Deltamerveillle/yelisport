@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
-from app.api.dependencies.auth import get_auth_service
+from app.api.dependencies.auth import get_auth_service, get_current_user
 from app.api.v1.endpoints.events import get_event_service
 from app.models.event import RegistrationStatus
 from app.schemas.auth import AuthUser
@@ -51,6 +51,16 @@ class FakeEventService:
 def override_dependencies(client: TestClient) -> None:
     client.app.dependency_overrides[get_auth_service] = FakeAuthService
     client.app.dependency_overrides[get_event_service] = FakeEventService
+
+    def fake_current_user() -> AuthUser:
+        return AuthUser(
+            id=USER_ID,
+            email="member@yelisport.ci",
+        )
+
+    client.app.dependency_overrides[
+        get_current_user
+    ] = fake_current_user
 
 
 def test_create_event(client: TestClient) -> None:

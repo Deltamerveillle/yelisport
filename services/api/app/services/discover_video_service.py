@@ -167,8 +167,52 @@ class DiscoverVideoService:
                 str(value) if value is not None else None
             )
 
+        substantive_fields = {
+            "video_url",
+            "thumbnail_url",
+            "caption",
+            "duration_seconds",
+            "visibility",
+        }
+
+        content_changed = any(
+            field in substantive_fields
+            and getattr(video, field) != value
+            for field, value in updates.items()
+        )
+
         for field, value in updates.items():
             setattr(video, field, value)
+
+        if (
+            content_changed
+            and video.moderation_status != "pending"
+        ):
+            video.moderation_status = "pending"
+
+        return await self.videos.update(video)
+
+    async def request_publication(
+        self,
+        athlete_id: uuid.UUID,
+        video_id: uuid.UUID,
+        current_user_id: uuid.UUID,
+    ) -> DiscoverVideo:
+        """Submit an owned Discover video for publication review."""
+
+        video = await self._get_owned_video(
+            athlete_id,
+            video_id,
+            current_user_id,
+        )
+
+        if not video.is_active:
+            raise ForbiddenError(
+                "Inactive Discover video cannot be published"
+            )
+
+        video.publication_status = "published"
+        video.moderation_status = "pending"
 
         return await self.videos.update(video)
 

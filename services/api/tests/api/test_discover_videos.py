@@ -433,3 +433,43 @@ def test_public_discover_rejects_invalid_pagination(
     )
 
     assert response.status_code == 422
+
+
+def test_request_discover_publication(
+    client,
+    discover_dependencies,
+    monkeypatch,
+):
+    async def fake_request(
+        self,
+        athlete_id,
+        video_id,
+        current_user_id,
+    ):
+        assert athlete_id == ATHLETE_ID
+        assert video_id == VIDEO_ID
+
+        item = make_video()
+        item.publication_status = "published"
+        item.moderation_status = "pending"
+        return item
+
+    monkeypatch.setattr(
+        DiscoverVideoService,
+        "request_publication",
+        fake_request,
+    )
+
+    response = client.post(
+        (
+            f"/api/v1/athletes/{ATHLETE_ID}/"
+            f"discover-videos/{VIDEO_ID}/publish"
+        )
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["publication_status"] == "published"
+    assert body["moderation_status"] == "pending"

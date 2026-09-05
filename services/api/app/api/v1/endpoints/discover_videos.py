@@ -154,6 +154,36 @@ async def update_discover_video(
         raise
 
 
+@router.post(
+    "/athletes/{athlete_id}/discover-videos/{video_id}/publish",
+    response_model=DiscoverVideoResponse,
+)
+async def request_discover_publication(
+    athlete_id: uuid.UUID,
+    video_id: uuid.UUID,
+    current_user: CurrentUser,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_db_session),
+    ],
+):
+    """Submit one owned Discover video for moderation."""
+
+    service = _service(session)
+
+    try:
+        video = await service.request_publication(
+            athlete_id,
+            video_id,
+            _current_user_uuid(current_user),
+        )
+        await session.commit()
+        return video
+    except Exception:
+        await session.rollback()
+        raise
+
+
 @router.delete(
     "/athletes/{athlete_id}/discover-videos/{video_id}",
     status_code=status.HTTP_204_NO_CONTENT,

@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from app.api.dependencies.auth import get_auth_service
+from app.api.dependencies.auth import get_auth_service, get_current_user
 from app.schemas.auth import AuthSession, AuthUser, SignUpResponse
 
 
@@ -33,6 +33,16 @@ class FakeAuthService:
 
 def override_auth(client: TestClient) -> None:
     client.app.dependency_overrides[get_auth_service] = FakeAuthService
+
+    def fake_current_user() -> AuthUser:
+        return AuthUser(
+            id="28bbf25e-8d42-4a0a-8bc8-0f41be0fc114",
+            email="test@yelisport.ci",
+        )
+
+    client.app.dependency_overrides[
+        get_current_user
+    ] = fake_current_user
 
 
 def test_sign_up_requires_valid_password(client: TestClient) -> None:

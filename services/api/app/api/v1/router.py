@@ -11,6 +11,7 @@ from app.api.v1.endpoints import subscriptions
 from app.api.v1.endpoints import sms_nations
 from app.api.v1.endpoints import sms_connect
 from app.api.v1.endpoints import notifications
+from app.api.v1.endpoints import moderation
 from app.api.v1.endpoints.athletes import router as athletes_router
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.events import router as events_router
@@ -37,3 +38,4 @@ router.include_router(
     prefix="/subscriptions",
     tags=["subscriptions"],
 )
+router.include_router(moderation.router)
