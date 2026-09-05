@@ -247,14 +247,29 @@ async def test_approved_can_be_delivered_and_sets_delivered_at():
         SimpleNamespace(role="admin")
     )
 
+    athlete_id = uuid.uuid4()
+    athlete_user_id = uuid.uuid4()
+
     interest = make_interest(
         "approved"
     )
+    interest.athlete_id = athlete_id
+    interest.organization_name = "Africa Talent FC"
 
     service.interests.get_by_id_for_update.return_value = (
         interest
     )
     service.interests.save.return_value = interest
+
+    service.athletes = AsyncMock()
+    service.notification_service = AsyncMock()
+
+    service.athletes.get_by_id.return_value = (
+        SimpleNamespace(
+            id=athlete_id,
+            user_id=athlete_user_id,
+        )
+    )
 
     result = await service.transition_interest(
         interest_id=INTEREST_ID,
@@ -267,6 +282,21 @@ async def test_approved_can_be_delivered_and_sets_delivered_at():
     assert result.status == "delivered"
     assert result.delivered_at is not None
 
+    service.athletes.get_by_id.assert_awaited_once_with(
+        athlete_id
+    )
+
+    (
+        service.notification_service
+        .create_sms_connect_delivery
+        .assert_awaited_once_with(
+            recipient_user_id=athlete_user_id,
+            interest_id=INTEREST_ID,
+            organization_name=(
+                interest.organization_name
+            ),
+        )
+    )
 
 @pytest.mark.asyncio
 async def test_delivered_can_be_closed():

@@ -29,6 +29,9 @@ from app.repositories.sms_connect_interest_repository import (
 from app.repositories.user_role_repository import (
     UserRoleRepository,
 )
+from app.services.notification_service import (
+    NotificationService,
+)
 from app.schemas.sms_connect import (
     SMSConnectInterestCreate,
     SMSConnectTransitionRequest,
@@ -68,6 +71,11 @@ class SMSConnectService:
         )
         self.events = (
             SMSConnectInterestEventRepository(
+                session
+            )
+        )
+        self.notification_service = (
+            NotificationService(
                 session
             )
         )
@@ -222,6 +230,25 @@ class SMSConnectService:
 
         if to_status == "delivered":
             interest.delivered_at = now
+
+            athlete = (
+                await self.athletes.get_by_id(
+                    interest.athlete_id
+                )
+            )
+
+            if athlete is None:
+                raise NotFoundError(
+                    "Athlete not found"
+                )
+
+            await self.notification_service.create_sms_connect_delivery(
+                recipient_user_id=athlete.user_id,
+                interest_id=interest.id,
+                organization_name=(
+                    interest.organization_name
+                ),
+            )
 
         event = SMSConnectInterestEvent(
             interest_id=interest.id,
