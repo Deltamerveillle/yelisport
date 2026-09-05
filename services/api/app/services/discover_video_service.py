@@ -14,6 +14,7 @@ from app.schemas.discover_video import (
     DiscoverVideoUpdate,
 )
 
+from app.services.moderation_service import ModerationService
 
 class DiscoverVideoService:
     """Business rules for SMS Discover."""
@@ -21,6 +22,8 @@ class DiscoverVideoService:
     def __init__(self, session: AsyncSession) -> None:
         self.athletes = AthleteRepository(session)
         self.videos = DiscoverVideoRepository(session)
+
+        self.moderation = ModerationService(session)
 
     async def _get_athlete(self, athlete_id: uuid.UUID):
         athlete = await self.athletes.get_by_id(athlete_id)
@@ -190,7 +193,18 @@ class DiscoverVideoService:
         ):
             video.moderation_status = "pending"
 
-        return await self.videos.update(video)
+        video = await self.videos.update(video)
+
+        if (
+            content_changed
+            and video.publication_status == "published"
+        ):
+            await self.moderation.create_publication_review(
+                owner_user_id=current_user_id,
+                video_id=video.id,
+            )
+
+        return video
 
     async def request_publication(
         self,
@@ -214,7 +228,14 @@ class DiscoverVideoService:
         video.publication_status = "published"
         video.moderation_status = "pending"
 
-        return await self.videos.update(video)
+        video = await self.videos.update(video)
+
+        await self.moderation.create_publication_review(
+            owner_user_id=current_user_id,
+            video_id=video.id,
+        )
+
+        return video
 
     async def delete_video(
         self,

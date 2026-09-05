@@ -47,6 +47,7 @@ class ModerationReportCreate(BaseModel):
 
 
 class ModerationReportResponse(BaseModel):
+    origin: Literal["user_report", "publication_review"] = "user_report"
     """Safe report response for the reporting user."""
 
     model_config = ConfigDict(from_attributes=True)

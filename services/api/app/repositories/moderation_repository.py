@@ -49,6 +49,33 @@ class ModerationReportRepository:
             .with_for_update()
         )
 
+    async def get_open_publication_review(
+        self,
+        *,
+        resource_id: uuid.UUID,
+    ) -> ModerationReport | None:
+        """Return the current open Discover publication review, if any."""
+
+        return await self.session.scalar(
+            select(ModerationReport)
+            .where(
+                ModerationReport.resource_type
+                == "discover_video",
+                ModerationReport.resource_id
+                == resource_id,
+                ModerationReport.origin
+                == "publication_review",
+                ModerationReport.status.in_(
+                    ("submitted", "under_review")
+                ),
+            )
+            .order_by(
+                ModerationReport.created_at.asc(),
+                ModerationReport.id.asc(),
+            )
+            .limit(1)
+        )
+
     async def list_for_reporter(
         self,
         *,
@@ -60,7 +87,9 @@ class ModerationReportRepository:
             select(ModerationReport)
             .where(
                 ModerationReport.reporter_user_id
-                == reporter_user_id
+                == reporter_user_id,
+                ModerationReport.origin
+                == "user_report",
             )
             .order_by(
                 ModerationReport.created_at.desc(),

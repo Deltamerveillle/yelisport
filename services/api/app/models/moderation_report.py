@@ -7,9 +7,11 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     String,
     Text,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -38,6 +40,23 @@ class ModerationReport(Base):
             "status IN "
             "('submitted', 'under_review', 'resolved', 'dismissed')",
             name="ck_moderation_reports_status",
+        ),
+        CheckConstraint(
+            "origin IN "
+            "('user_report', 'publication_review')",
+            name="ck_moderation_reports_origin",
+        ),
+        Index(
+            "uq_moderation_open_publication_review",
+            "resource_type",
+            "resource_id",
+            "origin",
+            unique=True,
+            postgresql_where=text(
+                "origin = 'publication_review' "
+                "AND resource_type = 'discover_video' "
+                "AND status IN ('submitted', 'under_review')"
+            ),
         ),
     )
 
@@ -69,6 +88,14 @@ class ModerationReport(Base):
     reason: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
+        index=True,
+    )
+
+    origin: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default="user_report",
+        server_default="user_report",
         index=True,
     )
 

@@ -111,6 +111,18 @@ def make_service(
     service = DiscoverVideoService.__new__(DiscoverVideoService)
     service.athletes = FakeAthleteRepository(athletes)
     service.videos = FakeVideoRepository(videos)
+
+    class FakeModerationService:
+        async def create_publication_review(
+            self,
+            *,
+            owner_user_id,
+            video_id,
+        ):
+            return None
+
+    service.moderation = FakeModerationService()
+
     return service
 
 

@@ -101,6 +101,7 @@ class ModerationService:
             resource_type=data.resource_type,
             resource_id=data.resource_id,
             reason=data.reason,
+            origin="user_report",
             details=details,
             status="submitted",
         )
@@ -116,6 +117,47 @@ class ModerationService:
                 from_status=None,
                 to_status="submitted",
                 note=None,
+            )
+        )
+
+        return report
+
+    async def create_publication_review(
+        self,
+        *,
+        owner_user_id: uuid.UUID,
+        video_id: uuid.UUID,
+    ) -> ModerationReport:
+        """Create or reuse the open moderation case for a Discover publication."""
+
+        existing = await self.reports.get_open_publication_review(
+            resource_id=video_id,
+        )
+
+        if existing is not None:
+            return existing
+
+        report = ModerationReport(
+            reporter_user_id=owner_user_id,
+            resource_type="discover_video",
+            resource_id=video_id,
+            reason="other",
+            origin="publication_review",
+            details="Discover publication review",
+            status="submitted",
+        )
+
+        report = await self.reports.create(report)
+
+        await self.events.create(
+            ModerationReportEvent(
+                report_id=report.id,
+                actor_user_id=owner_user_id,
+                actor_role="athlete",
+                action="submitted",
+                from_status=None,
+                to_status="submitted",
+                note="Discover video submitted for publication review",
             )
         )
 
