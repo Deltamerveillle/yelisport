@@ -10,6 +10,7 @@ from app.api.v1.endpoints import discover_videos
 from app.api.v1.endpoints import subscriptions
 from app.api.v1.endpoints import sms_nations
 from app.api.v1.endpoints import sms_connect
+from app.api.v1.endpoints import sms24_live
 from app.api.v1.endpoints import notifications
 from app.api.v1.endpoints import moderation
 from app.api.v1.endpoints.athletes import router as athletes_router
@@ -31,6 +32,7 @@ router.include_router(countries.router)
 router.include_router(discover_videos.router)
 router.include_router(sms_nations.router)
 router.include_router(sms_connect.router)
+router.include_router(sms24_live.router)
 router.include_router(notifications.router)
 
 router.include_router(
