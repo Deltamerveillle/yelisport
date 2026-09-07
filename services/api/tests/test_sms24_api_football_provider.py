@@ -165,10 +165,11 @@ async def test_api_football_live_uses_live_all():
 
 
 @pytest.mark.asyncio
-async def test_api_football_date_range_maps_to_provider_params():
+async def test_api_football_single_day_uses_date_param():
     async def handler(request):
-        assert request.url.params["from"] == "2026-09-07"
-        assert request.url.params["to"] == "2026-09-08"
+        assert request.url.params["date"] == "2026-09-07"
+        assert "from" not in request.url.params
+        assert "to" not in request.url.params
 
         return httpx.Response(
             200,
@@ -193,19 +194,50 @@ async def test_api_football_date_range_maps_to_provider_params():
             2026,
             9,
             7,
+            0,
+            0,
             tzinfo=timezone.utc,
         ),
         starts_until=datetime(
             2026,
             9,
-            8,
+            7,
             23,
+            59,
             59,
             tzinfo=timezone.utc,
         ),
     )
 
     await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_api_football_rejects_multi_day_global_range():
+    provider = APIFootballProvider(
+        api_key="secret",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="one calendar day at a time",
+    ):
+        await provider.fetch_fixtures(
+            starts_from=datetime(
+                2026,
+                9,
+                7,
+                tzinfo=timezone.utc,
+            ),
+            starts_until=datetime(
+                2026,
+                9,
+                8,
+                23,
+                59,
+                tzinfo=timezone.utc,
+            ),
+        )
 
 
 @pytest.mark.asyncio

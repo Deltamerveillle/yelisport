@@ -20,6 +20,13 @@ from app.sms24.providers import (
 )
 
 
+@dataclass(frozen=True, slots=True)
+class SMS24SourceRef:
+    """Detached provider source identity used by the runner."""
+
+    slug: str
+
+
 @dataclass(slots=True)
 class SMS24ProviderAttempt:
     provider_slug: str
@@ -48,9 +55,9 @@ class SMS24RunnerRepository:
 
     async def list_active_sources(
         self,
-    ) -> list[SportsDataSource]:
+    ) -> list[SMS24SourceRef]:
         stmt = (
-            select(SportsDataSource)
+            select(SportsDataSource.slug)
             .where(SportsDataSource.is_active.is_(True))
             .order_by(
                 SportsDataSource.priority.asc(),
@@ -59,7 +66,10 @@ class SMS24RunnerRepository:
         )
 
         result = await self.session.execute(stmt)
-        return list(result.scalars().all())
+        return [
+            SMS24SourceRef(slug=slug)
+            for slug in result.scalars().all()
+        ]
 
     async def get_active_source(
         self,

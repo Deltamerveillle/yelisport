@@ -31,6 +31,7 @@ services:
       SUPABASE_URL: ${SUPABASE_URL:-http://host.docker.internal:54321}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-change-me}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-change-me}
+      SMS24_API_FOOTBALL_KEY: ${SMS24_API_FOOTBALL_KEY:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080}
     ports:
       - "8000:8000"

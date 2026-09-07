@@ -90,11 +90,9 @@ class APIFootballProvider(SportsDataProvider):
         else:
             if starts_from is not None:
                 self._require_timezone_aware(starts_from)
-                params["from"] = starts_from.date().isoformat()
 
             if starts_until is not None:
                 self._require_timezone_aware(starts_until)
-                params["to"] = starts_until.date().isoformat()
 
             if (
                 starts_from is not None
@@ -104,6 +102,24 @@ class APIFootballProvider(SportsDataProvider):
                 raise ValueError(
                     "starts_from must be before or equal to starts_until"
                 )
+
+            if (
+                starts_from is not None
+                and starts_until is not None
+            ):
+                if starts_from.date() != starts_until.date():
+                    raise ValueError(
+                        "API-Football global fixture fetch supports "
+                        "one calendar day at a time"
+                    )
+
+                params["date"] = starts_from.date().isoformat()
+
+            elif starts_from is not None:
+                params["date"] = starts_from.date().isoformat()
+
+            elif starts_until is not None:
+                params["date"] = starts_until.date().isoformat()
 
         payload = await self._get_json(
             "/fixtures",
