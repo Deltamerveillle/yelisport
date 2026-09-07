@@ -1,7 +1,6 @@
 """Tests for SMS24 resilient provider orchestration."""
 
 from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
 
 import pytest
 
@@ -77,13 +76,7 @@ class FakeProvider(SportsDataProvider):
 
 class FakeRepository:
     def __init__(self, slugs):
-        self.sources = [
-            SimpleNamespace(
-                slug=slug,
-                priority=index,
-            )
-            for index, slug in enumerate(slugs)
-        ]
+        self.sources = list(slugs)
         self.failures = []
         self.unavailable = []
         self.commits = 0

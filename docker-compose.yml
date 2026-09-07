@@ -47,6 +47,30 @@ services:
       retries: 5
     networks: [backend, edge]
 
+  sms24-worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api/Dockerfile
+    restart: unless-stopped
+    command: ["python", "-m", "app.sms24.worker"]
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-yelisport}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-yelisport}
+      SUPABASE_URL: ${SUPABASE_URL:-http://host.docker.internal:54321}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-change-me}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-change-me}
+      SMS24_API_FOOTBALL_KEY: ${SMS24_API_FOOTBALL_KEY:-}
+      SMS24_WORKER_ENABLED: ${SMS24_WORKER_ENABLED:-false}
+      SMS24_FIXTURES_INTERVAL_SECONDS: ${SMS24_FIXTURES_INTERVAL_SECONDS:-21600}
+      SMS24_LIVE_INTERVAL_SECONDS: ${SMS24_LIVE_INTERVAL_SECONDS:-3600}
+      SMS24_WORKER_IDLE_SECONDS: ${SMS24_WORKER_IDLE_SECONDS:-30}
+    volumes:
+      - ./services/api:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend, edge]
+
   ai:
     build:
       context: .

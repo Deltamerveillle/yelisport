@@ -70,9 +70,9 @@ async def test_postgres_orders_sources_by_priority():
         sources = await repository.list_active_sources()
 
         filtered = [
-            source.slug
-            for source in sources
-            if source.slug.startswith(PREFIX)
+            slug
+            for slug in sources
+            if slug.startswith(PREFIX)
         ]
 
         assert filtered == [

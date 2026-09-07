@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 
@@ -20,11 +21,7 @@ from app.sms24.providers import (
 )
 
 
-@dataclass(frozen=True, slots=True)
-class SMS24SourceRef:
-    """Detached provider source identity used by the runner."""
-
-    slug: str
+logger = logging.getLogger("sms24.runner")
 
 
 @dataclass(slots=True)
@@ -55,7 +52,7 @@ class SMS24RunnerRepository:
 
     async def list_active_sources(
         self,
-    ) -> list[SMS24SourceRef]:
+    ) -> list[str]:
         stmt = (
             select(SportsDataSource.slug)
             .where(SportsDataSource.is_active.is_(True))
@@ -66,10 +63,7 @@ class SMS24RunnerRepository:
         )
 
         result = await self.session.execute(stmt)
-        return [
-            SMS24SourceRef(slug=slug)
-            for slug in result.scalars().all()
-        ]
+        return list(result.scalars().all())
 
     async def get_active_source(
         self,
@@ -157,8 +151,8 @@ class SMS24ProviderRunner:
 
         attempts: list[SMS24ProviderAttempt] = []
 
-        for source in sources:
-            slug = source.slug.strip().lower()
+        for slug in sources:
+            slug = slug.strip().lower()
 
             try:
                 provider = self.registry.get(slug)
@@ -187,6 +181,11 @@ class SMS24ProviderRunner:
                 continue
 
             if not health.is_healthy:
+                logger.warning(
+                    "SMS24 provider unhealthy "
+                    "provider=%s",
+                    slug,
+                )
                 await self._record_failure(slug)
                 attempts.append(
                     SMS24ProviderAttempt(
