@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     supabase_anon_key: str = "change-me"
     supabase_service_role_key: str = "change-me"
     sms24_api_football_key: str | None = None
+    sms24_sportmonks_key: str | None = None
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:8080"])
 
     @field_validator("cors_origins", mode="before")

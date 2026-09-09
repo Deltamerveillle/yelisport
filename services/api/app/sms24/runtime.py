@@ -11,6 +11,7 @@ from app.sms24.ingestion import (
 )
 from app.sms24.providers.api_football import APIFootballProvider
 from app.sms24.providers.registry import ProviderRegistry
+from app.sms24.providers.sportmonks import SportmonksProvider
 from app.sms24.runner import (
     SMS24ProviderRunner,
     SMS24RunnerRepository,
@@ -33,6 +34,10 @@ def build_sms24_provider_registry(
                 api_key=api_football_key,
             )
         )
+
+    sportmonks_key = settings.sms24_sportmonks_key
+    if sportmonks_key and sportmonks_key.strip():
+        registry.register(SportmonksProvider(api_key=sportmonks_key))
 
     return registry
 

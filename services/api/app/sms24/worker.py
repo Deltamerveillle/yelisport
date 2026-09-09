@@ -11,7 +11,7 @@ from datetime import datetime, time, timezone
 from app.core.config import get_settings
 from app.db.session import SessionFactory, engine
 from app.sms24.runner import SMS24AllProvidersFailed
-from app.sms24.runtime import build_sms24_runner
+from app.sms24.runtime import build_sms24_provider_registry, build_sms24_runner
 
 
 logger = logging.getLogger("sms24.worker")
@@ -153,10 +153,10 @@ async def run_worker() -> None:
         while True:
             await asyncio.sleep(3600)
 
-    if not settings.sms24_api_football_key:
+    if not build_sms24_provider_registry(settings).all():
         logger.error(
             "SMS24 worker enabled but "
-            "SMS24_API_FOOTBALL_KEY is missing"
+            "no SMS24 provider is configured"
         )
 
         while True:
