@@ -36,6 +36,8 @@ class FakeProvider(SportsDataProvider):
         health_error=False,
         fetch_error=False,
         fetched_at=NOW,
+        fixtures=None,
+        raw_count=None,
     ):
         self.slug = slug
         self.name = slug
@@ -43,6 +45,16 @@ class FakeProvider(SportsDataProvider):
         self.health_error = health_error
         self.fetch_error = fetch_error
         self.fetched_at = fetched_at
+        self.fixtures = (
+            [object()]
+            if fixtures is None
+            else list(fixtures)
+        )
+        self.raw_count = (
+            len(self.fixtures)
+            if raw_count is None
+            else raw_count
+        )
         self.fetch_calls = 0
 
     async def check_health(self):
@@ -68,9 +80,9 @@ class FakeProvider(SportsDataProvider):
             raise RuntimeError("provider fetch failed")
 
         return ProviderFetchResult(
-            fixtures=[],
+            fixtures=self.fixtures,
             fetched_at=self.fetched_at,
-            raw_count=0,
+            raw_count=self.raw_count,
         )
 
 
@@ -175,6 +187,65 @@ async def test_runner_uses_first_healthy_provider():
     assert primary.fetch_calls == 1
     assert secondary.fetch_calls == 0
     assert repository.failures == []
+
+
+@pytest.mark.asyncio
+async def test_runner_accepts_empty_result_for_live_mode():
+    primary = FakeProvider(
+        "primary",
+        fixtures=[],
+        raw_count=0,
+    )
+    secondary = FakeProvider("secondary")
+
+    runner, repository, ingestion = make_runner(
+        ["primary", "secondary"],
+        [primary, secondary],
+    )
+
+    result = await runner.run(live_only=True)
+
+    assert result.provider_slug == "primary"
+    assert ingestion.calls == ["primary"]
+    assert primary.fetch_calls == 1
+    assert secondary.fetch_calls == 0
+    assert repository.failures == []
+
+
+@pytest.mark.asyncio
+async def test_runner_fails_over_from_empty_fixture_result():
+    primary = FakeProvider(
+        "primary",
+        fixtures=[],
+        raw_count=0,
+    )
+    secondary = FakeProvider(
+        "secondary",
+        fixtures=[object()],
+        raw_count=1,
+    )
+
+    runner, repository, ingestion = make_runner(
+        ["primary", "secondary"],
+        [primary, secondary],
+    )
+
+    result = await runner.run(live_only=False)
+
+    assert result.provider_slug == "secondary"
+    assert primary.fetch_calls == 1
+    assert secondary.fetch_calls == 1
+    assert ingestion.calls == ["secondary"]
+    assert repository.failures == []
+
+    assert [
+        attempt.reason
+        for attempt in result.attempts
+    ] == [
+        "empty_provider_result",
+        None,
+    ]
+
 
 
 @pytest.mark.asyncio

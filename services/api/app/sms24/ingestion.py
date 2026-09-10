@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -12,11 +12,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.sport import Sport
 from app.models.sports_live import (
+    SportsCanonicalFixture,
     SportsCompetition,
     SportsCompetitor,
     SportsDataSource,
     SportsFixture,
     SportsFixtureParticipant,
+)
+from app.sms24.canonical import (
+    CanonicalFixtureCandidate,
+    build_canonical_fixture_key,
+    build_participant_signature,
 )
 from app.sms24.providers import (
     ProviderCompetition,
@@ -162,12 +168,93 @@ class SMS24IngestionRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one()
 
+
+    async def resolve_canonical_fixture(
+        self,
+        *,
+        sport_id,
+        candidate: CanonicalFixtureCandidate,
+        tolerance_minutes: int = 5,
+    ) -> SportsCanonicalFixture:
+        """Resolve or create one provider-independent real-world fixture."""
+
+        canonical_key = build_canonical_fixture_key(candidate)
+        participant_signature = build_participant_signature(candidate)
+
+        # Exact deterministic identity always wins.
+        exact_stmt = select(SportsCanonicalFixture).where(
+            SportsCanonicalFixture.canonical_key == canonical_key
+        )
+        exact = await self.session.scalar(exact_stmt)
+        if exact is not None:
+            return exact
+
+        starts_from = candidate.starts_at - timedelta(
+            minutes=tolerance_minutes
+        )
+        starts_until = candidate.starts_at + timedelta(
+            minutes=tolerance_minutes
+        )
+
+        candidate_stmt = (
+            select(SportsCanonicalFixture)
+            .where(
+                SportsCanonicalFixture.sport_id == sport_id,
+                SportsCanonicalFixture.participant_signature
+                == participant_signature,
+                SportsCanonicalFixture.starts_at >= starts_from,
+                SportsCanonicalFixture.starts_at <= starts_until,
+            )
+            .order_by(SportsCanonicalFixture.starts_at)
+        )
+
+        result = await self.session.execute(candidate_stmt)
+        matches = list(result.scalars().all())
+
+        # A single strong candidate inside the tolerance window is safe.
+        if len(matches) == 1:
+            return matches[0]
+
+        # Zero candidates means a new event.
+        # Multiple candidates are deliberately treated as ambiguous:
+        # create a distinct canonical event rather than false-merge.
+        create_stmt = (
+            insert(SportsCanonicalFixture)
+            .values(
+                sport_id=sport_id,
+                canonical_key=canonical_key,
+                participant_signature=participant_signature,
+                starts_at=candidate.starts_at,
+            )
+            .on_conflict_do_nothing(
+                constraint="uq_sports_canonical_fixtures_key"
+            )
+            .returning(SportsCanonicalFixture)
+        )
+
+        created_result = await self.session.execute(create_stmt)
+        created = created_result.scalar_one_or_none()
+
+        if created is not None:
+            return created
+
+        # Concurrency safety: another transaction may have created
+        # the deterministic identity between our SELECT and INSERT.
+        concurrent = await self.session.scalar(exact_stmt)
+        if concurrent is None:
+            raise RuntimeError(
+                "Unable to resolve SMS24 canonical fixture"
+            )
+
+        return concurrent
+
     async def upsert_fixture(
         self,
         *,
         source_id,
         sport_id,
         competition_id,
+        canonical_fixture_id,
         fixture: ProviderFixture,
         fetched_at: datetime,
     ) -> SportsFixture:
@@ -177,6 +264,7 @@ class SMS24IngestionRepository:
                 source_id=source_id,
                 sport_id=sport_id,
                 competition_id=competition_id,
+                canonical_fixture_id=canonical_fixture_id,
                 external_id=fixture.external_id,
                 name=fixture.name,
                 starts_at=fixture.starts_at,
@@ -193,6 +281,7 @@ class SMS24IngestionRepository:
                 set_={
                     "sport_id": sport_id,
                     "competition_id": competition_id,
+                    "canonical_fixture_id": canonical_fixture_id,
                     "name": fixture.name,
                     "starts_at": fixture.starts_at,
                     "status": fixture.status,
@@ -341,6 +430,39 @@ class SMS24IngestionService:
                 f"{fixture.sport_slug}"
             )
 
+        unique_participants: list[ProviderParticipant] = []
+        seen_external_ids: set[str] = set()
+
+        for participant in fixture.participants:
+            self._validate_participant(participant)
+
+            if participant.external_id in seen_external_ids:
+                continue
+
+            seen_external_ids.add(participant.external_id)
+            unique_participants.append(participant)
+
+        canonical_candidate = CanonicalFixtureCandidate(
+            sport_slug=fixture.sport_slug,
+            starts_at=fixture.starts_at,
+            participants=[
+                participant.name
+                for participant in unique_participants
+            ],
+            competition_name=(
+                fixture.competition.name
+                if fixture.competition is not None
+                else None
+            ),
+        )
+
+        canonical_fixture = (
+            await self.repository.resolve_canonical_fixture(
+                sport_id=sport.id,
+                candidate=canonical_candidate,
+            )
+        )
+
         competition_id = None
 
         if fixture.competition is not None:
@@ -357,22 +479,14 @@ class SMS24IngestionService:
             source_id=source.id,
             sport_id=sport.id,
             competition_id=competition_id,
+            canonical_fixture_id=canonical_fixture.id,
             fixture=fixture,
             fetched_at=fetched_at,
         )
 
         stats.fixtures_processed += 1
 
-        seen_external_ids: set[str] = set()
-
-        for participant in fixture.participants:
-            self._validate_participant(participant)
-
-            if participant.external_id in seen_external_ids:
-                continue
-
-            seen_external_ids.add(participant.external_id)
-
+        for participant in unique_participants:
             competitor = await self.repository.upsert_competitor(
                 source_id=source.id,
                 sport_id=sport.id,

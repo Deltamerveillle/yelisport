@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.sport import Sport
@@ -82,12 +82,93 @@ class SMS24LiveRepository:
         limit: int = 50,
         offset: int = 0,
     ) -> list[SMS24FixtureView]:
+        # Rank provider observations before pagination.
+        #
+        # Canonicalized observations sharing one canonical_fixture_id
+        # form one public event. Legacy observations without a canonical
+        # identity remain independent public rows.
+        ranking_statement = (
+            select(
+                SportsFixture.id.label("fixture_id"),
+                SportsFixture.starts_at.label("starts_at"),
+                func.row_number()
+                .over(
+                    partition_by=(
+                        SportsFixture.canonical_fixture_id.is_(None),
+                        func.coalesce(
+                            SportsFixture.canonical_fixture_id,
+                            SportsFixture.id,
+                        ),
+                    ),
+                    order_by=(
+                        SportsDataSource.priority.asc(),
+                        SportsFixture.fetched_at.desc(),
+                        SportsFixture.id.asc(),
+                    ),
+                )
+                .label("canonical_rank"),
+            )
+            .join(
+                SportsDataSource,
+                SportsDataSource.id == SportsFixture.source_id,
+            )
+            .join(
+                Sport,
+                Sport.id == SportsFixture.sport_id,
+            )
+            .where(
+                SportsDataSource.is_active.is_(True),
+                Sport.is_active.is_(True),
+            )
+        )
+
+        if statuses:
+            ranking_statement = ranking_statement.where(
+                SportsFixture.status.in_(statuses)
+            )
+
+        if sport_slug:
+            ranking_statement = ranking_statement.where(
+                Sport.slug == sport_slug
+            )
+
+        if starts_from:
+            ranking_statement = ranking_statement.where(
+                SportsFixture.starts_at >= starts_from
+            )
+
+        if starts_until:
+            ranking_statement = ranking_statement.where(
+                SportsFixture.starts_at <= starts_until
+            )
+
+        ranked = ranking_statement.subquery()
+
+        # Pagination applies to public canonical events, not raw
+        # provider observations.
+        selected_fixtures = (
+            select(ranked.c.fixture_id)
+            .where(ranked.c.canonical_rank == 1)
+            .order_by(
+                ranked.c.starts_at.asc(),
+                ranked.c.fixture_id.asc(),
+            )
+            .limit(limit)
+            .offset(offset)
+            .subquery()
+        )
+
         statement = (
             select(
                 SportsFixture,
                 SportsDataSource,
                 SportsCompetition,
                 Sport,
+            )
+            .join(
+                selected_fixtures,
+                selected_fixtures.c.fixture_id
+                == SportsFixture.id,
             )
             .join(
                 SportsDataSource,
@@ -99,38 +180,13 @@ class SMS24LiveRepository:
             )
             .outerjoin(
                 SportsCompetition,
-                SportsCompetition.id == SportsFixture.competition_id,
+                SportsCompetition.id
+                == SportsFixture.competition_id,
             )
-            .where(
-                SportsDataSource.is_active.is_(True),
-                Sport.is_active.is_(True),
-            )
-        )
-
-        if statuses:
-            statement = statement.where(SportsFixture.status.in_(statuses))
-
-        if sport_slug:
-            statement = statement.where(Sport.slug == sport_slug)
-
-        if starts_from:
-            statement = statement.where(
-                SportsFixture.starts_at >= starts_from
-            )
-
-        if starts_until:
-            statement = statement.where(
-                SportsFixture.starts_at <= starts_until
-            )
-
-        statement = (
-            statement
             .order_by(
                 SportsFixture.starts_at.asc(),
                 SportsFixture.id.asc(),
             )
-            .limit(limit)
-            .offset(offset)
         )
 
         rows = (await self.session.execute(statement)).all()

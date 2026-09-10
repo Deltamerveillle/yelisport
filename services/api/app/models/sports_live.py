@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    Index,
     String,
     Text,
     UniqueConstraint,
@@ -154,6 +155,42 @@ class SportsCompetitor(Base):
     )
 
 
+class SportsCanonicalFixture(Base):
+    """Provider-independent identity for one real-world sports fixture."""
+
+    __tablename__ = "sports_canonical_fixtures"
+    __table_args__ = (
+        UniqueConstraint(
+            "canonical_key",
+            name="uq_sports_canonical_fixtures_key",
+        ),
+        Index(
+            "ix_sports_canonical_fixtures_lookup",
+            "sport_id",
+            "participant_signature",
+            "starts_at",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    sport_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("sports.id", ondelete="RESTRICT"), index=True
+    )
+    canonical_key: Mapped[str] = mapped_column(String(80))
+    participant_signature: Mapped[str] = mapped_column(String(64))
+    starts_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class SportsFixture(Base):
     """
     A normalized sport contest/session/event supplied by an external source.
@@ -187,6 +224,14 @@ class SportsFixture(Base):
     )
     competition_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("sports_competitions.id", ondelete="SET NULL"), index=True
+    )
+    canonical_fixture_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "sports_canonical_fixtures.id",
+            ondelete="SET NULL",
+            name="fk_sports_fixtures_canonical_fixture_id",
+        ),
+        index=True,
     )
     external_id: Mapped[str] = mapped_column(String(160))
     name: Mapped[str | None] = mapped_column(String(240))

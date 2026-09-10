@@ -95,6 +95,27 @@ class FakeRepository:
         )
         return SimpleNamespace(id=COMPETITION_ID)
 
+    async def resolve_canonical_fixture(
+        self,
+        *,
+        sport_id,
+        candidate,
+    ):
+        self.calls.append(
+            (
+                "canonical",
+                sport_id,
+                candidate.sport_slug,
+                tuple(candidate.participants),
+                candidate.starts_at,
+            )
+        )
+        return SimpleNamespace(
+            id=uuid.UUID(
+                "55555555-5555-5555-5555-555555555555"
+            )
+        )
+
     async def upsert_fixture(
         self,
         **kwargs,
@@ -305,3 +326,67 @@ async def test_ingestion_rejects_naive_fixture_datetime():
         )
 
     assert repository.rolled_back is True
+
+
+CANONICAL_FIXTURE_ID = uuid.UUID(
+    "55555555-5555-5555-5555-555555555555"
+)
+
+
+class CanonicalFakeRepository(FakeRepository):
+    async def resolve_canonical_fixture(
+        self,
+        *,
+        sport_id,
+        candidate,
+    ):
+        self.calls.append(
+            (
+                "canonical",
+                sport_id,
+                candidate.sport_slug,
+                tuple(candidate.participants),
+                candidate.starts_at,
+            )
+        )
+        return SimpleNamespace(
+            id=CANONICAL_FIXTURE_ID,
+        )
+
+    async def upsert_fixture(
+        self,
+        **kwargs,
+    ):
+        self.calls.append(
+            (
+                "fixture_with_canonical",
+                kwargs["fixture"].external_id,
+                kwargs["canonical_fixture_id"],
+            )
+        )
+        return SimpleNamespace(id=FIXTURE_ID)
+
+
+@pytest.mark.asyncio
+async def test_ingestion_attaches_provider_fixture_to_canonical_fixture():
+    repository = CanonicalFakeRepository()
+    service = SMS24IngestionService(repository)
+
+    await service.ingest_provider_result(
+        provider=FakeProvider(),
+        result=make_result(),
+    )
+
+    assert (
+        "canonical",
+        SPORT_ID,
+        "football",
+        ("Abidjan", "Dakar"),
+        NOW,
+    ) in repository.calls
+
+    assert (
+        "fixture_with_canonical",
+        "fixture-001",
+        CANONICAL_FIXTURE_ID,
+    ) in repository.calls

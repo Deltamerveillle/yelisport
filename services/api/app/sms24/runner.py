@@ -227,6 +227,16 @@ class SMS24ProviderRunner:
                 )
                 continue
 
+            if not live_only and not result.fixtures:
+                attempts.append(
+                    SMS24ProviderAttempt(
+                        provider_slug=slug,
+                        success=False,
+                        reason="empty_provider_result",
+                    )
+                )
+                continue
+
             try:
                 ingestion = (
                     await self.ingestion_service.ingest_provider_result(
