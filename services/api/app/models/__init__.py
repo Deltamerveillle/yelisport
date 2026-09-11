@@ -43,12 +43,15 @@ from app.models.moderation_report import (
 )
 
 from app.models.sports_live import (
+    SportsCanonicalCompetition,
+    SportsCanonicalCompetitor,
     SportsCanonicalFixture,
     SportsCompetition,
     SportsCompetitor,
     SportsDataSource,
     SportsFixture,
     SportsFixtureParticipant,
+    SportsSeason,
 )
 
 
@@ -81,6 +84,9 @@ __all__ = [
     "ModerationReport",
     "ModerationReportEvent",
     "SportsDataSource",
+    "SportsCanonicalCompetition",
+    "SportsCanonicalCompetitor",
+    "SportsSeason",
     "SportsCanonicalFixture",
     "SportsCompetition",
     "SportsCompetitor",

@@ -330,8 +330,11 @@ class APIFootballProvider(SportsDataProvider):
             competition = ProviderCompetition(
                 external_id=str(competition_id),
                 name=str(competition_name),
-                country_code=self._normalize_country_code(
-                    league_data.get("country")
+                # This field is a sporting jurisdiction label, not an ISO2 field.
+                country_code=None,
+                jurisdiction_name=(
+                    league_data["country"].strip() or None
+                    if isinstance(league_data.get("country"), str) else None
                 ),
                 season=(
                     str(league_data["season"])

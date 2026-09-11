@@ -11,6 +11,8 @@ from sqlalchemy.pool import NullPool
 from app.core.config import get_settings
 from app.models.sport import Sport
 from app.models.sports_live import (
+    SportsCanonicalCompetition,
+    SportsCanonicalCompetitor,
     SportsCanonicalFixture,
     SportsCompetition,
     SportsCompetitor,
@@ -407,6 +409,17 @@ async def test_real_postgres_sms24_upserts_are_idempotent():
         )
 
         await session.execute(
+            delete(SportsCanonicalCompetitor).where(
+                SportsCanonicalCompetitor.sport_id == sport_id
+            )
+        )
+        await session.execute(
+            delete(SportsCanonicalCompetition).where(
+                SportsCanonicalCompetition.sport_id == sport_id
+            )
+        )
+
+        await session.execute(
             delete(Sport).where(Sport.id == sport_id)
         )
         await session.commit()
@@ -608,6 +621,17 @@ async def test_real_postgres_cross_provider_fixtures_share_one_canonical():
         await session.execute(
             delete(SportsCanonicalFixture).where(
                 SportsCanonicalFixture.id == canonical_a.id
+            )
+        )
+
+        await session.execute(
+            delete(SportsCanonicalCompetitor).where(
+                SportsCanonicalCompetitor.sport_id == sport_id
+            )
+        )
+        await session.execute(
+            delete(SportsCanonicalCompetition).where(
+                SportsCanonicalCompetition.sport_id == sport_id
             )
         )
 

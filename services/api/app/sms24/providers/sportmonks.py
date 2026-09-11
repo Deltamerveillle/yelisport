@@ -225,7 +225,15 @@ class SportmonksProvider(SportsDataProvider):
             code = country.get("iso2") if isinstance(country, dict) else None
             competition = ProviderCompetition(
                 external_id=self._id(league["id"]), name=str(league["name"]),
-                country_code=code.upper() if isinstance(code, str) and len(code) == 2 else None,
+                jurisdiction_name=(
+                    country["name"].strip() or None
+                    if isinstance(country, dict) and isinstance(country.get("name"), str) else None
+                ),
+                country_code=(
+                    code.upper()
+                    if isinstance(code, str) and len(code) == 2
+                    and code.isascii() and code.isalpha() else None
+                ),
                 season=str(season["name"]) if isinstance(season, dict) and season.get("name") else None,
                 logo_url=league.get("image_path"),
             )

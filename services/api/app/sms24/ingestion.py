@@ -12,17 +12,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.sport import Sport
 from app.models.sports_live import (
+    SportsCanonicalCompetition,
+    SportsCanonicalCompetitor,
     SportsCanonicalFixture,
     SportsCompetition,
     SportsCompetitor,
     SportsDataSource,
     SportsFixture,
     SportsFixtureParticipant,
+    SportsSeason,
 )
 from app.sms24.canonical import (
     CanonicalFixtureCandidate,
     build_canonical_fixture_key,
     build_participant_signature,
+)
+from app.sms24.canonical_entities import (
+    build_canonical_competition_key,
+    build_canonical_competitor_key,
+    normalize_identity_text,
+    normalize_jurisdiction,
+    normalize_season_label,
 )
 from app.sms24.providers import (
     ProviderCompetition,
@@ -96,14 +106,27 @@ class SMS24IngestionRepository:
         competition: ProviderCompetition,
         fetched_at: datetime,
     ) -> SportsCompetition:
+        canonical = await self.resolve_canonical_competition(
+            sport_id=sport_id,
+            source_id=source_id,
+            competition=competition,
+        )
+        if competition.season:
+            await self.resolve_season(
+                canonical_competition_id=canonical.id,
+                label=competition.season,
+            )
         stmt = (
             insert(SportsCompetition)
             .values(
                 source_id=source_id,
                 sport_id=sport_id,
+                canonical_competition_id=canonical.id,
                 external_id=competition.external_id,
                 name=competition.name,
                 country_code=competition.country_code,
+                jurisdiction_name=competition.jurisdiction_name,
+                normalized_jurisdiction=normalize_jurisdiction(competition.jurisdiction_name) or None,
                 season=competition.season,
                 logo_url=competition.logo_url,
                 source_updated_at=competition.source_updated_at,
@@ -113,8 +136,11 @@ class SMS24IngestionRepository:
                 constraint="uq_sports_competitions_source_external",
                 set_={
                     "sport_id": sport_id,
+                    "canonical_competition_id": canonical.id,
                     "name": competition.name,
                     "country_code": competition.country_code,
+                    "jurisdiction_name": competition.jurisdiction_name,
+                    "normalized_jurisdiction": normalize_jurisdiction(competition.jurisdiction_name) or None,
                     "season": competition.season,
                     "logo_url": competition.logo_url,
                     "source_updated_at": competition.source_updated_at,
@@ -122,6 +148,7 @@ class SMS24IngestionRepository:
                 },
             )
             .returning(SportsCompetition)
+            .execution_options(populate_existing=True)
         )
 
         result = await self.session.execute(stmt)
@@ -135,11 +162,17 @@ class SMS24IngestionRepository:
         participant: ProviderParticipant,
         fetched_at: datetime,
     ) -> SportsCompetitor:
+        canonical = await self.resolve_canonical_competitor(
+            sport_id=sport_id,
+            source_id=source_id,
+            participant=participant,
+        )
         stmt = (
             insert(SportsCompetitor)
             .values(
                 source_id=source_id,
                 sport_id=sport_id,
+                canonical_competitor_id=canonical.id,
                 external_id=participant.external_id,
                 competitor_type=participant.competitor_type,
                 name=participant.name,
@@ -153,6 +186,7 @@ class SMS24IngestionRepository:
                 constraint="uq_sports_competitors_source_external",
                 set_={
                     "sport_id": sport_id,
+                    "canonical_competitor_id": canonical.id,
                     "competitor_type": participant.competitor_type,
                     "name": participant.name,
                     "short_name": participant.short_name,
@@ -163,11 +197,109 @@ class SMS24IngestionRepository:
                 },
             )
             .returning(SportsCompetitor)
+            .execution_options(populate_existing=True)
         )
 
         result = await self.session.execute(stmt)
         return result.scalar_one()
 
+
+    async def _resolve_exact(self, model, *, constraint, values, predicates):
+        """Insert once, or read the winner of a concurrent unique-key insert."""
+        exact_stmt = select(model).where(*predicates)
+        existing = await self.session.scalar(exact_stmt)
+        if existing is not None:
+            return existing
+        stmt = (
+            insert(model)
+            .values(**values)
+            .on_conflict_do_nothing(constraint=constraint)
+            .returning(model)
+        )
+        created = (await self.session.execute(stmt)).scalar_one_or_none()
+        if created is not None:
+            return created
+        existing = await self.session.scalar(exact_stmt)
+        if existing is None:
+            raise RuntimeError(f"Unable to resolve SMS24 {model.__tablename__}")
+        return existing
+
+    async def resolve_canonical_competition(
+        self, *, sport_id, source_id, competition: ProviderCompetition,
+    ) -> SportsCanonicalCompetition:
+        sport = await self.session.get(Sport, sport_id)
+        if sport is None:
+            raise ValueError("Unknown sport for SMS24 canonical competition")
+        source = await self.session.get(SportsDataSource, source_id)
+        if source is None:
+            raise ValueError("Unknown source for SMS24 canonical competition")
+        jurisdiction = normalize_jurisdiction(competition.jurisdiction_name)
+        key = build_canonical_competition_key(
+            sport.slug, competition.name, competition.jurisdiction_name,
+            source_slug=source.slug, external_id=competition.external_id,
+        )
+        return await self._resolve_exact(
+            SportsCanonicalCompetition,
+            constraint="uq_sports_canonical_competitions_key",
+            values={
+                "sport_id": sport_id,
+                "canonical_key": key,
+                "identity_scope": "verified_context" if jurisdiction else "provider_scoped",
+                "jurisdiction_name": competition.jurisdiction_name,
+                "normalized_jurisdiction": jurisdiction or None,
+                "name": competition.name,
+                "normalized_name": normalize_identity_text(competition.name),
+                "country_code": normalize_identity_text(competition.country_code) or None,
+            },
+            predicates=[SportsCanonicalCompetition.canonical_key == key],
+        )
+
+    async def resolve_canonical_competitor(
+        self, *, sport_id, source_id, participant: ProviderParticipant,
+    ) -> SportsCanonicalCompetitor:
+        sport = await self.session.get(Sport, sport_id)
+        if sport is None:
+            raise ValueError("Unknown sport for SMS24 canonical competitor")
+        source = await self.session.get(SportsDataSource, source_id)
+        if source is None:
+            raise ValueError("Unknown source for SMS24 canonical competitor")
+        context = participant.country_code.strip() if participant.country_code else None
+        if context and (len(context) != 2 or not context.isascii() or not context.isalpha()):
+            context = None
+        key = build_canonical_competitor_key(
+            sport.slug, participant.competitor_type, participant.name, context,
+            source_slug=source.slug, external_id=participant.external_id,
+        )
+        return await self._resolve_exact(
+            SportsCanonicalCompetitor,
+            constraint="uq_sports_canonical_competitors_key",
+            values={
+                "sport_id": sport_id,
+                "canonical_key": key,
+                "identity_scope": "verified_context" if context else "provider_scoped",
+                "competitor_type": participant.competitor_type,
+                "name": participant.name,
+                "normalized_name": normalize_identity_text(participant.name),
+                "country_code": normalize_identity_text(participant.country_code) or None,
+            },
+            predicates=[SportsCanonicalCompetitor.canonical_key == key],
+        )
+
+    async def resolve_season(self, *, canonical_competition_id, label: str) -> SportsSeason:
+        normalized_label = normalize_season_label(label)
+        return await self._resolve_exact(
+            SportsSeason,
+            constraint="uq_sports_seasons_competition_label",
+            values={
+                "canonical_competition_id": canonical_competition_id,
+                "label": label,
+                "normalized_label": normalized_label,
+            },
+            predicates=[
+                SportsSeason.canonical_competition_id == canonical_competition_id,
+                SportsSeason.normalized_label == normalized_label,
+            ],
+        )
 
     async def resolve_canonical_fixture(
         self,

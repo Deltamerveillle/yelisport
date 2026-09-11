@@ -113,7 +113,8 @@ async def test_api_football_normalizes_fixture():
     assert fixture.competition is not None
     assert fixture.competition.external_id == "777"
     assert fixture.competition.name == "SMS Test League"
-    assert fixture.competition.country_code == "CI"
+    assert fixture.competition.country_code is None
+    assert fixture.competition.jurisdiction_name == "CI"
 
     assert len(fixture.participants) == 2
 
@@ -315,3 +316,27 @@ def test_api_football_rejects_empty_key():
         APIFootballProvider(
             api_key="   "
         )
+
+
+@pytest.mark.parametrize("country", ["England", "Brazil", " Costa-Rica ", "World"])
+def test_sporting_jurisdiction_is_not_team_country(country):
+    data = fixture_payload()
+    data["league"]["country"] = country
+    fixture = APIFootballProvider(api_key="test")._normalize_fixture(data)
+    assert fixture.competition.jurisdiction_name == country.strip()
+    assert fixture.competition.country_code is None
+    assert all(participant.country_code is None for participant in fixture.participants)
+
+
+@pytest.mark.parametrize("country", [None, "", "   ", 12, "GB", "Scotland", "Wales"])
+def test_league_country_is_only_a_label_even_when_it_looks_like_iso2(country):
+    data = fixture_payload()
+    if country is None:
+        data["league"].pop("country", None)
+    else:
+        data["league"]["country"] = country
+    fixture = APIFootballProvider(api_key="test")._normalize_fixture(data)
+    expected = (country.strip() or None) if isinstance(country, str) else None
+    assert fixture.competition.jurisdiction_name == expected
+    assert fixture.competition.country_code is None
+    assert all(participant.country_code is None for participant in fixture.participants)

@@ -32,6 +32,8 @@ class ProviderCompetition:
     logo_url: str | None = None
     source_updated_at: datetime | None = None
 
+    jurisdiction_name: str | None = None
+
 
 @dataclass(slots=True)
 class ProviderFixture:

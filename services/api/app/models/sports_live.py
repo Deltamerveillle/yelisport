@@ -62,6 +62,125 @@ class SportsDataSource(Base):
     )
 
 
+class SportsCanonicalCompetition(Base):
+    """Provider-independent competition identity, independent of season."""
+
+    __tablename__ = "sports_canonical_competitions"
+    __table_args__ = (
+        CheckConstraint(
+            "identity_scope IN ('verified_context', 'provider_scoped')",
+            name="ck_sports_canonical_competitions_identity_scope",
+        ),
+        UniqueConstraint("canonical_key", name="uq_sports_canonical_competitions_key"),
+        Index(
+            "ix_sports_canonical_competitions_lookup",
+            "sport_id",
+            "normalized_name",
+            "normalized_jurisdiction",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    sport_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("sports.id", ondelete="RESTRICT"), index=True
+    )
+    identity_scope: Mapped[str] = mapped_column(
+        String(24), default="provider_scoped", server_default="provider_scoped"
+    )
+    canonical_key: Mapped[str] = mapped_column(String(100))
+    name: Mapped[str] = mapped_column(String(200))
+    normalized_name: Mapped[str] = mapped_column(Text)
+    jurisdiction_name: Mapped[str | None] = mapped_column(String(200))
+    normalized_jurisdiction: Mapped[str | None] = mapped_column(String(600))
+    country_code: Mapped[str | None] = mapped_column(String(2))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class SportsCanonicalCompetitor(Base):
+    """Provider-independent competitor identity, independent of season."""
+
+    __tablename__ = "sports_canonical_competitors"
+    __table_args__ = (
+        CheckConstraint(
+            "identity_scope IN ('verified_context', 'provider_scoped')",
+            name="ck_sports_canonical_competitors_identity_scope",
+        ),
+        UniqueConstraint("canonical_key", name="uq_sports_canonical_competitors_key"),
+        Index(
+            "ix_sports_canonical_competitors_lookup",
+            "sport_id",
+            "competitor_type",
+            "normalized_name",
+            "country_code",
+        ),
+        CheckConstraint(
+            "competitor_type IN ('team', 'athlete', 'pair', 'selection', 'other')",
+            name="ck_sports_canonical_competitors_type",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    sport_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("sports.id", ondelete="RESTRICT"), index=True
+    )
+    identity_scope: Mapped[str] = mapped_column(
+        String(24), default="provider_scoped", server_default="provider_scoped"
+    )
+    canonical_key: Mapped[str] = mapped_column(String(100))
+    competitor_type: Mapped[str] = mapped_column(String(20))
+    name: Mapped[str] = mapped_column(String(200))
+    normalized_name: Mapped[str] = mapped_column(Text)
+    country_code: Mapped[str | None] = mapped_column(String(2))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class SportsSeason(Base):
+    """A sport-specific season label within one canonical competition."""
+
+    __tablename__ = "sports_seasons"
+    __table_args__ = (
+        UniqueConstraint(
+            "canonical_competition_id",
+            "normalized_label",
+            name="uq_sports_seasons_competition_label",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    canonical_competition_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("sports_canonical_competitions.id", ondelete="CASCADE"), index=True
+    )
+    label: Mapped[str] = mapped_column(String(40))
+    normalized_label: Mapped[str] = mapped_column(String(40))
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_current: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class SportsCompetition(Base):
     __tablename__ = "sports_competitions"
     __table_args__ = (
@@ -81,8 +200,18 @@ class SportsCompetition(Base):
     source_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("sports_data_sources.id", ondelete="RESTRICT"), index=True
     )
+    canonical_competition_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "sports_canonical_competitions.id",
+            ondelete="SET NULL",
+            name="fk_sports_competitions_canonical_competition_id",
+        ),
+        index=True,
+    )
     external_id: Mapped[str] = mapped_column(String(160))
     name: Mapped[str] = mapped_column(String(200), index=True)
+    jurisdiction_name: Mapped[str | None] = mapped_column(String(200))
+    normalized_jurisdiction: Mapped[str | None] = mapped_column(String(600))
     country_code: Mapped[str | None] = mapped_column(String(2), index=True)
     season: Mapped[str | None] = mapped_column(String(40), index=True)
     logo_url: Mapped[str | None] = mapped_column(Text)
@@ -103,7 +232,7 @@ class SportsCompetition(Base):
 
 class SportsCompetitor(Base):
     """
-    A provider-neutral participant identity.
+    A provider observation of a participant.
 
     A competitor may represent a team, athlete, pair, national selection
     or another sport-specific participant.
@@ -131,6 +260,14 @@ class SportsCompetitor(Base):
     )
     source_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("sports_data_sources.id", ondelete="RESTRICT"), index=True
+    )
+    canonical_competitor_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "sports_canonical_competitors.id",
+            ondelete="SET NULL",
+            name="fk_sports_competitors_canonical_competitor_id",
+        ),
+        index=True,
     )
     external_id: Mapped[str] = mapped_column(String(160))
     competitor_type: Mapped[str] = mapped_column(

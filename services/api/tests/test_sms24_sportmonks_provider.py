@@ -238,3 +238,36 @@ def test_timestamp_and_window_converted_to_utc():
     data["starting_at"] = "2026-09-09T20:00:00+02:00"
     assert provider._normalize_fixture(data).starts_at == DAY + timedelta(hours=18)
     assert provider._day(datetime.fromisoformat("2026-09-10T00:30:00+02:00"), None) == "2026-09-09"
+
+
+def test_country_display_name_is_preserved_as_sporting_jurisdiction():
+    data = fixture_payload()
+    data["league"]["country"] = {"iso2": "br", "name": " Brazil "}
+    fixture = SportmonksProvider(api_key=TOKEN)._normalize_fixture(data)
+    assert fixture.competition.country_code == "BR"
+    assert fixture.competition.jurisdiction_name == "Brazil"
+    assert all(participant.country_code is None for participant in fixture.participants)
+
+
+@pytest.mark.parametrize(("country", "expected_name", "expected_code"), [
+    ({"name": " Scotland ", "iso2": "GB"}, "Scotland", "GB"),
+    (None, None, None),
+    ({}, None, None),
+    ({"name": "Scotland"}, "Scotland", None),
+    ({"iso2": "gb"}, None, "GB"),
+    ({"name": "  ", "iso2": "12"}, None, None),
+    ({"name": 123, "iso2": "éé"}, None, None),
+    ({"iso2": "GBR"}, None, None),
+    ({"iso2": 12}, None, None),
+    ("Scotland", None, None),
+])
+def test_incomplete_country_never_invents_context(country, expected_name, expected_code):
+    data = fixture_payload()
+    if country is None:
+        data["league"].pop("country", None)
+    else:
+        data["league"]["country"] = country
+    fixture = SportmonksProvider(api_key=TOKEN)._normalize_fixture(data)
+    assert fixture.competition.jurisdiction_name == expected_name
+    assert fixture.competition.country_code == expected_code
+    assert all(participant.country_code is None for participant in fixture.participants)
