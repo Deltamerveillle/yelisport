@@ -12,6 +12,7 @@ from app.repositories.sms24_live_repository import SMS24LiveRepository
 from app.schemas.sms24_live import (
     SMS24FixtureResponse,
     SMS24SourceHealthResponse,
+    SMS24StandingResponse,
 )
 from app.services.sms24_live_service import SMS24LiveService
 
@@ -157,3 +158,22 @@ async def source_health(
         SMS24SourceHealthResponse.model_validate(source)
         for source in sources
     ]
+
+
+@router.get("/standings", response_model=list[SMS24StandingResponse])
+async def list_standings(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    competition_id: uuid.UUID | None = None,
+    season_id: uuid.UUID | None = None,
+    sport: Annotated[str | None, Query(min_length=1, max_length=80)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[SMS24StandingResponse]:
+    standings = await _service(session).list_standings(
+        competition_id=competition_id,
+        season_id=season_id,
+        sport_slug=sport,
+        limit=limit,
+        offset=offset,
+    )
+    return [SMS24StandingResponse.model_validate(row) for row in standings]

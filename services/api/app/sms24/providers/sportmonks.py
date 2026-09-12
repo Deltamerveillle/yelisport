@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -17,8 +18,15 @@ from app.sms24.providers.base import (
     SportsDataProvider,
 )
 
+from app.sms24.providers.standings import (
+    ProviderStandingsRequest, ProviderStandingsResult, validate_standings_request,
+)
+from app.sms24.providers.standings_normalization import normalize_sportmonks_standing
+
 
 class SportmonksProvider(SportsDataProvider):
+    normalize_standing = staticmethod(normalize_sportmonks_standing)
+
     slug = "sportmonks"
     name = "Sportmonks"
     DEFAULT_BASE_URL = "https://api.sportmonks.com/v3/football"
@@ -76,6 +84,46 @@ class SportmonksProvider(SportsDataProvider):
                     fetched_at=datetime.now(timezone.utc),
                 )
         raise RuntimeError("Sportmonks pagination limit exceeded")
+
+    async def fetch_standings(
+        self, *, season: str, league_external_id: str | None = None,
+    ) -> ProviderStandingsResult:
+        validate_standings_request(ProviderStandingsRequest(season, league_external_id))
+        if season in {".", ".."}:
+            raise ValueError("Sportmonks invalid season identifier")
+        path = f"/standings/seasons/{quote(season, safe='')}"
+        rows = []
+        seen = set()
+        for page in range(1, self.max_pages + 1):
+            payload = await self._get_json(path, params={
+                "include": "participant;details.type;rule.type", "page": str(page), "per_page": "50",
+            })
+            for raw_row in payload["data"]:
+                row = self.normalize_standing(raw_row)
+                if row.external_season_id != season or (
+                    league_external_id is not None and row.external_competition_id != league_external_id
+                ):
+                    raise ValueError("Sportmonks standings league/season does not match request")
+                if row.external_id in seen:
+                    raise ValueError("Sportmonks duplicate standing in response")
+                seen.add(row.external_id)
+                rows.append(row)
+            pagination = payload.get("pagination")
+            if pagination is None:
+                if page != 1:
+                    raise ValueError("Sportmonks standings pagination disappeared")
+                return ProviderStandingsResult(
+                    rows=rows,
+                    fetched_at=datetime.now(timezone.utc),
+                )
+            if not self._has_more(payload, page):
+                return ProviderStandingsResult(
+                    rows=rows,
+                    fetched_at=datetime.now(timezone.utc),
+                )
+            if not payload["data"]:
+                raise ValueError("Sportmonks empty standings page with more pages")
+        raise RuntimeError("Sportmonks standings pagination limit exceeded")
 
     async def check_health(self) -> ProviderHealthResult:
         checked_at = datetime.now(timezone.utc)

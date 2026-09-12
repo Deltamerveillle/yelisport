@@ -54,8 +54,11 @@ from app.models.sports_live import (
     SportsSeason,
 )
 
+from app.models.sports_standings import SportsStanding
+
 
 __all__ = [
+    "SportsStanding",
     "User",
     "Profile",
     "UserRole",

@@ -17,9 +17,17 @@ from app.sms24.providers.base import (
     SportsDataProvider,
 )
 
+from app.sms24.providers.errors import ProviderAccessRestrictedError
+from app.sms24.providers.standings import (
+    ProviderStandingsRequest, ProviderStandingsResult, validate_standings_request,
+)
+from app.sms24.providers.standings_normalization import normalize_api_football_standing
+
 
 class APIFootballProvider(SportsDataProvider):
     """Normalize API-Football fixtures into the SMS24 provider contract."""
+
+    normalize_standing = staticmethod(normalize_api_football_standing)
 
     slug = "api-football"
     name = "API-Football"
@@ -144,6 +152,44 @@ class APIFootballProvider(SportsDataProvider):
             raw_count=len(raw_response),
         )
 
+    async def fetch_standings(
+        self, *, season: str, league_external_id: str | None = None,
+    ) -> ProviderStandingsResult:
+        validate_standings_request(ProviderStandingsRequest(season, league_external_id))
+        if league_external_id is None:
+            raise ValueError("API-Football standings require league_external_id")
+        try:
+            payload = await self._get_json(
+                "/standings", params={"league": league_external_id, "season": season},
+            )
+        except ProviderAccessRestrictedError:
+            raise
+        except Exception:
+            # Transport errors and provider error bodies may contain credentials.
+            raise RuntimeError("API-Football standings request failed") from None
+        response = payload.get("response")
+        if not isinstance(response, list):
+            raise ValueError("API-Football standings response must be a list")
+        rows = []
+        for item in response:
+            league = item.get("league") if isinstance(item, dict) else None
+            if not isinstance(league, dict):
+                raise ValueError("API-Football standings league must be an object")
+            if str(league.get("id")) != league_external_id or str(league.get("season")) != season:
+                raise ValueError("API-Football standings league/season does not match request")
+            groups = league.get("standings")
+            if not isinstance(groups, list):
+                raise ValueError("API-Football standings groups must be a list")
+            for group in groups:
+                if not isinstance(group, list):
+                    raise ValueError("API-Football standings group must be a list")
+                for raw_row in group:
+                    row = self.normalize_standing(raw_row)
+                    row.external_competition_id = str(league["id"])
+                    row.external_season_id = str(league["season"])
+                    rows.append(row)
+        return ProviderStandingsResult(rows=rows, fetched_at=datetime.now(timezone.utc))
+
     async def check_health(self) -> ProviderHealthResult:
         checked_at = datetime.now(timezone.utc)
         started = time.perf_counter()
@@ -220,6 +266,9 @@ class APIFootballProvider(SportsDataProvider):
             )
 
         errors = payload.get("errors")
+
+        if isinstance(errors, dict) and "plan" in errors:
+            raise ProviderAccessRestrictedError()
 
         if errors:
             raise RuntimeError(

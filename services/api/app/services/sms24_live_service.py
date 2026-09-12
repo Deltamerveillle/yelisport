@@ -8,6 +8,7 @@ from app.repositories.sms24_live_repository import (
     SMS24FixtureView,
     SMS24LiveRepository,
     SMS24SourceHealthView,
+    SMS24StandingView,
 )
 
 
@@ -79,3 +80,20 @@ class SMS24LiveService:
         self,
     ) -> list[SMS24SourceHealthView]:
         return await self.repository.list_source_health()
+
+    async def list_standings(
+        self,
+        *,
+        competition_id: uuid.UUID | None = None,
+        season_id: uuid.UUID | None = None,
+        sport_slug: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[SMS24StandingView]:
+        return await self.repository.list_standings(
+            competition_id=competition_id,
+            season_id=season_id,
+            sport_slug=sport_slug,
+            limit=limit,
+            offset=offset,
+        )

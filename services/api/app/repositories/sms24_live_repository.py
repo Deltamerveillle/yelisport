@@ -9,12 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.sport import Sport
 from app.models.sports_live import (
+    SportsCanonicalCompetition,
+    SportsCanonicalCompetitor,
+    SportsSeason,
     SportsCompetition,
     SportsCompetitor,
     SportsDataSource,
     SportsFixture,
     SportsFixtureParticipant,
 )
+
+from app.models.sports_standings import SportsStanding
 
 
 @dataclass(slots=True)
@@ -68,9 +73,176 @@ class SMS24SourceHealthView:
     last_checked_at: datetime | None
 
 
+@dataclass(slots=True)
+class SMS24StandingView:
+    id: uuid.UUID
+    sport_slug: str
+    sport_name: str
+    competition_id: uuid.UUID
+    competition_name: str
+    competition_country_code: str | None
+    competition_jurisdiction_name: str | None
+    season_id: uuid.UUID
+    season_label: str
+    canonical_competitor_id: uuid.UUID
+    competitor_name: str
+    competitor_type: str
+    competitor_country_code: str | None
+    competitor_identity_scope: str
+    position: int
+    points: int | None
+    played: int | None
+    wins: int | None
+    draws: int | None
+    losses: int | None
+    goals_for: int | None
+    goals_against: int | None
+    goal_difference: int | None
+    home_played: int | None
+    home_wins: int | None
+    home_draws: int | None
+    home_losses: int | None
+    home_goals_for: int | None
+    home_goals_against: int | None
+    home_points: int | None
+    away_played: int | None
+    away_wins: int | None
+    away_draws: int | None
+    away_losses: int | None
+    away_goals_for: int | None
+    away_goals_against: int | None
+    away_points: int | None
+    form: str | None
+    description: str | None
+    movement_status: str | None
+    stage_external_id: str | None
+    group_external_id: str | None
+    group_name: str | None
+    round_external_id: str | None
+    standing_rule_external_id: str | None
+    source_slug: str
+    source_name: str
+    provider_updated_at: datetime | None
+    fetched_at: datetime
+
+
 class SMS24LiveRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    async def list_standings(
+        self,
+        *,
+        competition_id: uuid.UUID | None = None,
+        season_id: uuid.UUID | None = None,
+        sport_slug: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[SMS24StandingView]:
+        # Filter observations before ranking; names never define public identity.
+        statement = (
+            select(
+                SportsStanding.id,
+                Sport.slug.label("sport_slug"),
+                Sport.name.label("sport_name"),
+                SportsCanonicalCompetition.id.label("competition_id"),
+                SportsCanonicalCompetition.name.label("competition_name"),
+                SportsCanonicalCompetition.country_code.label("competition_country_code"),
+                SportsCanonicalCompetition.jurisdiction_name.label("competition_jurisdiction_name"),
+                SportsStanding.season_id,
+                SportsSeason.label.label("season_label"),
+                SportsStanding.canonical_competitor_id,
+                SportsCanonicalCompetitor.name.label("competitor_name"),
+                SportsCanonicalCompetitor.competitor_type.label("competitor_type"),
+                SportsCanonicalCompetitor.country_code.label("competitor_country_code"),
+                SportsCanonicalCompetitor.identity_scope.label("competitor_identity_scope"),
+                SportsStanding.position,
+                SportsStanding.points,
+                SportsStanding.played,
+                SportsStanding.wins,
+                SportsStanding.draws,
+                SportsStanding.losses,
+                SportsStanding.goals_for,
+                SportsStanding.goals_against,
+                SportsStanding.goal_difference,
+                SportsStanding.home_played,
+                SportsStanding.home_wins,
+                SportsStanding.home_draws,
+                SportsStanding.home_losses,
+                SportsStanding.home_goals_for,
+                SportsStanding.home_goals_against,
+                SportsStanding.home_points,
+                SportsStanding.away_played,
+                SportsStanding.away_wins,
+                SportsStanding.away_draws,
+                SportsStanding.away_losses,
+                SportsStanding.away_goals_for,
+                SportsStanding.away_goals_against,
+                SportsStanding.away_points,
+                SportsStanding.form,
+                SportsStanding.description,
+                SportsStanding.movement_status,
+                SportsStanding.stage_external_id,
+                SportsStanding.group_external_id,
+                SportsStanding.group_name,
+                SportsStanding.round_external_id,
+                SportsStanding.standing_rule_external_id,
+                SportsDataSource.slug.label("source_slug"),
+                SportsDataSource.name.label("source_name"),
+                SportsStanding.provider_updated_at,
+                SportsStanding.fetched_at,
+                SportsStanding.group_scope,
+                func.row_number().over(
+                    partition_by=(
+                        SportsStanding.season_id,
+                        SportsStanding.canonical_competitor_id,
+                        SportsStanding.stage_external_id,
+                        SportsStanding.group_scope,
+                    ),
+                    order_by=(
+                        SportsDataSource.priority.asc(),
+                        SportsStanding.fetched_at.desc(),
+                        SportsStanding.id.asc(),
+                    ),
+                ).label("representative_rank"),
+            )
+            .select_from(SportsStanding)
+            .join(SportsDataSource, SportsDataSource.id == SportsStanding.source_id)
+            .join(SportsSeason, SportsSeason.id == SportsStanding.season_id)
+            .join(
+                SportsCanonicalCompetition,
+                SportsCanonicalCompetition.id == SportsSeason.canonical_competition_id,
+            )
+            .join(Sport, Sport.id == SportsCanonicalCompetition.sport_id)
+            .join(
+                SportsCanonicalCompetitor,
+                SportsCanonicalCompetitor.id == SportsStanding.canonical_competitor_id,
+            )
+            .where(SportsDataSource.is_active.is_(True), Sport.is_active.is_(True))
+        )
+        if competition_id is not None:
+            statement = statement.where(SportsSeason.canonical_competition_id == competition_id)
+        if season_id is not None:
+            statement = statement.where(SportsStanding.season_id == season_id)
+        if sport_slug is not None:
+            statement = statement.where(Sport.slug == sport_slug)
+        ranked = statement.subquery()
+        public_fields = SMS24StandingView.__dataclass_fields__
+        selected = (
+            select(*(ranked.c[name] for name in public_fields))
+            .where(ranked.c.representative_rank == 1)
+            .order_by(
+                ranked.c.season_id.asc(),
+                ranked.c.stage_external_id.asc().nullsfirst(),
+                ranked.c.group_scope.asc(),
+                ranked.c.position.asc(),
+                ranked.c.competitor_name.asc(),
+                ranked.c.id.asc(),
+            )
+            .limit(limit)
+            .offset(offset)
+        )
+        return [SMS24StandingView(**row) for row in (await self.session.execute(selected)).mappings()]
 
     async def list_fixtures(
         self,

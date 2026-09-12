@@ -17,6 +17,9 @@ from app.sms24.runner import (
     SMS24RunnerRepository,
 )
 
+from app.sms24.standings import SMS24StandingsRepository, StandingsIngestionService
+from app.sms24.standings_runner import StandingsProviderRunner
+
 
 def build_sms24_provider_registry(
     settings: Settings | None = None,
@@ -66,4 +69,15 @@ def build_sms24_runner(
         registry=registry,
         repository=runner_repository,
         ingestion_service=ingestion_service,
+    )
+
+
+def build_sms24_standings_runner(
+    session: AsyncSession, *, settings: Settings | None = None,
+) -> StandingsProviderRunner:
+    """Assemble standings providers using the existing settings/credential registry."""
+    return StandingsProviderRunner(
+        session=session,
+        registry=build_sms24_provider_registry(settings),
+        ingestion_service=StandingsIngestionService(SMS24StandingsRepository(session)),
     )

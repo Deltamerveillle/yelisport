@@ -10,7 +10,16 @@ from app.sms24.providers.base import (
 )
 from app.sms24.providers.registry import ProviderRegistry
 
+from app.sms24.providers.standings import (
+    ProviderStanding,
+    ProviderStandingsRequest,
+    ProviderStandingsResult,
+)
+
 __all__ = [
+    "ProviderStanding",
+    "ProviderStandingsRequest",
+    "ProviderStandingsResult",
     "ProviderCompetition",
     "ProviderFetchResult",
     "ProviderFixture",
