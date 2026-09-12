@@ -56,8 +56,20 @@ from app.models.sports_live import (
 
 from app.models.sports_standings import SportsStanding
 
+from app.models.sports_news import (
+    SportsNewsArticle,
+    SportsNewsArticleSport,
+    SportsNewsArticleCompetition,
+    SportsNewsArticleCompetitor,
+    SportsNewsArticleCountry,
+)
 
 __all__ = [
+    "SportsNewsArticle",
+    "SportsNewsArticleSport",
+    "SportsNewsArticleCompetition",
+    "SportsNewsArticleCompetitor",
+    "SportsNewsArticleCountry",
     "SportsStanding",
     "User",
     "Profile",
