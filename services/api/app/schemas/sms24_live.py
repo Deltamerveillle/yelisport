@@ -117,3 +117,82 @@ class SMS24StandingResponse(BaseModel):
     source_name: str
     provider_updated_at: datetime | None
     fetched_at: datetime
+
+
+class SMS24SeasonResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    label: str
+    starts_at: datetime | None
+    ends_at: datetime | None
+    is_current: bool
+
+
+class SMS24CompetitionRelationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    sport_slug: str
+    sport_name: str
+    country_code: str | None
+    jurisdiction_name: str | None
+    identity_scope: str
+    seasons: list[SMS24SeasonResponse]
+
+
+class SMS24CompetitionResponse(SMS24CompetitionRelationResponse):
+    selected_season_id: uuid.UUID | None
+
+
+class SMS24TeamResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    competitor_type: str
+    country_code: str | None
+    identity_scope: str
+    sport_slug: str
+    sport_name: str
+    competitions: list[SMS24CompetitionRelationResponse]
+
+
+class SMS24PageParticipantResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    canonical_competitor_id: uuid.UUID | None
+    competitor_type: str
+    name: str
+    short_name: str | None
+    country_code: str | None
+    logo_url: str | None
+    position: int
+    role: str | None
+    score: dict[str, Any]
+    result_status: str | None
+
+
+class SMS24PageFixtureResponse(BaseModel):
+    """Canonical navigation references; id remains the selected fixture observation."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    canonical_fixture_id: uuid.UUID | None
+    canonical_competition_id: uuid.UUID | None
+    canonical_season_id: None = None
+    sport_slug: str
+    sport_name: str
+    source_slug: str
+    source_name: str
+    name: str | None
+    starts_at: datetime
+    status: str
+    live_clock: str | None
+    venue: str | None
+    result: dict[str, Any]
+    source_updated_at: datetime | None
+    fetched_at: datetime
+    participants: list[SMS24PageParticipantResponse]

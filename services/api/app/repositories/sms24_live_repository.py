@@ -1,10 +1,10 @@
 """Read-side persistence for SMS24 Live."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.sport import Sport
@@ -34,6 +34,7 @@ class SMS24ParticipantView:
     role: str | None
     score: dict
     result_status: str | None
+    canonical_competitor_id: uuid.UUID | None = None
 
 
 @dataclass(slots=True)
@@ -58,6 +59,9 @@ class SMS24FixtureView:
     source_updated_at: datetime | None
     fetched_at: datetime
     participants: list[SMS24ParticipantView]
+    canonical_competition_id: uuid.UUID | None = None
+    canonical_fixture_id: uuid.UUID | None = None
+    canonical_season_id: None = None
 
 
 @dataclass(slots=True)
@@ -126,14 +130,199 @@ class SMS24StandingView:
     fetched_at: datetime
 
 
+
+@dataclass(slots=True)
+class SMS24SeasonView:
+    id: uuid.UUID
+    label: str
+    starts_at: datetime | None
+    ends_at: datetime | None
+    is_current: bool
+
+
+@dataclass(slots=True)
+class SMS24CompetitionView:
+    id: uuid.UUID
+    name: str
+    sport_slug: str
+    sport_name: str
+    country_code: str | None
+    jurisdiction_name: str | None
+    identity_scope: str
+    seasons: list[SMS24SeasonView] = field(default_factory=list)
+    selected_season_id: uuid.UUID | None = None
+
+
+@dataclass(slots=True)
+class SMS24TeamView:
+    id: uuid.UUID
+    name: str
+    competitor_type: str
+    country_code: str | None
+    identity_scope: str
+    sport_slug: str
+    sport_name: str
+    competitions: list[SMS24CompetitionView]
+
+
 class SMS24LiveRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    @staticmethod
+    def _fixture_has_team(team_id: uuid.UUID):
+        return (
+            select(SportsFixtureParticipant.id)
+            .join(SportsCompetitor, SportsCompetitor.id == SportsFixtureParticipant.competitor_id)
+            .where(
+                SportsFixtureParticipant.fixture_id == SportsFixture.id,
+                SportsCompetitor.canonical_competitor_id == team_id,
+            )
+            .exists()
+        )
+
+    @staticmethod
+    def _active_standings():
+        return (
+            select(SportsStanding.id)
+            .join(SportsDataSource, SportsDataSource.id == SportsStanding.source_id)
+            .where(SportsDataSource.is_active.is_(True))
+        )
+
+    @staticmethod
+    def _active_fixtures():
+        return (
+            select(SportsFixture.id)
+            .join(SportsDataSource, SportsDataSource.id == SportsFixture.source_id)
+            .join(Sport, Sport.id == SportsFixture.sport_id)
+            .where(SportsDataSource.is_active.is_(True), Sport.is_active.is_(True))
+        )
+
+    @staticmethod
+    def _season_view(season: SportsSeason) -> SMS24SeasonView:
+        return SMS24SeasonView(
+            id=season.id, label=season.label, starts_at=season.starts_at,
+            ends_at=season.ends_at, is_current=season.is_current,
+        )
+
+    @staticmethod
+    def _competition_view(competition, sport) -> SMS24CompetitionView:
+        return SMS24CompetitionView(
+            id=competition.id, name=competition.name, sport_slug=sport.slug,
+            sport_name=sport.name, country_code=competition.country_code,
+            jurisdiction_name=competition.jurisdiction_name,
+            identity_scope=competition.identity_scope,
+        )
+
+    async def get_competition(self, competition_id: uuid.UUID) -> SMS24CompetitionView | None:
+        observations = (
+            select(SportsCompetition.canonical_competition_id.label("id"))
+            .join(SportsDataSource, SportsDataSource.id == SportsCompetition.source_id)
+            .where(SportsDataSource.is_active.is_(True))
+        )
+        fixtures = (
+            self._active_fixtures()
+            .join(SportsCompetition, SportsCompetition.id == SportsFixture.competition_id)
+            .with_only_columns(SportsCompetition.canonical_competition_id.label("id"))
+        )
+        standings = (
+            self._active_standings()
+            .join(SportsSeason, SportsSeason.id == SportsStanding.season_id)
+            .with_only_columns(SportsSeason.canonical_competition_id.label("id"))
+        )
+        public_ids = union(observations, fixtures, standings)
+        row = (await self.session.execute(
+            select(SportsCanonicalCompetition, Sport)
+            .join(Sport, Sport.id == SportsCanonicalCompetition.sport_id)
+            .where(
+                SportsCanonicalCompetition.id == competition_id,
+                SportsCanonicalCompetition.id.in_(public_ids),
+                Sport.is_active.is_(True),
+            )
+        )).first()
+        if row is None:
+            return None
+        view = self._competition_view(*row)
+        seasons = await self.session.scalars(
+            select(SportsSeason).where(SportsSeason.canonical_competition_id == competition_id)
+            .order_by(SportsSeason.label, SportsSeason.id)
+        )
+        view.seasons = [self._season_view(season) for season in seasons]
+        return view
+
+    async def get_team(self, team_id: uuid.UUID) -> SMS24TeamView | None:
+        observations = (
+            select(SportsCompetitor.canonical_competitor_id.label("id"))
+            .join(SportsDataSource, SportsDataSource.id == SportsCompetitor.source_id)
+            .where(SportsDataSource.is_active.is_(True))
+        )
+        fixtures = (
+            self._active_fixtures()
+            .join(SportsFixtureParticipant, SportsFixtureParticipant.fixture_id == SportsFixture.id)
+            .join(SportsCompetitor, SportsCompetitor.id == SportsFixtureParticipant.competitor_id)
+            .with_only_columns(SportsCompetitor.canonical_competitor_id.label("id"))
+        )
+        standings = self._active_standings().with_only_columns(
+            SportsStanding.canonical_competitor_id.label("id")
+        )
+        row = (await self.session.execute(
+            select(SportsCanonicalCompetitor, Sport)
+            .join(Sport, Sport.id == SportsCanonicalCompetitor.sport_id)
+            .where(
+                SportsCanonicalCompetitor.id == team_id,
+                SportsCanonicalCompetitor.competitor_type.in_(("team", "selection")),
+                SportsCanonicalCompetitor.id.in_(union(observations, fixtures, standings)),
+                Sport.is_active.is_(True),
+            )
+        )).first()
+        if row is None:
+            return None
+        team, sport = row
+        standing_seasons = (
+            self._active_standings()
+            .where(SportsStanding.canonical_competitor_id == team_id)
+            .with_only_columns(SportsStanding.season_id)
+        )
+        standing_competitions = select(SportsSeason.canonical_competition_id).where(
+            SportsSeason.id.in_(standing_seasons)
+        )
+        fixture_competitions = (
+            self._active_fixtures()
+            .join(SportsCompetition, SportsCompetition.id == SportsFixture.competition_id)
+            .where(self._fixture_has_team(team_id))
+            .with_only_columns(SportsCompetition.canonical_competition_id)
+        )
+        rows = (await self.session.execute(
+            select(SportsCanonicalCompetition, Sport)
+            .join(Sport, Sport.id == SportsCanonicalCompetition.sport_id)
+            .where(
+                SportsCanonicalCompetition.id.in_(
+                    union(standing_competitions, fixture_competitions)
+                ),
+                SportsCanonicalCompetition.sport_id == team.sport_id,
+                Sport.is_active.is_(True),
+            ).order_by(SportsCanonicalCompetition.name, SportsCanonicalCompetition.id)
+        )).all()
+        competitions = {competition.id: self._competition_view(competition, related_sport)
+                        for competition, related_sport in rows}
+        seasons = await self.session.scalars(
+            select(SportsSeason).where(SportsSeason.id.in_(standing_seasons))
+            .order_by(SportsSeason.label, SportsSeason.id)
+        )
+        for season in seasons:
+            if season.canonical_competition_id in competitions:
+                competitions[season.canonical_competition_id].seasons.append(self._season_view(season))
+        return SMS24TeamView(
+            id=team.id, name=team.name, competitor_type=team.competitor_type,
+            country_code=team.country_code, identity_scope=team.identity_scope,
+            sport_slug=sport.slug, sport_name=sport.name, competitions=list(competitions.values()),
+        )
 
     async def list_standings(
         self,
         *,
         competition_id: uuid.UUID | None = None,
+        canonical_competitor_id: uuid.UUID | None = None,
         season_id: uuid.UUID | None = None,
         sport_slug: str | None = None,
         limit: int = 50,
@@ -226,6 +415,10 @@ class SMS24LiveRepository:
             statement = statement.where(SportsStanding.season_id == season_id)
         if sport_slug is not None:
             statement = statement.where(Sport.slug == sport_slug)
+        if canonical_competitor_id is not None:
+            statement = statement.where(
+                SportsStanding.canonical_competitor_id == canonical_competitor_id
+            )
         ranked = statement.subquery()
         public_fields = SMS24StandingView.__dataclass_fields__
         selected = (
@@ -242,12 +435,15 @@ class SMS24LiveRepository:
             .limit(limit)
             .offset(offset)
         )
-        return [SMS24StandingView(**row) for row in (await self.session.execute(selected)).mappings()]
+        rows = (await self.session.execute(selected)).mappings()
+        return [SMS24StandingView(**row) for row in rows]
 
     async def list_fixtures(
         self,
         *,
         statuses: set[str] | None = None,
+        canonical_competition_id: uuid.UUID | None = None,
+        canonical_competitor_id: uuid.UUID | None = None,
         sport_slug: str | None = None,
         starts_from: datetime | None = None,
         starts_until: datetime | None = None,
@@ -312,6 +508,19 @@ class SMS24LiveRepository:
         if starts_until:
             ranking_statement = ranking_statement.where(
                 SportsFixture.starts_at <= starts_until
+            )
+
+        if canonical_competition_id is not None:
+            ranking_statement = ranking_statement.where(
+                select(SportsCompetition.id).where(
+                    SportsCompetition.id == SportsFixture.competition_id,
+                    SportsCompetition.canonical_competition_id == canonical_competition_id,
+                ).exists()
+            )
+        if canonical_competitor_id is not None:
+            # EXISTS preserves one input row per observation, even with multiple participants.
+            ranking_statement = ranking_statement.where(
+                self._fixture_has_team(canonical_competitor_id)
             )
 
         ranked = ranking_statement.subquery()
@@ -473,6 +682,7 @@ class SMS24LiveRepository:
             ).append(
                 SMS24ParticipantView(
                     competitor_id=competitor.id,
+                    canonical_competitor_id=competitor.canonical_competitor_id,
                     competitor_type=competitor.competitor_type,
                     name=competitor.name,
                     short_name=competitor.short_name,
@@ -492,6 +702,10 @@ class SMS24LiveRepository:
                 SMS24FixtureView(
                     id=fixture.id,
                     external_id=fixture.external_id,
+                    canonical_fixture_id=fixture.canonical_fixture_id,
+                    canonical_competition_id=(
+                        competition.canonical_competition_id if competition else None
+                    ),
                     sport_slug=sport.slug,
                     sport_name=sport.name,
                     source_slug=source.slug,

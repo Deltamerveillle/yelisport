@@ -13,6 +13,9 @@ from app.schemas.sms24_live import (
     SMS24FixtureResponse,
     SMS24SourceHealthResponse,
     SMS24StandingResponse,
+    SMS24CompetitionResponse,
+    SMS24TeamResponse,
+    SMS24PageFixtureResponse,
 )
 from app.services.sms24_live_service import SMS24LiveService
 
@@ -164,6 +167,7 @@ async def source_health(
 async def list_standings(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     competition_id: uuid.UUID | None = None,
+    canonical_competitor_id: uuid.UUID | None = None,
     season_id: uuid.UUID | None = None,
     sport: Annotated[str | None, Query(min_length=1, max_length=80)] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
@@ -171,9 +175,75 @@ async def list_standings(
 ) -> list[SMS24StandingResponse]:
     standings = await _service(session).list_standings(
         competition_id=competition_id,
+        canonical_competitor_id=canonical_competitor_id,
         season_id=season_id,
         sport_slug=sport,
         limit=limit,
         offset=offset,
     )
     return [SMS24StandingResponse.model_validate(row) for row in standings]
+
+
+@router.get("/competitions/{competition_id}", response_model=SMS24CompetitionResponse)
+async def get_competition(
+    competition_id: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    season_id: uuid.UUID | None = None,
+) -> SMS24CompetitionResponse:
+    return SMS24CompetitionResponse.model_validate(
+        await _service(session).get_competition(competition_id, season_id=season_id)
+    )
+
+
+@router.get("/teams/{canonical_competitor_id}", response_model=SMS24TeamResponse)
+async def get_team(
+    canonical_competitor_id: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> SMS24TeamResponse:
+    return SMS24TeamResponse.model_validate(
+        await _service(session).get_team(canonical_competitor_id)
+    )
+
+
+@router.get(
+    "/competitions/{competition_id}/fixtures", response_model=list[SMS24PageFixtureResponse],
+)
+async def list_competition_fixtures(
+    competition_id: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    status: Annotated[
+        str | None,
+        Query(pattern="^(scheduled|live|finished|postponed|cancelled|suspended|unknown)$"),
+    ] = None,
+    starts_from: datetime | None = None,
+    starts_until: datetime | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[SMS24PageFixtureResponse]:
+    rows = await _service(session).list_competition_fixtures(
+        competition_id, status=status, starts_from=starts_from, starts_until=starts_until,
+        limit=limit, offset=offset,
+    )
+    return [SMS24PageFixtureResponse.model_validate(row) for row in rows]
+
+
+@router.get(
+    "/teams/{canonical_competitor_id}/fixtures", response_model=list[SMS24PageFixtureResponse],
+)
+async def list_team_fixtures(
+    canonical_competitor_id: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    status: Annotated[
+        str | None,
+        Query(pattern="^(scheduled|live|finished|postponed|cancelled|suspended|unknown)$"),
+    ] = None,
+    starts_from: datetime | None = None,
+    starts_until: datetime | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[SMS24PageFixtureResponse]:
+    rows = await _service(session).list_team_fixtures(
+        canonical_competitor_id, status=status, starts_from=starts_from, starts_until=starts_until,
+        limit=limit, offset=offset,
+    )
+    return [SMS24PageFixtureResponse.model_validate(row) for row in rows]
