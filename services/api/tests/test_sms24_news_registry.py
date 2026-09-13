@@ -2,6 +2,7 @@
 
 import pytest
 
+from app.core.config import Settings
 from app.sms24.news_runtime import build_sms24_news_registry, build_sms24_news_runner
 from app.sms24.providers.base import ProviderHealthResult
 from app.sms24.providers.news import ProviderNewsResult
@@ -56,5 +57,6 @@ def test_empty_slug_rejected(slug):
 
 
 def test_news_runtime_has_no_real_providers():
-    assert build_sms24_news_registry().all() == []
-    assert build_sms24_news_runner(None).registry.all() == []
+    settings = Settings(_env_file=None, sms24_gnews_api_key=None)
+    assert build_sms24_news_registry(settings).all() == []
+    assert build_sms24_news_runner(None, settings=settings).registry.all() == []

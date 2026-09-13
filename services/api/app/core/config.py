@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = "change-me"
     sms24_api_football_key: str | None = None
     sms24_sportmonks_key: str | None = None
+    sms24_gnews_api_key: SecretStr | None = None
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:8080"])
 
     @field_validator("cors_origins", mode="before")
