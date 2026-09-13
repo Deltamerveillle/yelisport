@@ -11,7 +11,11 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.config import Settings
 from app.models.sport import Sport
-from app.models.sports_live import SportsCanonicalCompetitor, SportsDataSource
+from app.models.sports_live import (
+    SportsCanonicalCompetitor,
+    SportsDataSource,
+    SportsDataSourceCapability,
+)
 from app.sms24.providers import ProviderRegistry, ProviderStandingsRequest
 from app.sms24.providers.api_football import APIFootballProvider
 from app.sms24.providers.sportmonks import SportmonksProvider
@@ -20,7 +24,8 @@ from app.sms24.standings import SMS24StandingsRepository, StandingsIngestionServ
 from app.sms24.standings_runner import StandingsAllProvidersFailed, StandingsProviderRunner
 from tests.test_sms24_standings_fetch import api_payload, sm_payload
 from tests.test_sms24_standings_normalization import api_row
-from tests.test_sms24_standings_postgres import observations, seed
+from tests.test_sms24_standings_postgres import observations
+from tests.test_sms24_standings_postgres import seed as seed_standings
 from tests.test_sms24_standings_postgres import session as isolated_session
 
 session = isolated_session
@@ -28,6 +33,20 @@ TARGETS = {
     "api-football": ProviderStandingsRequest(season="2026", league_external_id="7"),
     "sportmonks": ProviderStandingsRequest(season="88", league_external_id="7"),
 }
+
+
+async def seed(session):
+    sport, sources, season = await seed_standings(session)
+    session.add_all(
+        [
+            SportsDataSourceCapability(
+                source_id=source.id, capability="standings", priority=priority
+            )
+            for source, priority in zip(sources, (10, 20), strict=True)
+        ]
+    )
+    await session.flush()
+    return sport, sources, season
 
 
 def runner(session, client, service=None):

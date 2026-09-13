@@ -21,6 +21,7 @@ from app.models.sports_live import (
     SportsCompetition,
     SportsCompetitor,
     SportsDataSource,
+    SportsDataSourceCapability,
     SportsSeason,
 )
 from app.models.sports_standings import SportsStanding
@@ -57,6 +58,7 @@ async def session():
                     for model in (
                         Sport,
                         SportsDataSource,
+                        SportsDataSourceCapability,
                         SportsCanonicalCompetition,
                         SportsCanonicalCompetitor,
                         SportsSeason,

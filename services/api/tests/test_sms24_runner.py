@@ -94,7 +94,8 @@ class FakeRepository:
         self.commits = 0
         self.rollbacks = 0
 
-    async def list_active_sources(self):
+    async def list_active_sources_for_capability(self, capability):
+        self.selected_capability = capability
         return self.sources
 
     async def mark_failure(

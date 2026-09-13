@@ -10,7 +10,7 @@ from typing import Callable
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.sports_live import SportsDataSource
+from app.models.sports_live import SportsDataSource, SportsDataSourceCapability
 from app.sms24.ingestion import (
     SMS24IngestionService,
     SMS24IngestionStats,
@@ -77,6 +77,32 @@ class SMS24RunnerRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    @staticmethod
+    def _active_capability_sources(capability: str):
+        return (
+            select(SportsDataSource)
+            .join(SportsDataSourceCapability,
+                  SportsDataSourceCapability.source_id == SportsDataSource.id)
+            .where(
+                SportsDataSource.is_active.is_(True),
+                SportsDataSourceCapability.is_active.is_(True),
+                SportsDataSourceCapability.capability == capability,
+            )
+        )
+
+    async def list_active_sources_for_capability(self, capability: str) -> list[str]:
+        statement = self._active_capability_sources(capability).with_only_columns(
+            SportsDataSource.slug
+        ).order_by(SportsDataSourceCapability.priority.asc(), SportsDataSource.slug.asc())
+        return list(await self.session.scalars(statement))
+
+    async def get_active_source_for_capability(
+        self, slug: str, capability: str,
+    ) -> SportsDataSource | None:
+        return await self.session.scalar(
+            self._active_capability_sources(capability).where(SportsDataSource.slug == slug)
+        )
+
     async def mark_failure(
         self,
         slug: str,
@@ -142,7 +168,9 @@ class SMS24ProviderRunner:
         starts_until: datetime | None = None,
         live_only: bool = False,
     ) -> SMS24RunnerResult:
-        sources = await self.repository.list_active_sources()
+        sources = await self.repository.list_active_sources_for_capability(
+            "live" if live_only else "fixtures"
+        )
 
         if not sources:
             raise SMS24AllProvidersFailed(

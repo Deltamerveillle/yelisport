@@ -35,14 +35,12 @@ class StandingsAllProvidersFailed(RuntimeError):
 
 
 class StandingsProviderRunner:
-    """API-Football first, Sportmonks second, using explicit provider season mappings.
+    """Use active standings capability priority with explicit provider season mappings.
 
     Empty valid results succeed, without deleting old standings or degrading health.
     Each ingestion attempt uses a savepoint; no outer commit or rollback is issued.
     Provider/validation failures fall back, but database errors propagate to the caller.
     """
-
-    PROVIDER_PRIORITY = ("api-football", "sportmonks")
 
     def __init__(
         self,
@@ -85,22 +83,25 @@ class StandingsProviderRunner:
         season_id: uuid.UUID,
         targets: Mapping[str, ProviderStandingsRequest],
     ) -> StandingsRunnerResult:
-        if not targets or set(targets) - set(self.PROVIDER_PRIORITY):
-            raise ValueError("Supply supported standings provider mappings")
+        if not targets or any(not isinstance(slug, str) or not slug.strip() for slug in targets):
+            raise ValueError("Supply explicit standings provider mappings")
         for slug, target in targets.items():
             validate_standings_request(target)
             if slug == "api-football" and target.league_external_id is None:
                 raise ValueError("API-Football standings require a league mapping")
         if await self.session.get(SportsSeason, season_id) is None:
             raise ValueError("Standings require an existing canonical season")
-        attempts = []
-        for slug in self.PROVIDER_PRIORITY:
+        sources = await self.repository.list_active_sources_for_capability("standings")
+        # Ineligible explicit targets are recorded in slug order without probing or health writes.
+        attempts = [SMS24ProviderAttempt(slug, False, "standings_capability_not_active")
+                    for slug in sorted(set(targets) - set(sources))]
+        for slug in sources:
             target = targets.get(slug)
             if target is None:
                 continue
-            source = await self.repository.get_active_source(slug)
+            source = await self.repository.get_active_source_for_capability(slug, "standings")
             if source is None:
-                attempts.append(SMS24ProviderAttempt(slug, False, "source_not_active"))
+                attempts.append(SMS24ProviderAttempt(slug, False, "standings_capability_not_active"))
                 continue
             source_id = source.id
             try:

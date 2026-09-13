@@ -62,6 +62,75 @@ class SportsDataSource(Base):
     )
 
 
+class SportsDataSourceCapability(Base):
+    __tablename__ = "sports_data_source_capabilities"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_id",
+            "capability",
+            name="uq_sports_data_source_capability",
+        ),
+        CheckConstraint(
+            "priority >= 0",
+            name="ck_sports_data_source_capabilities_priority_nonnegative",
+        ),
+        CheckConstraint(
+            "capability IN ("
+            "'fixtures',"
+            "'live',"
+            "'standings',"
+            "'news',"
+            "'transfers',"
+            "'injuries',"
+            "'selections',"
+            "'statistics'"
+            ")",
+            name="ck_sports_data_source_capabilities_capability",
+        ),
+        Index(
+            "ix_sports_data_source_capabilities_lookup",
+            "capability",
+            "is_active",
+            "priority",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(
+            "sports_data_sources.id",
+            ondelete="CASCADE",
+        ),
+        index=True,
+    )
+    capability: Mapped[str] = mapped_column(
+        String(40)
+    )
+    priority: Mapped[int] = mapped_column(
+        Integer,
+        default=100,
+        server_default="100",
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        server_default="true",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
 class SportsCanonicalCompetition(Base):
     """Provider-independent competition identity, independent of season."""
 
