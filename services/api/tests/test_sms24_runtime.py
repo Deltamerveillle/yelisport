@@ -99,6 +99,7 @@ def test_runtime_builds_transfers_without_activation_or_http(key, monkeypatch):
     assert runner.session is runner.repository.session is session
     assert runner.ingestion_repository.session is session
     assert len(runner.registry.all()) == (2 if key else 0)
-    assert all(not callable(getattr(p, "fetch_transfers", None)) for p in runner.registry.all())
+    assert [p.slug for p in runner.registry.all()
+            if callable(getattr(p, "fetch_transfers", None))] == (["sportmonks"] if key else [])
     assert session.mock_calls == []
     httpx.AsyncClient.send.assert_not_called()

@@ -1,8 +1,29 @@
 # Transfers foundation (0034)
 
 This provides local persistence, domain validation, and a generic Transfers runner.
-There is no Transfers HTTP adapter, API endpoint, automatic human linking, or new capability activation.
+Sportmonks supplies a Transfers HTTP adapter. There is no public Transfers endpoint,
+automatic human linking, or new capability activation.
 The existing `transfers` capability and provider registry remain the integration boundary.
+
+## Sportmonks adapter
+
+`fetch_transfers(athlete_external_id=...)` uses `/transfers/players/{player_id}`,
+based on subscription responses supplied for this integration. The generic
+`/transfers?filters=playerIds:...` route is not used: the supplied probe did not filter.
+Numeric transfer `id` is the sole observation identity; `player_id` must match the
+requested string exactly. Team IDs map directly; missing/null IDs remain unknown.
+Dates accept only valid `YYYY-MM-DD` strings or null. Malformed records reject the batch.
+
+`reported_type` preserves `str(type_id)` without a business interpretation. The raw
+transfer object is copied to `metadata` (persisted as `metadata_json`), preserving
+`amount`, `completed`, `career_ended`, position IDs and other provider facts as supplied.
+No fee currency, season, canonical status, names or update timestamps are inferred.
+
+Pagination uses local `page`/`per_page=50` requests and requires valid `current_page`
+and `has_more`. Upstream next-page URLs/cursors are never followed. Duplicate IDs,
+missing pagination, empty nonterminal pages and the configured page limit cause failure
+instead of returning incomplete results. Existing sanitized HTTP handling is reused.
+Actual subscription access is not re-probed by the tests, which use mocked HTTP.
 
 ## Runner
 

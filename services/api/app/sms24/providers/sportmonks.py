@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 from urllib.parse import quote
 
@@ -17,11 +17,13 @@ from app.sms24.providers.base import (
     ProviderParticipant,
     SportsDataProvider,
 )
-
 from app.sms24.providers.standings import (
-    ProviderStandingsRequest, ProviderStandingsResult, validate_standings_request,
+    ProviderStandingsRequest,
+    ProviderStandingsResult,
+    validate_standings_request,
 )
 from app.sms24.providers.standings_normalization import normalize_sportmonks_standing
+from app.sms24.providers.transfers import ProviderTransfer, ProviderTransfersResult
 
 
 class SportmonksProvider(SportsDataProvider):
@@ -62,7 +64,7 @@ class SportmonksProvider(SportsDataProvider):
         live_only: bool = False,
     ) -> ProviderFetchResult:
         if sport_slug not in (None, "football"):
-            return ProviderFetchResult(fetched_at=datetime.now(timezone.utc))
+            return ProviderFetchResult(fetched_at=datetime.now(UTC))
         day = self._day(starts_from, starts_until)
         path = "/livescores/inplay" if live_only else f"/fixtures/date/{day}"
         params = {"include": self.INCLUDES, "timezone": "UTC"}
@@ -81,7 +83,7 @@ class SportmonksProvider(SportsDataProvider):
             if live_only or not self._has_more(payload, page):
                 return ProviderFetchResult(
                     fixtures=fixtures, raw_count=len(fixtures),
-                    fetched_at=datetime.now(timezone.utc),
+                    fetched_at=datetime.now(UTC),
                 )
         raise RuntimeError("Sportmonks pagination limit exceeded")
 
@@ -96,12 +98,14 @@ class SportmonksProvider(SportsDataProvider):
         seen = set()
         for page in range(1, self.max_pages + 1):
             payload = await self._get_json(path, params={
-                "include": "participant;details.type;rule.type", "page": str(page), "per_page": "50",
+                "include": "participant;details.type;rule.type",
+                "page": str(page), "per_page": "50",
             })
             for raw_row in payload["data"]:
                 row = self.normalize_standing(raw_row)
                 if row.external_season_id != season or (
-                    league_external_id is not None and row.external_competition_id != league_external_id
+                    league_external_id is not None
+                    and row.external_competition_id != league_external_id
                 ):
                     raise ValueError("Sportmonks standings league/season does not match request")
                 if row.external_id in seen:
@@ -114,19 +118,91 @@ class SportmonksProvider(SportsDataProvider):
                     raise ValueError("Sportmonks standings pagination disappeared")
                 return ProviderStandingsResult(
                     rows=rows,
-                    fetched_at=datetime.now(timezone.utc),
+                    fetched_at=datetime.now(UTC),
                 )
             if not self._has_more(payload, page):
                 return ProviderStandingsResult(
                     rows=rows,
-                    fetched_at=datetime.now(timezone.utc),
+                    fetched_at=datetime.now(UTC),
                 )
             if not payload["data"]:
                 raise ValueError("Sportmonks empty standings page with more pages")
         raise RuntimeError("Sportmonks standings pagination limit exceeded")
 
+    async def fetch_transfers(self, *, athlete_external_id: str) -> ProviderTransfersResult:
+        """Fetch player-scoped observations; opaque transfer IDs alone establish identity.
+
+        Reconstruct page requests locally, never follow upstream URLs/cursors. A
+        missing or inconsistent pagination envelope cannot establish completeness.
+        Raw provider facts remain metadata, not canonical movement/status facts.
+        """
+        if not isinstance(athlete_external_id, str):
+            raise ValueError("Sportmonks invalid Transfers player identifier")
+        self._transfer_id(athlete_external_id)
+        path = f"/transfers/players/{athlete_external_id}"
+        transfers = []
+        seen = set()
+        for page in range(1, self.max_pages + 1):
+            payload = await self._get_json(path, params={"page": str(page), "per_page": "50"})
+            pagination = payload.get("pagination")
+            if not isinstance(pagination, dict) or type(pagination.get("current_page")) is not int:
+                raise ValueError("Sportmonks invalid Transfers pagination")
+            more = self._has_more(payload, page)
+            for item in payload["data"]:
+                transfer = self._normalize_transfer(item)
+                if transfer.athlete_external_id != athlete_external_id:
+                    raise ValueError("Sportmonks Transfers player does not match request")
+                if transfer.external_id in seen:
+                    raise ValueError("Sportmonks duplicate transfer in response")
+                seen.add(transfer.external_id)
+                transfers.append(transfer)
+            if not more:
+                return ProviderTransfersResult(
+                    fetched_at=datetime.now(UTC), transfers=tuple(transfers),
+                )
+            if not payload["data"]:
+                raise ValueError("Sportmonks empty Transfers page with more pages")
+        raise RuntimeError("Sportmonks Transfers pagination limit exceeded")
+
+    @staticmethod
+    def _transfer_id(value: Any) -> str:
+        """Sportmonks numeric IDs, without coercing booleans or repairing input."""
+        identifier = SportmonksProvider._id(value)
+        if (len(identifier) > 160 or not identifier.isascii()
+                or not identifier.isdecimal() or int(identifier) <= 0):
+            raise ValueError("Sportmonks invalid Transfers identifier")
+        return identifier
+
+    @classmethod
+    def _normalize_transfer(cls, item: Any) -> ProviderTransfer:
+        if not isinstance(item, dict):
+            raise ValueError("Sportmonks transfer must be an object")
+        reported_date = None
+        raw_date = item.get("date")
+        if raw_date is not None:
+            try:
+                if not isinstance(raw_date, str) or len(raw_date) != 10:
+                    raise ValueError
+                reported_date = date.fromisoformat(raw_date)
+                if reported_date.isoformat() != raw_date:
+                    raise ValueError
+            except ValueError:
+                raise ValueError("Sportmonks invalid transfer date") from None
+        return ProviderTransfer(
+            external_id=cls._transfer_id(item.get("id")),
+            athlete_external_id=cls._transfer_id(item.get("player_id")),
+            from_team_external_id=(cls._transfer_id(item["from_team_id"])
+                                   if item.get("from_team_id") is not None else None),
+            to_team_external_id=(cls._transfer_id(item["to_team_id"])
+                                 if item.get("to_team_id") is not None else None),
+            reported_date=reported_date,
+            reported_type=(cls._transfer_id(item["type_id"])
+                           if item.get("type_id") is not None else None),
+            metadata=dict(item),
+        )
+
     async def check_health(self) -> ProviderHealthResult:
-        checked_at = datetime.now(timezone.utc)
+        checked_at = datetime.now(UTC)
         started = time.perf_counter()
         try:
             await self._get_json(
@@ -190,10 +266,10 @@ class SportmonksProvider(SportsDataProvider):
             if value is not None:
                 if value.tzinfo is None or value.utcoffset() is None:
                     raise ValueError("datetime must be timezone-aware")
-                values.append(value.astimezone(timezone.utc))
+                values.append(value.astimezone(UTC))
         if len(values) == 2 and (values[0] > values[1] or values[0].date() != values[1].date()):
             raise ValueError("Sportmonks requires an ordered single UTC day window")
-        return (values[0] if values else datetime.now(timezone.utc)).date().isoformat()
+        return (values[0] if values else datetime.now(UTC)).date().isoformat()
 
     @staticmethod
     def _datetime(value: Any) -> datetime:
@@ -202,15 +278,15 @@ class SportmonksProvider(SportsDataProvider):
                 raise ValueError
             parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
             # Sportmonks returns naive starting_at in the requested timezone (UTC).
-            return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else (
-                parsed.astimezone(timezone.utc)
+            return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else (
+                parsed.astimezone(UTC)
             )
         except (ValueError, TypeError):
             raise ValueError("Sportmonks invalid fixture timestamp") from None
 
     @staticmethod
     def _id(value: Any) -> str:
-        if isinstance(value, bool) or not isinstance(value, (str, int)) or not str(value).strip():
+        if isinstance(value, bool) or not isinstance(value, str | int) or not str(value).strip():
             raise ValueError("Sportmonks required identifier missing")
         return str(value)
 
@@ -282,7 +358,8 @@ class SportmonksProvider(SportsDataProvider):
                     if isinstance(code, str) and len(code) == 2
                     and code.isascii() and code.isalpha() else None
                 ),
-                season=str(season["name"]) if isinstance(season, dict) and season.get("name") else None,
+                season=(str(season["name"])
+                        if isinstance(season, dict) and season.get("name") else None),
                 logo_url=league.get("image_path"),
             )
         periods = item.get("periods") or []
