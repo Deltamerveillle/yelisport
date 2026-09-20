@@ -218,7 +218,58 @@ class SportmonksProvider(SportsDataProvider):
             message="Sportmonks reachable" if healthy else "Sportmonks unavailable",
         )
 
-    async def _get_json(self, path: str, *, params: dict[str, str]) -> dict[str, Any]:
+    async def fetch_team_player_ids(
+        self, *, team_external_id: str, reference_date: date,
+    ) -> tuple[str, ...]:
+        """Active membership IDs only; no player catalogue or human identity lookup."""
+        if not isinstance(team_external_id, str) or type(reference_date) is not date:
+            raise ValueError("Sportmonks invalid team discovery request")
+        self._transfer_id(team_external_id)
+        payload = await self._get_json(
+            f"/teams/{team_external_id}", params={"include": "players"}, data_type=dict,
+        )
+        team = payload["data"]
+        if self._transfer_id(team.get("id")) != team_external_id:
+            raise ValueError("Sportmonks team does not match request")
+        memberships = team.get("players")
+        if not isinstance(memberships, list):
+            raise ValueError("Sportmonks team players must be a list")
+        players = set()
+        for membership in memberships:
+            if not isinstance(membership, dict):
+                raise ValueError("Sportmonks membership must be an object")
+            player_id = self._transfer_id(membership.get("player_id"))
+            if self._transfer_id(membership.get("team_id")) != team_external_id:
+                raise ValueError("Sportmonks membership team does not match request")
+            bounds = []
+            for field in ("start", "end"):
+                if field not in membership:
+                    raise ValueError("Sportmonks membership date field missing")
+                value = membership[field]
+                if value is None:
+                    bounds.append(None)
+                    continue
+                try:
+                    if not isinstance(value, str) or len(value) != 10:
+                        raise ValueError
+                    parsed = date.fromisoformat(value)
+                    if parsed.isoformat() != value:
+                        raise ValueError
+                except ValueError:
+                    raise ValueError("Sportmonks invalid membership date") from None
+                bounds.append(parsed)
+            start, end = bounds
+            if start is not None and end is not None and start > end:
+                raise ValueError("Sportmonks inverted membership dates")
+            if (start is None or start <= reference_date) and (
+                end is None or end >= reference_date
+            ):
+                players.add(player_id)
+        return tuple(sorted(players))
+
+    async def _get_json(
+        self, path: str, *, params: dict[str, str], data_type: type = list,
+    ) -> dict[str, Any]:
         # Do not propagate transport errors, response bodies or URLs: they may echo secrets.
         try:
             if self._client is not None:
@@ -241,7 +292,7 @@ class SportmonksProvider(SportsDataProvider):
         except ValueError:
             raise ValueError("Sportmonks invalid JSON") from None
         if (
-            not isinstance(payload, dict) or not isinstance(payload.get("data"), list)
+            not isinstance(payload, dict) or not isinstance(payload.get("data"), data_type)
             or payload.get("error") or payload.get("errors")
         ):
             raise ValueError("Sportmonks invalid response envelope")

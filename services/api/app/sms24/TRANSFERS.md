@@ -25,7 +25,91 @@ missing pagination, empty nonterminal pages and the configured page limit cause 
 instead of returning incomplete results. Existing sanitized HTTP handling is reused.
 Actual subscription access is not re-probed by the tests, which use mocked HTTP.
 
-## Runner
+## Automatic targets
+
+`run_sms24_automatic_transfers(session, reference_date=D, max_teams=20, max_players=100)`
+composes `SportmonksTransfersTargetDiscovery` and `TransfersBatchOrchestrator`.
+The existing single-player `TransfersRunner.run(targets={...})` is unchanged.
+
+Discovery reads existing `SportsCompetitor` team rows belonging to Sportmonks and
+the active football sport, gated by the active source and Transfers capability.
+It uses their `external_id` directly, never a parsed canonical key. The path is:
+known team → `/teams/{id}?include=players` → active membership `player_id` → runner.
+No global `/players` scan or individual `/players/{id}` requests are made.
+
+The team object and every membership must match the requested team. `players=[]`
+is a valid empty result; absent/malformed includes reject that team's payload.
+`start` and `end` must be present, either null or strict `YYYY-MM-DD` dates.
+Membership is active exactly when `(start is null or start <= D)` and
+`(end is null or end >= D)`. Invalid/inverted dates or invalid IDs reject the whole
+team payload, including rows that would otherwise be inactive. IDs use the existing
+Transfers numeric ASCII positive-ID validator; their string representation is preserved.
+
+Targets are ephemeral: memberships supply no reliable player name. No provider
+athlete row, human profile, identity link, canonical event or resolution is created.
+Discovery is read-only; ingestion is delegated exclusively to the existing runner;
+identity resolution remains a separate explicit action.
+
+Teams and deduplicated player IDs use lexicographic string ordering. Defaults are
+20 teams and 100 players per run, configurable positive integer limits. Discovery
+reports `teams_limited`; the batch reports discovered/attempted/succeeded/failed/
+deferred counts and observations processed (including replays, as in the runner).
+Discovery counts apply only to the teams visited. Runs are sequential without retries
+or following upstream next-page URLs/cursors. A batch is bounded by the team limit
+plus the player limit times the existing health-check and `max_pages` fetch bound.
+This is a call budget, not a time-based rate limiter or scheduler.
+
+### Stateless continuation
+
+The repository's public lists generally use limit/offset; this traversal instead
+uses identifier keysets so deleting the previous boundary cannot shift an offset.
+`discover(reference_date=D, after_team_external_id=cursor)` selects IDs strictly
+greater than the cursor using the same PostgreSQL `COLLATE "C"` as its ordering.
+It reads at most `max_teams + 1` rows to detect a following page. `has_more`
+(also exposed as the existing `teams_limited`) and `next_cursor` describe continuation.
+The next cursor is the last attempted team ID, including failed attempts, or null
+when no further teams remain. No cursor means the unchanged first page.
+
+`batch.run(player_ids=ids, after_player_external_id=cursor)` similarly selects
+deduplicated, lexicographically sorted IDs strictly after the cursor. Its
+`targets_discovered` counts the entire supplied deduplicated set;
+`targets_before_cursor` counts IDs at or below the boundary in that set (not proven
+prior successes). `targets_deferred` counts only IDs remaining after this page.
+`has_more` and `next_cursor` identify the next page, including when this page fails.
+Both cursor types use the existing positive ASCII decimal ID validator and preserve
+the exact string; a boundary need not still exist. Invalid cursors fail before I/O.
+
+The runtime accepts an explicit `AutomaticTransfersCursor(after_team_external_id,
+after_player_external_id)` via `cursor=` and returns `result.next_cursor` of the same
+type. Pass that value to the next invocation with the same reference date and team
+limit. While players remain, it retains the input team boundary and advances only
+the player boundary. Once those players are exhausted, it advances to the next team
+page and clears the player boundary. The last result has `next_cursor=None`; callers
+must stop that traversal rather than interpret null as another continuation.
+This may fetch the current teams again while draining their players. Alternatively,
+call discovery once and drain its ephemeral `player_ids` through the batch component.
+
+For stable sets, these exclusive boundaries cover every team/player page without
+repeating entries within that traversal of a set. They are not snapshot isolation:
+new IDs at or below a consumed boundary are visited on a later sweep started without
+cursors. Keep the reference date, selection parameters and player set stable when
+requiring exact per-sweep coverage. A player appearing in different team pages can
+be attempted again; cross-run deduplication is not stored here and observation
+ingestion remains idempotent. Failed attempts advance to avoid blocking later IDs;
+retry policy, cursor persistence and starting subsequent sweeps belong to the caller.
+Discovery eligibility/configuration errors must be handled using `discovery.reason`,
+not mistaken for a completed traversal. No global state, table, worker or scheduler
+is introduced.
+
+Team failures carry sanitized discovery codes and other teams continue. A runner's
+`TransfersAllProvidersFailed` becomes `transfers_target_failed` for that target and
+other players continue, including when every target fails. Empty discovery yields
+zero batch attempts; eligibility/configuration failures are explicit discovery reasons.
+Unexpected batch errors and SQL errors propagate. The caller owns the transaction;
+the runner's savepoints protect valid prior targets. No component writes source health
+or enables any capability, including API-Football Transfers.
+
+## Explicit runner
 
 `build_sms24_transfers_runner(session)` uses the existing provider registry. Call
 `run(targets={"provider-slug": "opaque-player-id"})` with explicit, normalized slugs.
