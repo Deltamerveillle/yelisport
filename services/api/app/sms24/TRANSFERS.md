@@ -1,8 +1,26 @@
 # Transfers foundation (0034)
 
-This is local persistence and domain validation only. There is no transfer runner,
-HTTP adapter, API endpoint, automatic human linking, or new capability activation.
+This provides local persistence, domain validation, and a generic Transfers runner.
+There is no Transfers HTTP adapter, API endpoint, automatic human linking, or new capability activation.
 The existing `transfers` capability and provider registry remain the integration boundary.
+
+## Runner
+
+`build_sms24_transfers_runner(session)` uses the existing provider registry. Call
+`run(targets={"provider-slug": "opaque-player-id"})` with explicit, normalized slugs.
+Only targeted active sources with an active Transfers capability and a callable
+`fetch_transfers` are probed. Registration alone never enables Transfers.
+
+All eligible targets run in capability-priority/slug order. Results are validated
+against the contract and requested player, then persisted only with
+`record_observation`, in a savepoint per provider batch. The caller owns the outer
+transaction. Validation failures produce sanitized attempt codes; database errors
+during persistence propagate. No outcome updates global source health.
+
+A valid empty result succeeds without deleting previous observations. At least one
+success returns a result; otherwise `TransfersAllProvidersFailed` carries attempts.
+`observations_processed` counts accepted batch entries, including replays and stale
+snapshots, not newly inserted or changed rows. No graph or human resolution occurs.
 
 ## Identity and review
 

@@ -19,6 +19,7 @@ from app.sms24.runner import (
 
 from app.sms24.standings import SMS24StandingsRepository, StandingsIngestionService
 from app.sms24.standings_runner import StandingsProviderRunner
+from app.sms24.transfers_runner import TransfersRunner
 
 
 def build_sms24_provider_registry(
@@ -81,3 +82,10 @@ def build_sms24_standings_runner(
         registry=build_sms24_provider_registry(settings),
         ingestion_service=StandingsIngestionService(SMS24StandingsRepository(session)),
     )
+
+
+def build_sms24_transfers_runner(
+    session: AsyncSession, *, settings: Settings | None = None,
+) -> TransfersRunner:
+    """Reuse local registration without enabling Transfers support or capabilities."""
+    return TransfersRunner(session=session, registry=build_sms24_provider_registry(settings))
