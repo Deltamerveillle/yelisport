@@ -16,7 +16,12 @@ from app.sms24.providers.standings import (
     ProviderStandingsResult,
 )
 
+from app.sms24.providers.transfers import ProviderTransfer, ProviderTransfersResult, TransfersProvider
+
 __all__ = [
+    "ProviderTransfer",
+    "ProviderTransfersResult",
+    "TransfersProvider",
     "ProviderStanding",
     "ProviderStandingsRequest",
     "ProviderStandingsResult",

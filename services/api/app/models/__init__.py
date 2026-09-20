@@ -65,7 +65,16 @@ from app.models.sports_news import (
     SportsNewsArticleCountry,
 )
 
+from app.models.sports_transfers import (
+    SportsAthleteIdentityLink,
+    SportsCanonicalTransfer,
+    SportsTransferObservation,
+)
+
 __all__ = [
+    "SportsAthleteIdentityLink",
+    "SportsCanonicalTransfer",
+    "SportsTransferObservation",
     "SportsNewsArticle",
     "SportsNewsArticleSport",
     "SportsNewsArticleCompetition",
