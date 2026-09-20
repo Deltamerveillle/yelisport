@@ -180,3 +180,88 @@ snapshots, not newly inserted or changed rows. No graph or human resolution occu
 Tests create unique schemas with no public search-path fallback and roll back all DDL/data.
 Run the new contract/PostgreSQL tests plus existing canonical-identity/provider-contract
 unit tests. Do not point the migration tests at the application database.
+# Durable worker checkpoint foundation (0036)
+
+The delivery chain is FOUNDATION → RUNNER → SPORTMONKS ADAPTER → CAPABILITY →
+AUTOMATIC TARGETS → DURABLE WORKER CHECKPOINT → future WORKER/SCHEDULER.
+This layer starts **no worker**, timer, HTTP request, scheduler or Docker service.
+It never enables a capability or changes source health or domain identity.
+
+Migration `20260920_0036` follows `20260920_0035` and creates only
+`sms24_job_checkpoints`, without seeding any job. Downgrade drops only that table.
+The table is generic; `SMS24TransfersCheckpointRepository` supplies the typed
+Transfers API for the stable job key `sms24:sportmonks:transfers`.
+
+| Column | Type / purpose |
+| --- | --- |
+| `job_key` | varchar(160), primary key: one durable record per logical job |
+| `status` | varchar(32): idle, running, completed, completed_with_errors |
+| `reference_date` | nullable date: fixed membership date for this traversal |
+| `cursor` | non-null JSONB object: `after_team_external_id` and `after_player_external_id`, both nullable strings; empty object outside a traversal |
+| `parameters` | non-null JSONB object: fixed `max_teams` and `max_players` for Transfers |
+| `failed_attempts` | non-negative integer, initially zero: cumulative failed team/player attempts, so a successful final page cannot erase earlier errors |
+| `started_at` | nullable timestamptz: start of the current/latest traversal |
+| `completed_at` | nullable timestamptz: explicit traversal completion |
+| `created_at` | non-null timestamptz: job record creation |
+| `updated_at` | non-null timestamptz: latest checkpoint mutation |
+
+There are no retry counters, next-due timestamps, payloads, secrets, human foreign
+keys or cycle history here. Retry cadence belongs to the future scheduler. The
+single record preserves the current/latest traversal only. JSON columns allow
+other SMS24 jobs to define their own cursor/parameters without another table.
+Transfers uses validated `AutomaticTransfersCursor` values, never a raw upstream URL.
+Database checks enforce nonempty identity, allowed statuses, object-shaped JSON,
+nonnegative failure count and consistent lifecycle dates. Transfers parameter and
+cursor validation, and parameter immutability, are enforced by the repository API;
+direct SQL writers must not bypass this protocol.
+
+## Transaction and lock protocol
+
+The caller opens the outer transaction **before** calling `try_acquire_lock()`.
+The key is the first 8 bytes of SHA-256 of UTF-8
+`sms24-job-checkpoint:v1:` + job key, interpreted as a signed big-endian int64.
+It uses `pg_try_advisory_xact_lock(bigint)`: nonblocking, stable between processes,
+independent of Python `hash()`. A theoretical hash collision only serializes two
+different jobs; it cannot permit two holders for the same job. Every participant
+must use the same database and key. These are cooperative PostgreSQL locks.
+
+`False` means do not read/process that job; leave the transaction and retry later.
+Other repository methods acquire/check the lock too, raising the static
+`CheckpointLockNotAcquired` if busy. They never rely on cached lock ownership.
+Lock acquisition inside a savepoint is rejected; acquire it before the runner's
+savepoints. Commit, rollback or connection loss releases it automatically.
+No repository method commits or rolls back. No lock is held across scheduler sleep.
+
+The future caller performs in **one transaction on one session**:
+
+1. Acquire the lock, then `get()` or `get_or_create()`.
+2. For an idle/completed job only, `start_run(reference_date=..., max_teams=..., max_players=...)`.
+3. Call `run_sms24_automatic_transfers` with the stored date, limits and cursor.
+4. For a nonterminal result, call `save_progress(result)`.
+5. For a terminal result, inspect business outcomes and explicitly call `complete_run(result)`.
+6. Commit observations and checkpoint together.
+
+`get()` returns None for an absent job. `get_or_create()` creates an idle job;
+`start_run()` also supports an absent job. Progress/completion without a running
+traversal fails. Starting another traversal while one is running fails, even with
+the same parameters: resume instead. Read results are immutable snapshots, not
+mutable ORM rows. Only a new traversal can change its date/limits and reset its
+cursor/failure count. Existing `TransfersRunner` savepoints remain unchanged.
+
+`next_cursor=None` is **not automatic success**. `save_progress` rejects it.
+`complete_run` is an explicit caller decision, rejects remaining pages and rejects
+any `discovery.reason` (including unavailable capability/provider). Individual
+team/player failures may advance progress; completion retains their count as
+`completed_with_errors`. This is traversal exhaustion, not a claim that every
+target was successfully ingested. The future scheduler decides when to retry.
+
+Before commit, rollback/connection loss discards both observations and the new
+checkpoint, preserving the previous continuation for replay. After commit, both
+advance together. This is at-least-once execution, with possible repeated HTTP
+requests and existing observation idempotence. SQL failures propagate.
+
+A subsequent explicit `start_run` resets both cursor bounds and fixes a new date
+and limits. This new sweep discovers IDs added before old bounds. Continuations
+remain stateless keyset boundaries, not snapshots: changing provider memberships
+can still affect a resumed team slice. No human identity or canonical resolution
+is created by checkpointing.
