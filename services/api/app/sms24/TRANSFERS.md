@@ -265,3 +265,82 @@ and limits. This new sweep discovers IDs added before old bounds. Continuations
 remain stateless keyset boundaries, not snapshots: changing provider memberships
 can still affect a resumed team slice. No human identity or canonical resolution
 is created by checkpointing.
+
+## Durable Transfers worker / scheduler
+
+`app.sms24.transfers_worker` is the dedicated asynchronous process that executes
+automatic Sportmonks Transfers traversals. It is separate from the fixtures/live
+worker and from the FastAPI process. Docker Compose exposes it as the dedicated
+`sms24-transfers-worker` service.
+
+The worker is disabled by default. When disabled it performs no provider ingestion
+and remains alive, sleeping in long intervals, so `restart: unless-stopped` does
+not create a restart loop.
+
+Configuration:
+
+- `SMS24_TRANSFERS_WORKER_ENABLED` — default `false`.
+- `SMS24_TRANSFERS_CYCLE_INTERVAL_SECONDS` — default `21600` (6 hours).
+- `SMS24_TRANSFERS_PAGE_INTERVAL_SECONDS` — default `60`.
+- `SMS24_TRANSFERS_RETRY_INTERVAL_SECONDS` — default `300`.
+- `SMS24_TRANSFERS_LOCK_RETRY_SECONDS` — default `60`.
+- `SMS24_TRANSFERS_MAX_TEAMS` — default `20`.
+- `SMS24_TRANSFERS_MAX_PLAYERS` — default `100`.
+
+Boolean configuration is strict. Numeric intervals and limits must be positive
+integers. Invalid configuration fails instead of silently selecting another value.
+
+Each bounded slice owns one outer database transaction. It acquires the nonblocking
+0036 PostgreSQL advisory transaction lock before processing the checkpoint. If the
+lock is busy, no ingestion or checkpoint mutation occurs and the worker retries
+after the configured lock delay.
+
+For a new traversal, the worker fixes the current UTC reference date and the current
+team/player limits in the durable checkpoint. A running traversal always resumes
+the stored reference date, limits and typed cursor; changing environment variables
+does not mutate an in-progress traversal. This makes restart/resume deterministic.
+
+A slice calls `run_sms24_automatic_transfers` only through the established automatic
+target discovery, batch orchestrator and Transfers runner. It therefore preserves
+the existing chain:
+
+known Sportmonks teams -> `/teams/{id}?include=players` -> active player IDs ->
+`/transfers/players/{player_id}` -> TransfersRunner -> provider observations.
+
+It does not globally scan `/players`, create a User/Athlete/Profile, perform fuzzy
+or name-based identity matching, create or resolve canonical transfer events, merge
+providers, activate API-Football Transfers, mutate source health, or bypass the
+Transfers runner.
+
+If continuation remains, observations and `save_progress()` commit together. On
+true traversal exhaustion, observations and `complete_run()` commit together.
+Unexpected/SQL errors roll back the whole slice, leaving the durable continuation
+available for replay. An unavailable discovery/provider condition is not treated
+as successful completion.
+
+Individual sanitized target failures may advance the cursor so one inaccessible
+player cannot permanently block the traversal. Their cumulative count is retained
+by the checkpoint. Exhaustion with any accumulated target failures is recorded as
+`completed_with_errors`; this means the traversal finished, not that every target
+succeeded. Provider exception messages, response bodies, API keys and other
+upstream-sensitive details are not persisted or emitted by the worker.
+
+After `completed` or `completed_with_errors`, the worker waits the configured full
+cycle interval before starting a new traversal. While waiting, it computes the
+remaining delay from `completed_at` rather than starting another sweep immediately.
+The next traversal resets the cursor/failure count and uses a new UTC reference date
+and the then-current limits.
+
+SIGTERM and SIGINT cancel the running worker task. Shutdown removes installed signal
+handlers and disposes the database engine. Cancellation is propagated rather than
+converted into an ordinary retry.
+
+The execution model is at-least-once: a process or database failure before commit
+can cause the same provider request to be replayed after restart. Existing transfer
+observation identity/idempotence makes such replay safe at the persistence boundary.
+
+Real Docker validation on 2026-09-21 demonstrated durable resume, multiple bounded
+continuations, successful Sportmonks HTTP responses, persisted observations, partial
+target failures without traversal abortion, and terminal `completed_with_errors`.
+The final checkpoint had an empty cursor and retained its cumulative failure count.
+The worker was then returned to its default disabled state.
