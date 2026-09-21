@@ -40,6 +40,7 @@ from app.models.sports_news import (
     SportsNewsArticleCountry,
     SportsNewsArticleSport,
 )
+from app.models.sports_player_statistics import SportsPlayerStatisticObservation
 from app.models.sports_standings import SportsStanding
 from app.models.sports_transfers import (
     SportsAthleteIdentityLink,
@@ -60,6 +61,7 @@ from app.models.user_role import UserRole
 from app.models.yeleni_pay_event import YeleniPayEvent
 
 __all__ = [
+    "SportsPlayerStatisticObservation",
     "SMS24JobCheckpoint",
     "SportsAthleteIdentityLink",
     "SportsCanonicalTransfer",
