@@ -2,9 +2,51 @@
 
 These are multisport provider observations, **not AthletePerformance or SMS Proof**.
 The foundation itself performs no HTTP calls. The optional Sportmonks adapter
-below returns provider contract values only. No Statistics runner, worker,
-scheduler, public endpoint or capability activation is introduced. Transfers
+below returns provider contract values only. The explicit-target runner described
+below persists observations. No Statistics worker, scheduler, public endpoint or
+capability activation is introduced. Transfers
 behavior and migrations through 0037 remain unchanged.
+
+## Explicit-target transactional runner
+
+`PlayerStatisticsRunner.run(targets=...)` accepts a nonempty mapping from normalized
+provider slugs to frozen `PlayerStatisticsTarget(athlete_external_id, sport_id)`
+values. The athlete ID uses the existing text validator (160 characters maximum),
+and sport_id must already be a UUID, never a string to coerce. Subclasses or other
+target shapes are rejected. A copy of the input mapping fixes targets for the call.
+
+The caller explicitly supplies the sport context for each target; the authoritative
+catalogue is `Sport`. One query validates that every requested UUID exists and is
+active before any provider call or observation write. An invalid target rejects the
+whole request with ValueError. There is no provider-to-sport mapping and no inference
+from a URL, name, team, metadata or existing SportsCompetitor. The same provider can
+be called with different explicit sports. Choosing the appropriate sport for the
+upstream request remains the caller's responsibility.
+
+Only active sources with an active `statistics` capability are eligible. The runner
+uses the existing provider registry, callable method check, health result and
+Player Statistics validators (the result contract requires a tuple). Every returned
+athlete_external_id must match the requested string exactly. Failures expose static
+internal reason codes; restricted access is distinguished from health/fetch failure.
+
+Each complete provider batch gets a savepoint, including its final flush. Only
+`SMS24PlayerStatisticsRepository.record_observation` writes observations, receiving
+the exact source UUID and target sport UUID. ValueError during ingestion rolls back
+the batch and records `ingestion_validation_failed`; SQLAlchemyError and unexpected
+persistence failures propagate. The caller owns the outer commit/rollback. No source
+health or capability is changed.
+
+All eligible targeted providers are attempted. One successful provider is sufficient
+for a result; otherwise `PlayerStatisticsAllProvidersFailed` retains the sanitized
+attempts. A valid empty tuple is success with zero processed observations and deletes
+nothing. Processed counts include idempotent replays and ignored stale snapshots.
+
+No provider athlete row is required or created. The runner never resolves
+athlete_competitor_id, fixture_id, canonical_fixture_id or season_id. In particular,
+Sportmonks season/team/position IDs stay raw metadata, not canonical graph UUIDs.
+No human model, identity link, performance or verification is created or updated.
+The actual Statistics capability remains unactivated; tests enable it only in their
+disposable fixtures. There is no runtime scheduling or public entry point here.
 
 ## Sportmonks Football V3 season adapter
 
