@@ -17,6 +17,10 @@ from app.sms24.providers.base import (
     ProviderParticipant,
     SportsDataProvider,
 )
+from app.sms24.providers.player_statistics import (
+    ProviderPlayerStatistic,
+    ProviderPlayerStatisticsResult,
+)
 from app.sms24.providers.standings import (
     ProviderStandingsRequest,
     ProviderStandingsResult,
@@ -128,6 +132,97 @@ class SportmonksProvider(SportsDataProvider):
             if not payload["data"]:
                 raise ValueError("Sportmonks empty standings page with more pages")
         raise RuntimeError("Sportmonks standings pagination limit exceeded")
+
+    async def fetch_player_statistics(
+        self, *, athlete_external_id: str,
+    ) -> ProviderPlayerStatisticsResult:
+        """Season observations identified only by Sportmonks' statistics record ID."""
+        if not isinstance(athlete_external_id, str):
+            raise ValueError("Sportmonks invalid statistics player identifier")
+        self._transfer_id(athlete_external_id)
+        payload = await self._get_json(
+            f"/players/{athlete_external_id}",
+            params={"include": "statistics.details.type"}, data_type=dict,
+        )
+        player = payload["data"]
+        if self._transfer_id(player.get("id")) != athlete_external_id:
+            raise ValueError("Sportmonks statistics player does not match request")
+        items = player.get("statistics")
+        if not isinstance(items, list):
+            raise ValueError("Sportmonks statistics must be a list")
+        name = player.get("name")
+        if not isinstance(name, str) or not name.strip() or len(name) > 200 or "\x00" in name:
+            name = None
+        statistics = {}
+        for item in items:
+            row = self._normalize_player_statistic(item, athlete_external_id, name)
+            if row.external_id in statistics:
+                raise ValueError("Sportmonks duplicate statistic in response")
+            statistics[row.external_id] = row
+        return ProviderPlayerStatisticsResult(
+            fetched_at=datetime.now(UTC),
+            statistics=tuple(statistics[key] for key in sorted(statistics)),
+        )
+
+    @classmethod
+    def _normalize_player_statistic(
+        cls, item: Any, athlete_external_id: str, athlete_name: str | None,
+    ) -> ProviderPlayerStatistic:
+        if not isinstance(item, dict):
+            raise ValueError("Sportmonks statistic must be an object")
+        external_id = cls._transfer_id(item.get("id"))
+        player_id = cls._transfer_id(item.get("player_id"))
+        if player_id != athlete_external_id:
+            raise ValueError("Sportmonks statistic player does not match request")
+        metadata = {}
+        for field in ("team_id", "season_id", "position_id"):
+            if field in item:
+                if item[field] is not None:
+                    cls._transfer_id(item[field])
+                metadata[field] = item[field]
+        if "jersey_number" in item:
+            jersey = item["jersey_number"]
+            if jersey is not None and (type(jersey) is not int or jersey < 0):
+                raise ValueError("Sportmonks invalid statistics jersey number")
+            metadata["jersey_number"] = jersey
+        if "has_values" in item:
+            if item["has_values"] is not None and type(item["has_values"]) is not bool:
+                raise ValueError("Sportmonks invalid statistics has_values")
+            metadata["has_values"] = item["has_values"]
+        details = item.get("details")
+        if not isinstance(details, list):
+            raise ValueError("Sportmonks statistics details must be a list")
+        metrics = {}
+        for detail in details:
+            if not isinstance(detail, dict):
+                raise ValueError("Sportmonks statistic detail must be an object")
+            cls._transfer_id(detail.get("id"))
+            if cls._transfer_id(detail.get("player_statistic_id")) != external_id:
+                raise ValueError("Sportmonks statistic detail parent does not match")
+            type_id = cls._transfer_id(detail.get("type_id"))
+            if type_id in metrics:
+                raise ValueError("Sportmonks duplicate statistic detail type")
+            if "value" not in detail:
+                raise ValueError("Sportmonks statistic detail value is missing")
+            metric = {"detail_id": detail["id"], "type_id": detail["type_id"],
+                      "value": detail["value"]}
+            if "type" in detail:
+                kind = detail["type"]
+                if not isinstance(kind, dict):
+                    raise ValueError("Sportmonks statistic detail type must be an object")
+                if "id" in kind and cls._transfer_id(kind["id"]) != type_id:
+                    raise ValueError("Sportmonks statistic type ID does not match")
+                for field in ("name", "code", "developer_name", "model_type", "stat_group"):
+                    if field in kind:
+                        if kind[field] is not None and not isinstance(kind[field], str):
+                            raise ValueError("Sportmonks invalid statistic type label")
+                        metric[field] = kind[field]
+            metrics[type_id] = metric
+        return ProviderPlayerStatistic(
+            external_id=external_id, athlete_external_id=player_id, athlete_name=athlete_name,
+            scope="season", metrics={key: metrics[key] for key in sorted(metrics)},
+            metadata=metadata,
+        )
 
     async def fetch_transfers(self, *, athlete_external_id: str) -> ProviderTransfersResult:
         """Fetch player-scoped observations; opaque transfer IDs alone establish identity.

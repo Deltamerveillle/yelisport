@@ -1,9 +1,38 @@
 # Player Statistics foundation (0037)
 
 These are multisport provider observations, **not AthletePerformance or SMS Proof**.
-No adapter, runner, worker, scheduler, public endpoint, capability activation or
-HTTP call is introduced. Existing Transfers code and migrations through 0036 are
-unchanged; its worker remains disabled by default.
+The foundation itself performs no HTTP calls. The optional Sportmonks adapter
+below returns provider contract values only. No Statistics runner, worker,
+scheduler, public endpoint or capability activation is introduced. Transfers
+behavior and migrations through 0037 remain unchanged.
+
+## Sportmonks Football V3 season adapter
+
+`SportmonksProvider.fetch_player_statistics(athlete_external_id=...)` uses the
+existing authenticated `_get_json` path for `/players/{id}` with
+`include=statistics.details.type`. The request ID, player response ID and every
+statistics.player_id must match exactly under the existing strict Sportmonks
+positive ASCII decimal ID rules. A valid `statistics=[]` returns an empty tuple.
+
+Each season statistics object's own `id` is its `external_id` (for example
+27324842 in the verified payload), independently of player/team/season IDs.
+`record_reference`, `fixture_external_id`, `period_label` and `source_updated_at`
+stay None: no supported period label or record timestamp has been demonstrated.
+The scope is always `season`; a valid player name is display evidence only.
+
+Metrics use sorted string type-ID keys. Each contains the validated raw detail ID,
+raw type ID, available type labels (including model_type), and the exact JSON-native
+value. Missing `value` is rejected; explicit null and zero stay distinct. Missing
+type labels remain absent; a supplied `type` must be an object. Duplicate statistics
+IDs, duplicate type IDs and mismatching parent/type/player IDs reject the response.
+Output observations are sorted by their normalized opaque external ID.
+
+Metadata is limited to team_id, season_id, position_id, jersey_number and has_values.
+Optional nulls remain null; absent fields remain absent. IDs are validated without
+rewriting their raw representation. A known jersey number must be a nonnegative
+integer (never bool, float or numeric string); a known has_values must be a bool.
+No arbitrary HTTP/player fields are copied, and no local season or identity is
+resolved. Calling this adapter does not persist anything or enable a capability.
 
 ## Provider identity and unknown facts
 
