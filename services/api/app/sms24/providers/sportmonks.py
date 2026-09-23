@@ -17,6 +17,7 @@ from app.sms24.providers.base import (
     ProviderParticipant,
     SportsDataProvider,
 )
+from app.sms24.providers.player_identity import ProviderPlayerIdentity
 from app.sms24.providers.player_statistics import (
     ProviderPlayerStatistic,
     ProviderPlayerStatisticsResult,
@@ -311,6 +312,24 @@ class SportmonksProvider(SportsDataProvider):
             is_healthy=healthy, checked_at=checked_at,
             latency_ms=int((time.perf_counter() - started) * 1000),
             message="Sportmonks reachable" if healthy else "Sportmonks unavailable",
+        )
+
+    async def fetch_player_identity(
+        self, *, athlete_external_id: str,
+    ) -> ProviderPlayerIdentity:
+        """Retrieve official provider identity independently of statistics."""
+        if not isinstance(athlete_external_id, str):
+            raise ValueError("Sportmonks invalid player identity request")
+        self._transfer_id(athlete_external_id)
+        payload = await self._get_json(
+            f"/players/{athlete_external_id}", params={}, data_type=dict,
+        )
+        player = payload["data"]
+        external_id = self._transfer_id(player.get("id"))
+        if external_id != athlete_external_id:
+            raise ValueError("Sportmonks player identity does not match request")
+        return ProviderPlayerIdentity(
+            external_id=external_id, name=player.get("name"), fetched_at=datetime.now(UTC),
         )
 
     async def fetch_team_player_ids(
