@@ -8,10 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import CurrentUser
 from app.db.session import get_db_session
+from app.repositories.athlete_performance_repository import AthletePerformanceRepository
 from app.repositories.athlete_repository import AthleteRepository
 from app.repositories.country_repository import CountryRepository
 from app.schemas.athlete import AthleteCreate, AthleteResponse, AthleteUpdate
+from app.schemas.athlete_profile import AthleteProfileResponse
+from app.services.athlete_profile_service import AthleteProfileService
 from app.services.athlete_service import AthleteService
+from app.sms24.player_statistics_evidence import AthleteStatisticsEvidenceReader
 
 router = APIRouter(prefix="/athletes", tags=["athletes"])
 
@@ -90,6 +94,22 @@ async def list_sport_athletes(
     )
     athletes = await service.list_sport_athletes(sport_id)
     return [AthleteResponse.model_validate(athlete) for athlete in athletes]
+
+
+@router.get("/{athlete_id}/profile", response_model=AthleteProfileResponse)
+async def get_athlete_profile(
+    athlete_id: uuid.UUID,
+    current_user: CurrentUser,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> AthleteProfileResponse:
+    """Get the read-only enriched SMS athlete profile."""
+    del current_user
+    service = AthleteProfileService(
+        athlete_repository=AthleteRepository(session),
+        performance_repository=AthletePerformanceRepository(session),
+        statistics_reader=AthleteStatisticsEvidenceReader(session=session),
+    )
+    return await service.get_profile(athlete_id)
 
 
 @router.get("/{athlete_id}", response_model=AthleteResponse)
