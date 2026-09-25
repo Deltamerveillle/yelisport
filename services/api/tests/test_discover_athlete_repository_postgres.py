@@ -259,3 +259,53 @@ async def test_search_pagination_is_deterministic(session):
     assert set(all_ids) == {athlete.id for athlete in athletes}
     assert [item.athlete.id for item in first_page] == all_ids[:2]
     assert [item.athlete.id for item in second_page] == all_ids[2:]
+
+
+async def test_get_discoverable_by_athlete_id_requires_opportunity_opt_in(session):
+    sport = await add(
+        session,
+        Sport,
+        name=f"Football {uuid.uuid4()}",
+        slug=f"football-{uuid.uuid4()}",
+        is_active=True,
+    )
+    country = await add(
+        session,
+        Country,
+        iso2="CI",
+        iso3=f"C{uuid.uuid4().hex[:2]}".upper(),
+        name=f"Côte d'Ivoire {uuid.uuid4()}",
+        continent_code="AF",
+        is_active=True,
+    )
+
+    visible_athlete, visible_passport = await create_discoverable_athlete(
+        session,
+        sport=sport,
+        country=country,
+        suffix="detail-visible",
+        available=True,
+    )
+    hidden_athlete, _ = await create_discoverable_athlete(
+        session,
+        sport=sport,
+        country=country,
+        suffix="detail-hidden",
+        available=False,
+    )
+
+    repository = DiscoverAthleteRepository(session)
+
+    visible = await repository.get_discoverable_by_athlete_id(
+        visible_athlete.id
+    )
+    hidden = await repository.get_discoverable_by_athlete_id(
+        hidden_athlete.id
+    )
+    missing = await repository.get_discoverable_by_athlete_id(uuid.uuid4())
+
+    assert visible is not None
+    assert visible.athlete.id == visible_athlete.id
+    assert visible.passport.id == visible_passport.id
+    assert hidden is None
+    assert missing is None

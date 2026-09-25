@@ -6,7 +6,11 @@ from types import SimpleNamespace
 
 import pytest
 
+from app.core.exceptions import NotFoundError
 from app.db.session import get_db_session
+from app.services.discover_athlete_profile_service import (
+    DiscoverAthleteProfileService,
+)
 from app.services.discover_athlete_service import DiscoverAthleteService
 
 ATHLETE_ID = uuid.uuid4()
@@ -171,3 +175,120 @@ def test_discover_athletes_rejects_invalid_pagination(
     )
 
     assert response.status_code == 422
+
+
+
+def test_discover_athlete_profile_is_public_and_returns_showcase(
+    client,
+    discover_athlete_dependencies,
+    monkeypatch,
+):
+    now = datetime.now(UTC)
+    discover = make_discover_result()
+
+    async def fake_get_profile(self, athlete_id):
+        assert athlete_id == ATHLETE_ID
+        return {
+            "athlete": {
+                "id": str(discover.athlete.id),
+                "sport_id": str(discover.athlete.sport_id),
+                "first_name": discover.athlete.first_name,
+                "last_name": discover.athlete.last_name,
+                "nationality": discover.athlete.nationality,
+                "country": discover.athlete.country,
+                "residence_country_id": str(
+                    discover.athlete.residence_country_id
+                ),
+                "city": discover.athlete.city,
+                "biography": discover.athlete.biography,
+                "created_at": discover.athlete.created_at.isoformat(),
+                "updated_at": discover.athlete.updated_at.isoformat(),
+            },
+            "passport": {
+                "id": str(discover.passport.id),
+                "athlete_id": str(discover.passport.athlete_id),
+                "discipline": discover.passport.discipline,
+                "category": discover.passport.category,
+                "position": discover.passport.position,
+                "club_name": discover.passport.club_name,
+                "league_name": discover.passport.league_name,
+                "team_name": discover.passport.team_name,
+                "height_cm": discover.passport.height_cm,
+                "weight_kg": discover.passport.weight_kg,
+                "dominant_side": discover.passport.dominant_side,
+                "available_for_opportunities": True,
+                "sporting_summary": discover.passport.sporting_summary,
+                "created_at": discover.passport.created_at.isoformat(),
+                "updated_at": discover.passport.updated_at.isoformat(),
+            },
+            "performances": [],
+            "statistics": {
+                "linked": True,
+                "observations": [
+                    {
+                        "scope": "season",
+                        "period_label": "2026",
+                        "metrics": {"appearances": 12, "goals": 4},
+                        "fetched_at": now.isoformat(),
+                        "source_updated_at": None,
+                    }
+                ],
+            },
+            "videos": [],
+        }
+
+    monkeypatch.setattr(
+        DiscoverAthleteProfileService,
+        "get_profile",
+        fake_get_profile,
+    )
+
+    response = client.get(
+        f"/api/v1/discover/athletes/{ATHLETE_ID}"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert payload["athlete"]["id"] == str(ATHLETE_ID)
+    assert "user_id" not in payload["athlete"]
+    assert payload["passport"]["available_for_opportunities"] is True
+    assert payload["performances"] == []
+    assert payload["statistics"]["linked"] is True
+    assert payload["statistics"]["observations"][0]["metrics"]["goals"] == 4
+    assert payload["videos"] == []
+
+    forbidden = {
+        "identity_link_id",
+        "canonical_competitor_id",
+        "provider_competitor_id",
+        "athlete_external_id",
+        "observation_id",
+        "source_id",
+        "metadata",
+    }
+    assert forbidden.isdisjoint(
+        payload["statistics"]["observations"][0].keys()
+    )
+
+
+def test_discover_athlete_profile_returns_404_when_not_discoverable(
+    client,
+    discover_athlete_dependencies,
+    monkeypatch,
+):
+    async def fake_get_profile(self, athlete_id):
+        assert athlete_id == ATHLETE_ID
+        raise NotFoundError("Discover athlete not found")
+
+    monkeypatch.setattr(
+        DiscoverAthleteProfileService,
+        "get_profile",
+        fake_get_profile,
+    )
+
+    response = client.get(
+        f"/api/v1/discover/athletes/{ATHLETE_ID}"
+    )
+
+    assert response.status_code == 404

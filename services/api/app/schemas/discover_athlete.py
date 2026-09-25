@@ -6,6 +6,8 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from app.schemas.athlete_passport import AthletePassportResponse
+from app.schemas.athlete_performance import AthletePerformanceResponse
+from app.schemas.discover_video import DiscoverVideoResponse
 
 
 class DiscoverAthleteIdentityResponse(BaseModel):
@@ -33,3 +35,37 @@ class DiscoverAthleteResponse(BaseModel):
 
     athlete: DiscoverAthleteIdentityResponse
     passport: AthletePassportResponse
+
+
+class DiscoverAthletePublicStatisticsEvidenceResponse(BaseModel):
+    """Public-safe SMS24 statistics evidence for a discoverable athlete."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    scope: str
+    period_label: str | None
+    metrics: dict[str, object]
+    fetched_at: datetime
+    source_updated_at: datetime | None
+
+
+class DiscoverAthletePublicStatisticsResponse(BaseModel):
+    """Public statistics exposed only through an explicit SMS24 identity link."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    linked: bool
+    observations: list[DiscoverAthletePublicStatisticsEvidenceResponse]
+
+
+class DiscoverAthleteProfileResponse(BaseModel):
+    """Public commercial showcase for an SMS Discover athlete."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    athlete: DiscoverAthleteIdentityResponse
+    passport: AthletePassportResponse
+    performances: list[AthletePerformanceResponse]
+    statistics: DiscoverAthletePublicStatisticsResponse
+    videos: list[DiscoverVideoResponse]
+

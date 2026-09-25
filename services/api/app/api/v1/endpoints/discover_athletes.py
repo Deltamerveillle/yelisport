@@ -7,12 +7,44 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db_session
-from app.schemas.discover_athlete import DiscoverAthleteResponse
+from app.repositories.athlete_performance_repository import AthletePerformanceRepository
+from app.repositories.discover_athlete_repository import DiscoverAthleteRepository
+from app.repositories.discover_video_repository import DiscoverVideoRepository
+from app.schemas.discover_athlete import (
+    DiscoverAthleteProfileResponse,
+    DiscoverAthleteResponse,
+)
+from app.services.discover_athlete_profile_service import (
+    DiscoverAthleteProfileService,
+)
 from app.services.discover_athlete_service import DiscoverAthleteService
+from app.sms24.player_statistics_evidence import AthleteStatisticsEvidenceReader
 
 router = APIRouter(
     tags=["SMS Discover"],
 )
+
+
+@router.get(
+    "/discover/athletes/{athlete_id}",
+    response_model=DiscoverAthleteProfileResponse,
+)
+async def get_discover_athlete_profile(
+    athlete_id: uuid.UUID,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_db_session),
+    ],
+) -> DiscoverAthleteProfileResponse:
+    """Return the public showcase of an opted-in SMS Discover athlete."""
+
+    service = DiscoverAthleteProfileService(
+        discover_repository=DiscoverAthleteRepository(session),
+        performance_repository=AthletePerformanceRepository(session),
+        statistics_reader=AthleteStatisticsEvidenceReader(session=session),
+        video_repository=DiscoverVideoRepository(session),
+    )
+    return await service.get_profile(athlete_id)
 
 
 @router.get(

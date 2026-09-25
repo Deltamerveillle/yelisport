@@ -86,3 +86,31 @@ class DiscoverAthleteRepository:
             )
             for athlete, passport in result.all()
         ]
+
+    async def get_discoverable_by_athlete_id(
+        self,
+        athlete_id: uuid.UUID,
+    ) -> DiscoverAthleteResult | None:
+        stmt: Select[tuple[Athlete, AthletePassport]] = (
+            select(Athlete, AthletePassport)
+            .join(
+                AthletePassport,
+                AthletePassport.athlete_id == Athlete.id,
+            )
+            .where(
+                Athlete.id == athlete_id,
+                AthletePassport.available_for_opportunities.is_(True),
+            )
+        )
+
+        result = await self.session.execute(stmt)
+        row = result.one_or_none()
+
+        if row is None:
+            return None
+
+        athlete, passport = row
+        return DiscoverAthleteResult(
+            athlete=athlete,
+            passport=passport,
+        )
