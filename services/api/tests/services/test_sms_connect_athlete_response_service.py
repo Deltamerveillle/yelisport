@@ -26,6 +26,9 @@ def setup(status="delivered"):
     service.interests.save.return_value = interest
     service.athletes = AsyncMock()
     service.athletes.get_by_id.return_value = SimpleNamespace(user_id=owner)
+    service.opportunities = AsyncMock()
+    service.opportunities.get_for_interest_for_update.return_value = None
+    service.opportunities.create.side_effect = lambda opportunity: opportunity
     service.events = AsyncMock()
     service.notification_service = AsyncMock()
     return service, interest, owner

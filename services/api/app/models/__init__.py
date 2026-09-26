@@ -21,6 +21,7 @@ from app.models.sms24_job import SMS24JobCheckpoint
 from app.models.sms_connect_athlete_response_event import SMSConnectAthleteResponseEvent
 from app.models.sms_connect_interest import SMSConnectInterest
 from app.models.sms_connect_interest_event import SMSConnectInterestEvent
+from app.models.sms_connect_opportunity import SMSConnectOpportunity, SMSConnectOpportunityEvent
 from app.models.sport import Sport
 from app.models.sports_live import (
     SportsCanonicalCompetition,
@@ -62,6 +63,8 @@ from app.models.user_role import UserRole
 from app.models.yeleni_pay_event import YeleniPayEvent
 
 __all__ = [
+    "SMSConnectOpportunity",
+    "SMSConnectOpportunityEvent",
     "SMSConnectAthleteResponseEvent",
     "SportsPlayerStatisticObservation",
     "SMS24JobCheckpoint",

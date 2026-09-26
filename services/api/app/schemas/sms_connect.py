@@ -130,3 +130,29 @@ class SMSConnectInterestEventResponse(BaseModel):
 
     note: str | None
     created_at: datetime
+
+
+OpportunityStatus = Literal["active", "progressing", "successful", "unsuccessful", "withdrawn"]
+
+
+class SMSConnectOpportunityResponse(BaseModel):
+    """Commercial facts only; no participant user IDs or private contacts."""
+
+    id: uuid.UUID
+    interest_id: uuid.UUID
+    status: OpportunityStatus
+    opened_at: datetime
+    closed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    organization_name: str
+    requester_role: str
+    interest_type: InterestType
+    subject: str
+    message: str
+
+
+class SMSConnectOpportunityTransitionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["progressing", "successful", "unsuccessful"]

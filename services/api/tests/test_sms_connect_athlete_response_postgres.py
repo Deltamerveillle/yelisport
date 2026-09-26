@@ -35,6 +35,11 @@ M39 = importlib.import_module(
 )
 
 
+M40 = importlib.import_module(
+    "app.db.migrations.versions.20260926_0040_add_sms_connect_opportunities"
+)
+
+
 def migrate(connection, migration, direction="upgrade"):
     with Operations.context(MigrationContext.configure(connection)):
         getattr(migration, direction)()
@@ -71,6 +76,7 @@ async def connection():
 @pytest.fixture
 async def session(connection):
     await connection.run_sync(lambda sync: migrate(sync, M39))
+    await connection.run_sync(lambda sync: migrate(sync, M40))
     async with AsyncSession(
         bind=connection, expire_on_commit=False, join_transaction_mode="create_savepoint"
     ) as session:
