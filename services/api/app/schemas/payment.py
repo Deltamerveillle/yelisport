@@ -52,6 +52,7 @@ class PaymentResponse(BaseModel):
     plan_code: str
     amount_minor: int
     currency: str
+    duration_days: int | None
     status: str
     created_at: datetime
     updated_at: datetime

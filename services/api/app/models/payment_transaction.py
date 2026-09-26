@@ -37,6 +37,10 @@ class PaymentTransaction(Base):
             "amount_minor > 0",
             name="ck_payment_transactions_amount_positive",
         ),
+        CheckConstraint(
+            "duration_days > 0",
+            name="ck_payment_transactions_duration_positive",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -83,6 +87,9 @@ class PaymentTransaction(Base):
         Integer,
         nullable=False,
     )
+
+    # NULL identifies legacy purchases with no authoritative duration snapshot.
+    duration_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     currency: Mapped[str] = mapped_column(
         String(3),

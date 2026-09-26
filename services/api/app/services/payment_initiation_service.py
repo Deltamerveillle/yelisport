@@ -36,6 +36,7 @@ class PaymentInitiationService:
                 plan_code=plan.plan_code,
                 amount_minor=plan.amount_minor,
                 currency=plan.currency,
+                duration_days=plan.duration_days,
                 status="pending",
             )
         )

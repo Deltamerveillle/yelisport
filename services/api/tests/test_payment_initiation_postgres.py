@@ -68,12 +68,16 @@ async def test_commit_replay_price_snapshot_and_verified_activation(database):
         row = await initiate(session, user_id)
         identity, reference = row.id, row.reference
         assert row.user_id == user_id and row.subscription_id is None
+        assert row.duration_days == 30
         assert (row.amount_minor, row.currency, row.status) == (1234, "XOF", "pending")
         assert await count(session, Subscription) == 0
         await session.commit()
     async with AsyncSession(engine, expire_on_commit=False) as session:
-        replay = await initiate(session, user_id, amount_minor=9999, currency="EUR")
+        replay = await initiate(
+            session, user_id, amount_minor=9999, currency="EUR", duration_days=90
+        )
         assert replay.id == identity and replay.amount_minor == 1234 and replay.currency == "XOF"
+        assert replay.duration_days == 30
         assert await count(session, PaymentTransaction) == 1
         now = datetime.now(UTC)
         kwargs = dict(

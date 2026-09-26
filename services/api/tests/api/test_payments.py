@@ -57,6 +57,7 @@ def payment():
     return SimpleNamespace(
         id=uuid.uuid4(),
         reference="SMS-random",
+        duration_days=30,
         plan_code="test_offer_v1",
         amount_minor=1234,
         currency="XOF",

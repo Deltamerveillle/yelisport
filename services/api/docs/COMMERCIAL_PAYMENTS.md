@@ -8,14 +8,29 @@ integer in minor units), uppercase three-letter `currency`, and `duration_days`
 to false. Both must be true to list/buy an offer. Duplicate codes and paid `free`
 are rejected. No new entitlements are granted by configuration.
 
-Use versioned plan codes. Keep commercial terms for an issued code immutable;
-create a new code when changing a term, and retain old definitions for verification.
-The existing payment table snapshots amount, currency and plan code, not duration.
-The trusted verification layer remains responsible for period_start / period_end,
-including applying the purchased term. This block neither calculates nor automatically
-validates that period against the catalogue. Do not treat the mutable current catalogue
-as evidence of the terms of an older purchase. A future external integration needing
-self-contained durable term snapshots will require a dedicated schema extension.
+## Purchased term snapshot (0041)
+
+Initiation snapshots plan code, amount, currency and positive duration_days. Pending
+reuse preserves all four terms even when the catalogue changes. The owner-safe payment
+response exposes duration_days (nullable for legacy purchases). No client can set it.
+
+Migration 20260926_0041 adds a nullable integer and CHECK duration_days > 0, with no
+default or historical backfill. NULL explicitly means there is no authoritative
+purchased duration. New commercial initiations always set the configured positive value.
+Legacy pending rows remain NULL even when reused and cannot be activated; manual historical
+reconciliation is outside this block. Never infer their duration from today's catalogue.
+Downgrade removes only this check/column, losing duration snapshots.
+
+Verified activation requires an aware period_start and normalizes it to UTC. SMS derives
+period_end = UTC period_start + duration_days elapsed 24-hour days. An optional provider
+period_end is accepted only when aware and exactly equal to that derived instant.
+Shorter/longer terms, expired terms and datetime overflow are rejected before mutation.
+The current catalogue is never consulted. No external provider integration is included.
+
+Already-succeeded payments with matching verified facts and provider transaction identity
+return unchanged before term validation: replay cannot create or modify a subscription,
+even after expiry or for an already-succeeded legacy payment. This is not a legacy
+activation bypass. A different provider transaction identity still fails.
 
 ## API
 
@@ -33,7 +48,7 @@ Public transaction fields exclude user ID, provider transaction/customer informa
 ## Transactions and retries
 
 Initiation locks the existing user row with SELECT FOR UPDATE, then reuses an existing
-pending transaction for that user and plan. Replay returns its original amount/currency
+pending transaction for that user and plan. Replay returns its original amount/currency/duration
 and timestamps even if the configuration's price changes. No cross-user reuse occurs.
 Once terminal, a new request can create a new purchase: this is pending-intent deduplication,
 not an indefinitely retained idempotency-key protocol. Pending intents have no automatic
@@ -51,5 +66,5 @@ Repositories/services do not commit. PaymentService.confirm_verified_payment rem
 the sole activation boundary; it is never routed to clients. Its caller must commit
 or roll back the entire verified operation. Historic has_premium_access behavior is unchanged.
 
-No migration, mobile changes, external payment credentials, entitlements redesign,
+Other than migration 0041, no mobile changes, external payment credentials, entitlements redesign,
 Discover/Connect access changes, or consent changes are included.

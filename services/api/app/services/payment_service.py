@@ -1,7 +1,6 @@
 """Secure provider-neutral payment activation service."""
 
-import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,7 +29,7 @@ class PaymentService:
         amount_minor: int,
         currency: str,
         period_start: datetime,
-        period_end: datetime,
+        period_end: datetime | None = None,
         provider_customer_id: str | None = None,
         provider_subscription_id: str | None = None,
     ) -> PaymentTransaction:
@@ -55,51 +54,48 @@ class PaymentService:
         if transaction.currency.upper() != currency.upper():
             raise ValueError("Payment currency mismatch")
 
-        if period_end <= period_start:
-            raise ValueError("Invalid subscription period")
-
-        if period_end <= datetime.now(UTC):
-            raise ValueError("Subscription period already expired")
-
-        existing_provider_transaction = (
-            await self.payments.get_by_provider_transaction(
-                provider,
-                provider_transaction_id,
-            )
+        existing_provider_transaction = await self.payments.get_by_provider_transaction(
+            provider,
+            provider_transaction_id,
         )
 
         if (
             existing_provider_transaction is not None
             and existing_provider_transaction.id != transaction.id
         ):
-            raise ValueError(
-                "Provider transaction already belongs to another payment"
-            )
+            raise ValueError("Provider transaction already belongs to another payment")
 
         # Idempotent replay of an already processed payment.
         if transaction.status == "succeeded":
-            if (
-                transaction.provider_transaction_id
-                != provider_transaction_id
-            ):
-                raise ValueError(
-                    "Payment already confirmed with another provider "
-                    "transaction"
-                )
+            if transaction.provider_transaction_id != provider_transaction_id:
+                raise ValueError("Payment already confirmed with another provider " "transaction")
 
             return transaction
 
         if transaction.status != "pending":
-            raise ValueError(
-                f"Payment cannot be confirmed from status "
-                f"{transaction.status}"
-            )
+            raise ValueError(f"Payment cannot be confirmed from status " f"{transaction.status}")
 
-        current_subscription = (
-            await self.subscriptions.get_current_for_user(
-                transaction.user_id
-            )
-        )
+        # Legacy pending payments cannot acquire a term from today's catalogue.
+        duration = transaction.duration_days
+        if type(duration) is not int or duration <= 0:
+            raise ValueError("Payment has no valid purchased duration snapshot")
+        if not isinstance(period_start, datetime) or period_start.utcoffset() is None:
+            raise ValueError("Subscription period start must be timezone-aware")
+        try:
+            period_start = period_start.astimezone(UTC)
+            derived_end = period_start + timedelta(days=duration)
+        except (OverflowError, ValueError) as exc:
+            raise ValueError("Invalid subscription period") from exc
+        if period_end is not None:
+            if not isinstance(period_end, datetime) or period_end.utcoffset() is None:
+                raise ValueError("Subscription period end must be timezone-aware")
+            if period_end.astimezone(UTC) != derived_end:
+                raise ValueError("Subscription period does not match purchased duration")
+        if derived_end <= datetime.now(UTC):
+            raise ValueError("Subscription period already expired")
+        period_end = derived_end
+
+        current_subscription = await self.subscriptions.get_current_for_user(transaction.user_id)
 
         # Prevent multiple concurrent active subscriptions.
         if current_subscription is not None:
@@ -145,32 +141,24 @@ class PaymentService:
             raise ValueError("Payment provider mismatch")
 
         if transaction.status == "succeeded":
-            raise ValueError(
-                "A successful payment cannot be changed to failed"
-            )
+            raise ValueError("A successful payment cannot be changed to failed")
 
         if transaction.status == "failed":
             return transaction
 
         if provider_transaction_id is not None:
-            existing_provider_transaction = (
-                await self.payments.get_by_provider_transaction(
-                    provider,
-                    provider_transaction_id,
-                )
+            existing_provider_transaction = await self.payments.get_by_provider_transaction(
+                provider,
+                provider_transaction_id,
             )
 
             if (
                 existing_provider_transaction is not None
                 and existing_provider_transaction.id != transaction.id
             ):
-                raise ValueError(
-                    "Provider transaction already belongs to another payment"
-                )
+                raise ValueError("Provider transaction already belongs to another payment")
 
-            transaction.provider_transaction_id = (
-                provider_transaction_id
-            )
+            transaction.provider_transaction_id = provider_transaction_id
 
         transaction.status = "failed"
 
