@@ -19,6 +19,7 @@ from app.db.session import get_db_session
 from app.schemas.auth import AuthUser
 from app.schemas.sms_connect import (
     InterestStatus,
+    SMSConnectAthleteResponseRequest,
     SMSConnectInterestCreate,
     SMSConnectInterestEventResponse,
     SMSConnectInterestResponse,
@@ -27,7 +28,6 @@ from app.schemas.sms_connect import (
 from app.services.sms_connect_service import (
     SMSConnectService,
 )
-
 
 router = APIRouter(
     prefix="/sms-connect",
@@ -59,15 +59,18 @@ async def create_interest(
     information are never exposed.
     """
 
-    return await SMSConnectService(
-        session
-    ).create_interest(
-        athlete_id=athlete_id,
-        requester_user_id=uuid.UUID(
-            str(current_user.id)
-        ),
-        data=data,
-    )
+    try:
+        interest = await SMSConnectService(session).create_interest(
+            athlete_id=athlete_id,
+            requester_user_id=uuid.UUID(str(current_user.id)),
+            data=data,
+        )
+        response = SMSConnectInterestResponse.model_validate(interest)
+        await session.commit()
+        return response
+    except Exception:
+        await session.rollback()
+        raise
 
 
 @router.get(
@@ -122,6 +125,31 @@ async def athlete_inbox(
     ).list_athlete_inbox(
         uuid.UUID(str(current_user.id))
     )
+
+
+@router.patch(
+    "/athlete/interests/{interest_id}/response",
+    response_model=SMSConnectInterestResponse,
+)
+async def athlete_respond_to_interest(
+    interest_id: uuid.UUID,
+    data: SMSConnectAthleteResponseRequest,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    current_user: Annotated[AuthUser, Depends(get_current_user)],
+) -> SMSConnectInterestResponse:
+    """Respond through SMS; no professional contacts or user IDs are disclosed."""
+    try:
+        interest = await SMSConnectService(session).respond_to_interest(
+            interest_id=interest_id,
+            athlete_user_id=uuid.UUID(str(current_user.id)),
+            data=data,
+        )
+        response = SMSConnectInterestResponse.model_validate(interest)
+        await session.commit()
+        return response
+    except Exception:
+        await session.rollback()
+        raise
 
 
 @router.get(
@@ -183,15 +211,18 @@ async def admin_transition_interest(
 ) -> SMSConnectInterestResponse:
     """Apply one controlled SMS Connect status transition."""
 
-    return await SMSConnectService(
-        session
-    ).transition_interest(
-        interest_id=interest_id,
-        admin_user_id=uuid.UUID(
-            str(current_user.id)
-        ),
-        data=data,
-    )
+    try:
+        interest = await SMSConnectService(session).transition_interest(
+            interest_id=interest_id,
+            admin_user_id=uuid.UUID(str(current_user.id)),
+            data=data,
+        )
+        response = SMSConnectInterestResponse.model_validate(interest)
+        await session.commit()
+        return response
+    except Exception:
+        await session.rollback()
+        raise
 
 
 @router.get(

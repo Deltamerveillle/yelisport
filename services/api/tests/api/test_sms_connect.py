@@ -1,8 +1,9 @@
 """API tests for SMS Connect."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -11,14 +12,13 @@ from app.db.session import get_db_session
 from app.schemas.auth import AuthUser
 from app.services.sms_connect_service import SMSConnectService
 
-
 ATHLETE_ID = uuid.uuid4()
 REQUESTER_ID = uuid.uuid4()
 INTEREST_ID = uuid.uuid4()
 
 
 def make_interest():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     return SimpleNamespace(
         id=INTEREST_ID,
@@ -41,8 +41,10 @@ def make_interest():
 
 @pytest.fixture
 def sms_connect_dependencies(client):
+    session = AsyncMock()
+
     async def fake_db():
-        yield SimpleNamespace()
+        yield session
 
     async def fake_user():
         return AuthUser(
@@ -58,7 +60,7 @@ def sms_connect_dependencies(client):
         get_current_user
     ] = fake_user
 
-    yield
+    yield session
 
     client.app.dependency_overrides.clear()
 
@@ -104,6 +106,8 @@ def test_create_sms_connect_interest_returns_201(
     )
 
     assert response.status_code == 201
+    sms_connect_dependencies.commit.assert_awaited_once()
+    sms_connect_dependencies.rollback.assert_not_awaited()
 
     body = response.json()
 

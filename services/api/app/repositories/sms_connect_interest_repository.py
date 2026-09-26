@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.athlete import Athlete
+from app.models.sms_connect_athlete_response_event import SMSConnectAthleteResponseEvent
 from app.models.sms_connect_interest import (
     SMSConnectInterest,
 )
@@ -50,6 +51,7 @@ class SMSConnectInterestRepository:
                 == interest_id
             )
             .with_for_update()
+            .execution_options(populate_existing=True)
         )
 
     async def save(
@@ -115,12 +117,7 @@ class SMSConnectInterestRepository:
             )
             .where(
                 Athlete.user_id == athlete_user_id,
-                SMSConnectInterest.status.in_(
-                    (
-                        "delivered",
-                        "closed",
-                    )
-                ),
+                SMSConnectInterest.status == "delivered",
             )
             .order_by(
                 SMSConnectInterest.delivered_at.desc()
@@ -128,3 +125,9 @@ class SMSConnectInterestRepository:
         )
 
         return result.all()
+
+    async def add_athlete_response_event(
+        self, event: SMSConnectAthleteResponseEvent,
+    ) -> None:
+        self.session.add(event)
+        await self.session.flush()

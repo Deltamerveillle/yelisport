@@ -1,8 +1,9 @@
 """HTTP boundary tests for SMS Connect phase 2."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -11,7 +12,6 @@ from app.core.exceptions import ForbiddenError
 from app.db.session import get_db_session
 from app.schemas.auth import AuthUser
 from app.services.sms_connect_service import SMSConnectService
-
 
 USER_ID = uuid.UUID(
     "11111111-1111-1111-1111-111111111111"
@@ -35,7 +35,7 @@ NOW = datetime(
     4,
     20,
     0,
-    tzinfo=timezone.utc,
+    tzinfo=UTC,
 )
 
 
@@ -75,7 +75,7 @@ def make_interest(
 def sms_connect_phase2_dependencies(
     client,
 ):
-    session = FakeSession()
+    session = AsyncMock()
 
     async def override_current_user():
         return AuthUser(
@@ -269,6 +269,8 @@ def test_admin_status_transition_forwards_request(
     payload = response.json()
 
     assert payload["status"] == "under_review"
+    sms_connect_phase2_dependencies.commit.assert_awaited_once()
+    sms_connect_phase2_dependencies.rollback.assert_not_awaited()
     assert "requester_user_id" not in payload
     assert "email" not in payload
     assert "phone" not in payload
@@ -344,10 +346,8 @@ def test_admin_audit_history_hides_actor_user_id(
     )
 
     response = client.get(
-        (
-            "/api/v1/sms-connect/admin/"
-            f"interests/{INTEREST_ID}/events"
-        )
+        "/api/v1/sms-connect/admin/"
+        f"interests/{INTEREST_ID}/events"
     )
 
     assert response.status_code == 200

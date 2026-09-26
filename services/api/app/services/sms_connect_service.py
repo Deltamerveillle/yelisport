@@ -11,6 +11,7 @@ from app.core.exceptions import (
     ForbiddenError,
     NotFoundError,
 )
+from app.models.sms_connect_athlete_response_event import SMSConnectAthleteResponseEvent
 from app.models.sms_connect_interest import (
     SMSConnectInterest,
 )
@@ -33,6 +34,7 @@ from app.repositories.user_role_repository import (
     UserRoleRepository,
 )
 from app.schemas.sms_connect import (
+    SMSConnectAthleteResponseRequest,
     SMSConnectInterestCreate,
     SMSConnectTransitionRequest,
 )
@@ -179,6 +181,40 @@ class SMSConnectService:
                 athlete_user_id
             )
         )
+
+    async def respond_to_interest(
+        self,
+        *,
+        interest_id: uuid.UUID,
+        athlete_user_id: uuid.UUID,
+        data: SMSConnectAthleteResponseRequest,
+    ) -> SMSConnectInterest:
+        """Record a private athlete decision without changing SMS administrative state."""
+        interest = await self.interests.get_by_id_for_update(interest_id)
+        if interest is None:
+            raise NotFoundError("SMS Connect interest not found")
+        athlete = await self.athletes.get_by_id(interest.athlete_id)
+        if athlete is None:
+            raise NotFoundError("Athlete not found")
+        if athlete.user_id != athlete_user_id:
+            raise ForbiddenError("Only the athlete owner can respond to this opportunity")
+        if interest.status != "delivered":
+            raise ConflictError("Only delivered SMS Connect interests can receive a response")
+        if interest.athlete_response == data.athlete_response:
+            return interest
+
+        now = datetime.now(UTC)
+        event = SMSConnectAthleteResponseEvent(
+            interest_id=interest.id,
+            actor_user_id=athlete_user_id,
+            from_response=interest.athlete_response,
+            to_response=data.athlete_response,
+            created_at=now,
+        )
+        interest.athlete_response = data.athlete_response
+        interest.athlete_responded_at = now
+        await self.interests.add_athlete_response_event(event)
+        return await self.interests.save(interest)
 
     async def list_admin_interests(
         self,
