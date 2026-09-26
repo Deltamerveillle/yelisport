@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yelisport/app/router/app_router.dart';
 import 'package:yelisport/app/theme/app_theme.dart';
+import 'package:yelisport/core/localization/generated/app_localizations.dart';
 import 'package:yelisport/features/settings/presentation/settings_providers.dart';
 
 class YeliSportApp extends ConsumerWidget {
@@ -16,6 +17,9 @@ class YeliSportApp extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: ThemeData.dark(useMaterial3: true),
       themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: Locale(ref.watch(settingsProvider).valueOrNull?.language ?? 'fr'),
       routerConfig: appRouter,
     );
   }
