@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     discover_videos,
     moderation,
     notifications,
+    payments,
     sms24_live,
     sms_connect,
     sms_nations,
@@ -38,6 +39,7 @@ router.include_router(sms_nations.router)
 router.include_router(sms_connect.router)
 router.include_router(sms24_live.router)
 router.include_router(notifications.router)
+router.include_router(payments.router)
 
 router.include_router(
     subscriptions.router,

@@ -6,6 +6,8 @@ from typing import Literal
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.schemas.payment import CommercialPlan
+
 
 class Settings(BaseSettings):
     """Validated runtime configuration for the public API."""
@@ -16,6 +18,15 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False,
     )
+
+    sms_commercial_plans: list[CommercialPlan] = Field(default_factory=list)
+
+    @field_validator("sms_commercial_plans")
+    @classmethod
+    def unique_plans(cls, plans: list[CommercialPlan]) -> list[CommercialPlan]:
+        if len({plan.plan_code for plan in plans}) != len(plans):
+            raise ValueError("Duplicate commercial plan code")
+        return plans
 
     app_name: str = "YeliSport API"
     app_env: Literal["development", "test", "staging", "production"] = "development"
