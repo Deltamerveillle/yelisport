@@ -2,7 +2,7 @@
 
 import uuid
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +17,9 @@ from app.models.sms_connect_interest import (
 from app.models.sms_connect_interest_event import (
     SMSConnectInterestEvent,
 )
+from app.repositories.athlete_passport_repository import (
+    AthletePassportRepository,
+)
 from app.repositories.athlete_repository import (
     AthleteRepository,
 )
@@ -29,14 +32,13 @@ from app.repositories.sms_connect_interest_repository import (
 from app.repositories.user_role_repository import (
     UserRoleRepository,
 )
-from app.services.notification_service import (
-    NotificationService,
-)
 from app.schemas.sms_connect import (
     SMSConnectInterestCreate,
     SMSConnectTransitionRequest,
 )
-
+from app.services.notification_service import (
+    NotificationService,
+)
 
 _ALLOWED_TRANSITIONS = {
     "submitted": {"under_review"},
@@ -59,6 +61,9 @@ class SMSConnectService:
         session: AsyncSession,
     ) -> None:
         self.athletes = AthleteRepository(
+            session
+        )
+        self.passports = AthletePassportRepository(
             session
         )
         self.roles = UserRoleRepository(
@@ -100,6 +105,18 @@ class SMSConnectService:
             raise ForbiddenError(
                 "Athletes cannot submit professional "
                 "interest to themselves"
+            )
+
+        passport = await self.passports.get_by_athlete_id(
+            athlete.id
+        )
+
+        if (
+            passport is None
+            or not passport.available_for_opportunities
+        ):
+            raise ForbiddenError(
+                "Athlete is not available for opportunities"
             )
 
         role = (
@@ -218,7 +235,7 @@ class SMSConnectService:
                 f"{from_status} -> {to_status}"
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         interest.status = to_status
 
