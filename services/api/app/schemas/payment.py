@@ -6,6 +6,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.schemas.entitlements import CommercialEntitlements
+
 PlanCode = Annotated[str, Field(strict=True, pattern=r"^[a-z][a-z0-9_-]{0,49}$")]
 
 
@@ -22,6 +24,7 @@ class CommercialPlan(BaseModel):
     duration_days: int = Field(gt=0, le=3660)
     active: bool = False
     purchasable: bool = False
+    entitlements: CommercialEntitlements = Field(default_factory=CommercialEntitlements)
 
     @field_validator("plan_code")
     @classmethod

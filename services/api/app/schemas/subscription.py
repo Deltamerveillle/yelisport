@@ -3,7 +3,9 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.entitlements import CommercialEntitlements
 
 
 class SubscriptionResponse(BaseModel):
@@ -28,3 +30,5 @@ class SubscriptionAccessResponse(BaseModel):
     plan_code: str
     status: str
     current_period_end: datetime | None
+
+    entitlements: CommercialEntitlements = Field(default_factory=CommercialEntitlements)

@@ -68,3 +68,33 @@ or roll back the entire verified operation. Historic has_premium_access behavior
 
 Other than migration 0041, no mobile changes, external payment credentials, entitlements redesign,
 Discover/Connect access changes, or consent changes are included.
+
+## Explicit commercial entitlements V1
+
+Each server-side CommercialPlan may declare an `entitlements` object with six strict
+boolean fields: talent_access, enhanced_profile, discover_visibility, connect_access,
+statistics_insights and priority_visibility. Every field defaults to false. Unknown
+fields and boolean coercions are rejected; no existing plan gains implicit capabilities.
+No prices or plan configurations are introduced.
+
+SubscriptionService.get_access is the authoritative resolution path exposed by authenticated
+GET /api/v1/subscriptions/me/access. It reads the current subscription once and resolves its
+plan_code in the current server catalogue. No subscription, free/inactive/expired access,
+unknown plan or omitted configuration means no explicit capabilities. Active and trialing
+subscriptions can receive exactly the configured flags. As before, a subscription without
+an end date may be current. Plan active/purchasable flags govern new sales, not existing
+subscribers: retain the plan entry when discontinuing sales but maintaining its capabilities.
+Entitlements are current server policy, not a payment terms snapshot. Removing a plan
+from the catalogue fails closed for explicit capabilities.
+
+The legacy has_premium_access contract remains active/trialing, unexpired, non-free access,
+including unknown or unconfigured paid plans. It can be true while every explicit flag is
+false. SMS Talent still uses this legacy authorization; talent_access does not replace it
+in V1. Future enforcement changes require a separate explicit compatibility decision.
+
+These flags currently expose policy only: no new Discover/Connect paywall or sporting
+ranking/scoring advantage is introduced, including for priority_visibility. Athlete
+available_for_opportunities remains separate consent and is never read, inferred or changed
+by entitlement resolution. Payments, subscriptions, capabilities and consent remain distinct.
+Clients cannot submit entitlements through payment initiation or update subscription access.
+No migration or entitlement persistence table is required.
