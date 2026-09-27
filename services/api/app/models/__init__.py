@@ -61,6 +61,7 @@ from app.models.user_preferences import (
 )
 from app.models.user_role import UserRole
 from app.models.yeleni_pay_event import YeleniPayEvent
+from app.models.yeleni_pay_rail_transaction import YeleniPayRailTransaction
 
 __all__ = [
     "SMSConnectOpportunity",
@@ -96,6 +97,7 @@ __all__ = [
     "Subscription",
     "PaymentTransaction",
     "YeleniPayEvent",
+    "YeleniPayRailTransaction",
     "TalentApplication",
     "TalentEvaluation",
     "TalentSubmissionItem",

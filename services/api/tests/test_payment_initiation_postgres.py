@@ -82,7 +82,7 @@ async def test_commit_replay_price_snapshot_and_verified_activation(database):
         now = datetime.now(UTC)
         kwargs = dict(
             reference=reference,
-            provider="manual",
+            provider="yeleni-pay",
             provider_transaction_id="verified-1",
             amount_minor=1234,
             currency="XOF",
@@ -136,7 +136,7 @@ async def test_concurrent_confirmation_only_one_subscription(database):
             now = datetime.now(UTC)
             row = await PaymentService(session).confirm_verified_payment(
                 reference=reference,
-                provider="manual",
+                provider="yeleni-pay",
                 provider_transaction_id="verified-1",
                 amount_minor=1234,
                 currency="XOF",

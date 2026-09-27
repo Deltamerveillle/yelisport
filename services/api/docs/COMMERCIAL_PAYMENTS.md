@@ -40,8 +40,8 @@ activation bypass. A different provider transaction identity still fails.
 - GET `/api/v1/payments/{transaction_id}`: owner only; absent and foreign IDs return 404.
 
 Initiation stores a pending transaction with a cryptographically random SMS reference
-and `subscription_id=NULL`. `manual` is the explicit local verification channel,
-not a connected payment processor. There is no checkout URL, external request,
+and `subscription_id=NULL`. `yeleni-pay` identifies the gateway for new intentions. Historical `manual` rows are
+not rewritten, including when an existing pending intention is reused. There is no checkout URL, external request,
 success simulation, or client confirmation route. Pending does not mean paid.
 Public transaction fields exclude user ID, provider transaction/customer information.
 
@@ -66,7 +66,7 @@ Repositories/services do not commit. PaymentService.confirm_verified_payment rem
 the sole activation boundary; it is never routed to clients. Its caller must commit
 or roll back the entire verified operation. Historic has_premium_access behavior is unchanged.
 
-Other than migration 0041, no mobile changes, external payment credentials, entitlements redesign,
+Apart from the documented payment migrations, no mobile changes, external payment credentials, entitlements redesign,
 Discover/Connect access changes, or consent changes are included.
 
 ## Explicit commercial entitlements V1
@@ -98,3 +98,45 @@ available_for_opportunities remains separate consent and is never read, inferred
 by entitlement resolution. Payments, subscriptions, capabilities and consent remain distinct.
 Clients cannot submit entitlements through payment initiation or update subscription access.
 No migration or entitlement persistence table is required.
+
+
+## YELENI Pay Gateway V1 (0042)
+
+SMS -> YELENI Pay -> payment rail adapter -> PSP.
+ÉcolePay is the first planned rail. Its official documentation is not available, so
+there is NO ÉcolePay adapter, endpoint, signature scheme, webhook or network call here.
+The same PaymentRail Protocol can later support cinetpay, flutterwave or another PSP.
+
+The new yeleni_pay_rail_transactions table stores only a local UUID, SMS payment FK,
+rail code, nullable external transaction ID, status and timestamps. It stores no secret,
+commercial terms or raw provider payload. Unique payment_transaction_id limits V1 to
+one rail transaction per SMS intention (no automatic cross-rail failover/double launch).
+Unique (rail_code, external_transaction_id) prevents external identity reuse. The local
+UUID is the stable remote idempotency key. Repeated preparation/binding preserves identity
+and timestamps; a conflicting rail or external ID is rejected. FK deletion is RESTRICT.
+Migration 0042 creates only this table; downgrade drops it, never SMS payments or events.
+
+YeleniPayRailRepository locks user -> payment -> rail, reusing the payment repository.
+It only prepares local state and binds initialization results. It never commits, calls
+a PSP, emits a trusted event, activates a subscription or changes commercial terms.
+The future caller must commit preparation BEFORE remote I/O and reuse the durable UUID
+on retry; rollback before that commit means no remote call should have been attempted.
+Remote idempotency/recovery must be implemented against each PSP's official contract.
+Statuses succeeded/failed are reserved for future authenticated verification handling;
+this foundation only writes created/pending and has no execution worker or rail registry.
+
+Immutable initialization requests contain SMS reference, local idempotency UUID and
+snapshotted amount/currency. Results cannot replace plan, price, currency, duration or
+entitlements. Verification results carry explicitly named observed amount/currency as
+evidence, not commercial authority. Their existence is NOT proof of authenticity. A
+future trusted gateway must authenticate the PSP, validate external ID/reference and
+observed facts against the locked SMS payment, and supply a verified effective timestamp.
+Only then may it call the existing internal YeleniPayEventService. Use the local rail UUID
+as gateway provider_transaction_id (external PSP IDs remain rail-scoped), so equal IDs at
+different PSPs never collide in SMS's yeleni-pay identity namespace. No such automatic
+bridge or internal/public HTTP ingestion endpoint is introduced in this block.
+
+PaymentService and existing YeleniPayEventService remain unchanged. Their trusted caller
+continues to own commit/rollback. Existing event idempotence is preserved; this block does
+not claim a distributed exactly-once PSP execution protocol. Consent, entitlements and
+sporting scoring/ranking are unaffected.

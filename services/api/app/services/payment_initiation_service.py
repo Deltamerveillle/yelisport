@@ -32,7 +32,7 @@ class PaymentInitiationService:
                 reference="SMS-" + secrets.token_urlsafe(32),
                 user_id=user_id,
                 subscription_id=None,
-                provider="manual",
+                provider="yeleni-pay",
                 plan_code=plan.plan_code,
                 amount_minor=plan.amount_minor,
                 currency=plan.currency,

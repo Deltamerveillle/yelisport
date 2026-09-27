@@ -33,7 +33,7 @@ def confirmation(row, **changes):
     return (
         dict(
             reference=row.reference,
-            provider="manual",
+            provider="yeleni-pay",
             provider_transaction_id="verified",
             amount_minor=1234,
             currency="XOF",
