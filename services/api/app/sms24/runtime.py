@@ -10,6 +10,7 @@ from app.sms24.ingestion import (
     SMS24IngestionService,
 )
 from app.sms24.providers.api_football import APIFootballProvider
+from app.sms24.providers.espn import ESPNProvider
 from app.sms24.providers.registry import ProviderRegistry
 from app.sms24.providers.sportmonks import SportmonksProvider
 from app.sms24.runner import (
@@ -41,6 +42,9 @@ def build_sms24_provider_registry(
     sportmonks_key = settings.sms24_sportmonks_key
     if sportmonks_key and sportmonks_key.strip():
         registry.register(SportmonksProvider(api_key=sportmonks_key))
+
+    if settings.sms24_espn_enabled:
+        registry.register(ESPNProvider())
 
     return registry
 
