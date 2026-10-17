@@ -4,6 +4,7 @@ from app.models.athlete import Athlete
 from app.models.athlete_country_eligibility import AthleteCountryEligibility
 from app.models.athlete_passport import AthletePassport
 from app.models.athlete_performance import AthletePerformance
+from app.models.athlete_performance_verification import AthletePerformanceVerification
 from app.models.country import Country
 from app.models.discover_video import DiscoverVideo
 from app.models.event import (

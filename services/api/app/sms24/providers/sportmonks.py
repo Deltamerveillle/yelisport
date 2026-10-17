@@ -2,12 +2,33 @@
 
 from __future__ import annotations
 
+import logging
+import re
 import time
 from datetime import UTC, date, datetime
 from typing import Any
 from urllib.parse import quote
 
 import httpx
+
+
+class _SportmonksTokenFilter(logging.Filter):
+    _pattern = re.compile(r'([?&]api_token=)[^&\s"]+')
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.name == "httpx":
+            message = record.getMessage()
+            sanitized = self._pattern.sub(r"\1[REDACTED]", message)
+            if sanitized != message:
+                record.msg = sanitized
+                record.args = ()
+        return True
+
+
+_httpx_logger = logging.getLogger("httpx")
+if not any(isinstance(f, _SportmonksTokenFilter) for f in _httpx_logger.filters):
+    _httpx_logger.addFilter(_SportmonksTokenFilter())
+
 
 from app.sms24.providers.base import (
     ProviderCompetition,
@@ -388,14 +409,13 @@ class SportmonksProvider(SportsDataProvider):
         try:
             if self._client is not None:
                 response = await self._client.get(
-                    f"{self.base_url}{path}", headers={"Authorization": self.api_key},
-                    params=params, timeout=self.timeout_seconds, follow_redirects=False,
+                    f"{self.base_url}{path}", params={**params, "api_token": self.api_key}, timeout=self.timeout_seconds, follow_redirects=False,
                 )
             else:
                 async with httpx.AsyncClient() as client:
                     response = await client.get(
-                        f"{self.base_url}{path}", headers={"Authorization": self.api_key},
-                        params=params, timeout=self.timeout_seconds, follow_redirects=False,
+                        f"{self.base_url}{path}", params={**params, "api_token": self.api_key},
+                        timeout=self.timeout_seconds, follow_redirects=False,
                     )
         except Exception:
             raise RuntimeError("Sportmonks request failed") from None
@@ -415,6 +435,8 @@ class SportmonksProvider(SportsDataProvider):
     @staticmethod
     def _has_more(payload: dict[str, Any], page: int) -> bool:
         pagination = payload.get("pagination")
+        if pagination is None and payload.get("data") == []:
+            return False
         if (
             not isinstance(pagination, dict)
             or type(pagination.get("has_more")) is not bool

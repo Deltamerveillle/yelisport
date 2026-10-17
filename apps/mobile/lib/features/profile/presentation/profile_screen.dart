@@ -56,18 +56,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _pickAvatar() async {
-    final image = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      imageQuality: 85,
-    );
-    if (image == null) return;
-    final extension = image.name.split('.').last.toLowerCase();
-    await ref.read(profileRepositoryProvider).uploadAvatar(
-          await image.readAsBytes(),
-          extension,
+    debugPrint('AVATAR: bouton activé');
+    try {
+      final image = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        imageQuality: 85,
+      );
+      if (image == null) {
+        debugPrint('AVATAR: sélection annulée');
+        return;
+      }
+      debugPrint('AVATAR: image sélectionnée');
+      final extension = image.name.split('.').last.toLowerCase();
+      await ref.read(profileRepositoryProvider).uploadAvatar(
+            await image.readAsBytes(),
+            extension,
+          );
+      ref.invalidate(profileProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Photo de profil enregistrée.')),
         );
-    ref.invalidate(profileProvider);
+      }
+    } catch (error, stackTrace) {
+      debugPrint('AVATAR: erreur $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Impossible de charger la photo.')),
+        );
+      }
+    }
   }
 
   @override

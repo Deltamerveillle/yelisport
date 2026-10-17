@@ -31,10 +31,14 @@ class ApiClient {
     return response.data ?? const [];
   }
 
-  Future<Map<String, dynamic>> getObject(String path) async {
+  Future<Map<String, dynamic>> getObject(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
     final token = _supabase.auth.currentSession?.accessToken;
     final response = await _dio.get<Map<String, dynamic>>(
       path,
+      queryParameters: queryParameters,
       options: Options(
         headers: token == null ? null : {'Authorization': 'Bearer $token'},
       ),
