@@ -231,7 +231,13 @@ class SMS24ProviderRunner:
                     starts_until=starts_until,
                     live_only=live_only,
                 )
-            except Exception:
+            except Exception as exc:
+                logger.error(
+                    "SMS24 fetch failed provider=%s exception_type=%s exception=%s",
+                    slug,
+                    type(exc).__name__,
+                    str(exc),
+                )
                 await self._record_failure(slug)
                 attempts.append(
                     SMS24ProviderAttempt(
@@ -272,9 +278,15 @@ class SMS24ProviderRunner:
                         result=result,
                     )
                 )
-            except Exception:
+            except Exception as exc:
                 # Ingestion service has already rolled back its transaction.
                 # Health state is therefore persisted afterwards.
+                logger.error(
+                    "SMS24 ingestion failed provider=%s exception_type=%s exception=%s",
+                    slug,
+                    type(exc).__name__,
+                    str(exc),
+                )
                 await self._record_failure(slug)
                 attempts.append(
                     SMS24ProviderAttempt(

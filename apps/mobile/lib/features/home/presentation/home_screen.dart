@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yelisport/features/sms_nations/presentation/sms_nations_screen.dart';
 import 'package:yelisport/core/localization/generated/app_localizations.dart';
 import 'package:yelisport/features/sms_connect/presentation/my_opportunities_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,7 +27,7 @@ class HomeScreen extends ConsumerWidget {
     final displayName = profile.valueOrNull?.displayName;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('YeliSport'),
+        title: const Text('SMS24 • Succès Mondial Sports'),
         actions: [
           IconButton(
             tooltip: 'Mes favoris',
@@ -53,7 +54,8 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await ref.refresh(sportsProvider.future);
+          final refreshedSports = ref.refresh(sportsProvider.future);
+          await refreshedSports;
         },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -71,6 +73,112 @@ class HomeScreen extends ConsumerWidget {
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     if (user?.email != null) Text(user!.email!),
+                    const SizedBox(height: 18),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF101B30),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'SUCCÈS MONDIAL SPORTS',
+                            style: TextStyle(
+                              color: Color(0xFFD6A847),
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          Text(
+                            'Aucun talent africain ne doit rester invisible.',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 21,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Les espaces SMS24',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 10),
+                    Column(
+                      children: [
+                          Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.public),
+                              title: const Text('SMS Nations'),
+                              subtitle: const Text('Découvrir les athlètes'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const SmsNationsScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.stars),
+                              title: const Text('SMS Talent'),
+                              subtitle: const Text('Talents sportifs'),
+                              trailing: const Text('En préparation',
+                                  style: TextStyle(fontSize: 11)),
+                            ),
+                          ),
+                          Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.play_circle_outline),
+                              title: const Text('SMS Discover'),
+                              subtitle: const Text('Vidéos et découvertes'),
+                              trailing: const Text('En préparation',
+                                  style: TextStyle(fontSize: 11)),
+                            ),
+                          ),
+                          Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.badge_outlined),
+                              title: const Text('SMS Passport'),
+                              subtitle: const Text('Passeport sportif'),
+                              trailing: const Text('En préparation',
+                                  style: TextStyle(fontSize: 11)),
+                            ),
+                          ),
+                          Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.verified_outlined),
+                              title: const Text('SMS Proof'),
+                              subtitle: const Text('Performances'),
+                              trailing: const Text('En préparation',
+                                  style: TextStyle(fontSize: 11)),
+                            ),
+                          ),
+                          Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.handshake_outlined),
+                              title: const Text('SMS Connect'),
+                              subtitle: const Text('Mes opportunités'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const MyOpportunitiesScreen(),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: 18),
                     Wrap(
                       spacing: 10,

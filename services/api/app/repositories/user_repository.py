@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User
+from app.models.user import Profile, User
 
 
 class UserRepository:
@@ -35,6 +35,23 @@ class UserRepository:
             )
             .with_for_update()
         )
+
+    async def create(
+        self,
+        *,
+        user_id: uuid.UUID,
+        email: str,
+    ) -> User:
+        user = User(
+            id=user_id,
+            email=email,
+        )
+        user.profile = Profile(
+            user_id=user_id,
+        )
+        self.session.add(user)
+        await self.session.flush()
+        return user
 
     async def save(
         self,

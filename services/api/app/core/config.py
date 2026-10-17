@@ -28,6 +28,10 @@ class Settings(BaseSettings):
             raise ValueError("Duplicate commercial plan code")
         return plans
 
+    sms_free_test_pilot_enabled: bool = False
+    sms_free_test_pilot_plan_code: str = "sms_monthly"
+    sms_free_test_pilot_duration_days: int = Field(default=7, ge=1, le=30)
+
     app_name: str = "YeliSport API"
     app_env: Literal["development", "test", "staging", "production"] = "development"
     api_prefix: str = "/api/v1"

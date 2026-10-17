@@ -27,6 +27,9 @@ services:
     restart: unless-stopped
     environment:
       APP_ENV: ${APP_ENV:-development}
+      SMS_FREE_TEST_PILOT_ENABLED: ${SMS_FREE_TEST_PILOT_ENABLED:-false}
+      SMS_FREE_TEST_PILOT_PLAN_CODE: ${SMS_FREE_TEST_PILOT_PLAN_CODE:-sms_monthly}
+      SMS_FREE_TEST_PILOT_DURATION_DAYS: ${SMS_FREE_TEST_PILOT_DURATION_DAYS:-7}
       SMS_COMMERCIAL_PLANS: ${SMS_COMMERCIAL_PLANS:-[]}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-yelisport}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-yelisport}
       SUPABASE_URL: ${SUPABASE_URL:-http://host.docker.internal:54321}

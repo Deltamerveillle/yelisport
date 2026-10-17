@@ -15,6 +15,7 @@ from app.api.v1.endpoints import (
     sms24_live,
     sms_connect,
     sms_nations,
+    sms_proof,
     subscriptions,
 )
 from app.api.v1.endpoints.athletes import router as athletes_router
@@ -36,6 +37,7 @@ router.include_router(countries.router)
 router.include_router(discover_athletes.router)
 router.include_router(discover_videos.router)
 router.include_router(sms_nations.router)
+router.include_router(sms_proof.router)
 router.include_router(sms_connect.router)
 router.include_router(sms24_live.router)
 router.include_router(notifications.router)

@@ -50,16 +50,21 @@ async def get_current_user(
             status_code=401,
         ) from exc
 
-    local_user = await UserRepository(
-        session
-    ).get_by_id(user_id)
+    repository = UserRepository(session)
+    local_user = await repository.get_by_id(user_id)
 
     if local_user is None:
-        raise ApplicationError(
-            "Compte utilisateur introuvable",
-            code="local_user_not_found",
-            status_code=403,
+        if not auth_user.email:
+            raise ApplicationError(
+                "Adresse e-mail utilisateur introuvable",
+                code="missing_user_email",
+                status_code=401,
+            )
+        local_user = await repository.create(
+            user_id=user_id,
+            email=auth_user.email,
         )
+        await session.commit()
 
     if not local_user.is_active:
         raise ApplicationError(

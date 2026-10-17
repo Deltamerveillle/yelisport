@@ -93,13 +93,19 @@ async def test_suspended_local_user_is_rejected(
 
 
 @pytest.mark.asyncio
-async def test_missing_local_user_is_rejected(
+async def test_missing_local_user_is_provisioned(
     monkeypatch,
 ):
+    local_user = SimpleNamespace(
+        id=USER_ID,
+        is_active=True,
+    )
     repository = SimpleNamespace(
-        get_by_id=AsyncMock(
-            return_value=None
-        )
+        get_by_id=AsyncMock(return_value=None),
+        create=AsyncMock(return_value=local_user),
+    )
+    session = SimpleNamespace(
+        commit=AsyncMock(),
     )
 
     monkeypatch.setattr(
@@ -108,16 +114,18 @@ async def test_missing_local_user_is_rejected(
         lambda session: repository,
     )
 
-    with pytest.raises(
-        ApplicationError
-    ) as exc_info:
-        await auth_dependency.get_current_user(
-            credentials=SimpleNamespace(
-                credentials="valid-token"
-            ),
-            service=FakeAuthService(),
-            session=SimpleNamespace(),
-        )
+    result = await auth_dependency.get_current_user(
+        credentials=SimpleNamespace(
+            credentials="valid-token"
+        ),
+        service=FakeAuthService(),
+        session=session,
+    )
 
-    assert exc_info.value.status_code == 403
-    assert exc_info.value.code == "local_user_not_found"
+    assert result.id == str(USER_ID)
+    repository.get_by_id.assert_awaited_once_with(USER_ID)
+    repository.create.assert_awaited_once_with(
+        user_id=USER_ID,
+        email="user@example.com",
+    )
+    session.commit.assert_awaited_once()
