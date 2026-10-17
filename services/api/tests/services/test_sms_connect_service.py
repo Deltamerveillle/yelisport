@@ -10,7 +10,6 @@ from app.core.exceptions import ForbiddenError, NotFoundError
 from app.schemas.sms_connect import SMSConnectInterestCreate
 from app.services.sms_connect_service import SMSConnectService
 
-
 ATHLETE_ID = uuid.uuid4()
 ATHLETE_OWNER_ID = uuid.uuid4()
 REQUESTER_ID = uuid.uuid4()
@@ -22,8 +21,15 @@ def build_service() -> SMSConnectService:
     )
 
     service.athletes = AsyncMock()
+    service.passports = AsyncMock()
     service.roles = AsyncMock()
     service.interests = AsyncMock()
+
+    service.passports.get_by_athlete_id.return_value = (
+        SimpleNamespace(
+            available_for_opportunities=True,
+        )
+    )
 
     return service
 
@@ -151,6 +157,58 @@ async def test_missing_athlete_returns_not_found():
             data=make_data(),
         )
 
+    service.interests.create.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_unavailable_athlete_cannot_receive_interest():
+    service = build_service()
+
+    service.athletes.get_by_id.return_value = SimpleNamespace(
+        id=ATHLETE_ID,
+        user_id=ATHLETE_OWNER_ID,
+    )
+    service.passports.get_by_athlete_id.return_value = (
+        SimpleNamespace(
+            available_for_opportunities=False,
+        )
+    )
+
+    with pytest.raises(
+        ForbiddenError,
+        match="not available for opportunities",
+    ):
+        await service.create_interest(
+            athlete_id=ATHLETE_ID,
+            requester_user_id=REQUESTER_ID,
+            data=make_data(),
+        )
+
+    service.roles.get_verified_professional_role.assert_not_awaited()
+    service.interests.create.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_athlete_without_passport_cannot_receive_interest():
+    service = build_service()
+
+    service.athletes.get_by_id.return_value = SimpleNamespace(
+        id=ATHLETE_ID,
+        user_id=ATHLETE_OWNER_ID,
+    )
+    service.passports.get_by_athlete_id.return_value = None
+
+    with pytest.raises(
+        ForbiddenError,
+        match="not available for opportunities",
+    ):
+        await service.create_interest(
+            athlete_id=ATHLETE_ID,
+            requester_user_id=REQUESTER_ID,
+            data=make_data(),
+        )
+
+    service.roles.get_verified_professional_role.assert_not_awaited()
     service.interests.create.assert_not_awaited()
 
 

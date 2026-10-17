@@ -27,6 +27,7 @@ services:
     restart: unless-stopped
     environment:
       APP_ENV: ${APP_ENV:-development}
+      SMS_COMMERCIAL_PLANS: ${SMS_COMMERCIAL_PLANS:-[]}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-yelisport}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-yelisport}
       SUPABASE_URL: ${SUPABASE_URL:-http://host.docker.internal:54321}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-change-me}
@@ -68,6 +69,33 @@ services:
       SMS24_FIXTURES_INTERVAL_SECONDS: ${SMS24_FIXTURES_INTERVAL_SECONDS:-21600}
       SMS24_LIVE_INTERVAL_SECONDS: ${SMS24_LIVE_INTERVAL_SECONDS:-3600}
       SMS24_WORKER_IDLE_SECONDS: ${SMS24_WORKER_IDLE_SECONDS:-30}
+    volumes:
+      - ./services/api:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend, edge]
+
+  sms24-transfers-worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api/Dockerfile
+    restart: unless-stopped
+    command: ["python", "-m", "app.sms24.transfers_worker"]
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-yelisport}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-yelisport}
+      SUPABASE_URL: ${SUPABASE_URL:-http://host.docker.internal:54321}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-change-me}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-change-me}
+      SMS24_SPORTMONKS_KEY: ${SMS24_SPORTMONKS_KEY:-}
+      SMS24_TRANSFERS_WORKER_ENABLED: ${SMS24_TRANSFERS_WORKER_ENABLED:-false}
+      SMS24_TRANSFERS_CYCLE_INTERVAL_SECONDS: ${SMS24_TRANSFERS_CYCLE_INTERVAL_SECONDS:-21600}
+      SMS24_TRANSFERS_PAGE_INTERVAL_SECONDS: ${SMS24_TRANSFERS_PAGE_INTERVAL_SECONDS:-60}
+      SMS24_TRANSFERS_RETRY_INTERVAL_SECONDS: ${SMS24_TRANSFERS_RETRY_INTERVAL_SECONDS:-300}
+      SMS24_TRANSFERS_LOCK_RETRY_SECONDS: ${SMS24_TRANSFERS_LOCK_RETRY_SECONDS:-60}
+      SMS24_TRANSFERS_MAX_TEAMS: ${SMS24_TRANSFERS_MAX_TEAMS:-20}
+      SMS24_TRANSFERS_MAX_PLAYERS: ${SMS24_TRANSFERS_MAX_PLAYERS:-100}
     volumes:
       - ./services/api:/app
     depends_on:

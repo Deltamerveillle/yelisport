@@ -2,7 +2,7 @@
 
 import uuid
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,11 +11,16 @@ from app.core.exceptions import (
     ForbiddenError,
     NotFoundError,
 )
+from app.models.sms_connect_athlete_response_event import SMSConnectAthleteResponseEvent
 from app.models.sms_connect_interest import (
     SMSConnectInterest,
 )
 from app.models.sms_connect_interest_event import (
     SMSConnectInterestEvent,
+)
+from app.models.sms_connect_opportunity import SMSConnectOpportunity, SMSConnectOpportunityEvent
+from app.repositories.athlete_passport_repository import (
+    AthletePassportRepository,
 )
 from app.repositories.athlete_repository import (
     AthleteRepository,
@@ -26,17 +31,19 @@ from app.repositories.sms_connect_interest_event_repository import (
 from app.repositories.sms_connect_interest_repository import (
     SMSConnectInterestRepository,
 )
+from app.repositories.sms_connect_opportunity_repository import SMSConnectOpportunityRepository
 from app.repositories.user_role_repository import (
     UserRoleRepository,
+)
+from app.schemas.sms_connect import (
+    SMSConnectAthleteResponseRequest,
+    SMSConnectInterestCreate,
+    SMSConnectOpportunityTransitionRequest,
+    SMSConnectTransitionRequest,
 )
 from app.services.notification_service import (
     NotificationService,
 )
-from app.schemas.sms_connect import (
-    SMSConnectInterestCreate,
-    SMSConnectTransitionRequest,
-)
-
 
 _ALLOWED_TRANSITIONS = {
     "submitted": {"under_review"},
@@ -58,7 +65,11 @@ class SMSConnectService:
         self,
         session: AsyncSession,
     ) -> None:
+        self.opportunities = SMSConnectOpportunityRepository(session)
         self.athletes = AthleteRepository(
+            session
+        )
+        self.passports = AthletePassportRepository(
             session
         )
         self.roles = UserRoleRepository(
@@ -100,6 +111,18 @@ class SMSConnectService:
             raise ForbiddenError(
                 "Athletes cannot submit professional "
                 "interest to themselves"
+            )
+
+        passport = await self.passports.get_by_athlete_id(
+            athlete.id
+        )
+
+        if (
+            passport is None
+            or not passport.available_for_opportunities
+        ):
+            raise ForbiddenError(
+                "Athlete is not available for opportunities"
             )
 
         role = (
@@ -163,6 +186,105 @@ class SMSConnectService:
             )
         )
 
+    async def respond_to_interest(
+        self,
+        *,
+        interest_id: uuid.UUID,
+        athlete_user_id: uuid.UUID,
+        data: SMSConnectAthleteResponseRequest,
+    ) -> SMSConnectInterest:
+        """Record a private athlete decision without changing SMS administrative state."""
+        interest = await self.interests.get_by_id_for_update(interest_id)
+        if interest is None:
+            raise NotFoundError("SMS Connect interest not found")
+        athlete = await self.athletes.get_by_id(interest.athlete_id)
+        if athlete is None:
+            raise NotFoundError("Athlete not found")
+        if athlete.user_id != athlete_user_id:
+            raise ForbiddenError("Only the athlete owner can respond to this opportunity")
+        if interest.status != "delivered":
+            raise ConflictError("Only delivered SMS Connect interests can receive a response")
+        if interest.athlete_response == data.athlete_response:
+            return interest
+
+        now = datetime.now(UTC)
+        event = SMSConnectAthleteResponseEvent(
+            interest_id=interest.id,
+            actor_user_id=athlete_user_id,
+            from_response=interest.athlete_response,
+            to_response=data.athlete_response,
+            created_at=now,
+        )
+        interest.athlete_response = data.athlete_response
+        interest.athlete_responded_at = now
+        await self.interests.add_athlete_response_event(event)
+        await self._sync_opportunity(interest, athlete_user_id, now)
+        return await self.interests.save(interest)
+
+    async def _sync_opportunity(self, interest, actor_user_id, now) -> None:
+        # Caller already holds the interest lock: all writers lock interest, then opportunity.
+        opportunity = await self.opportunities.get_for_interest_for_update(interest.id)
+        previous = opportunity.status if opportunity is not None else None
+        if opportunity is None and interest.athlete_response == "interested":
+            opportunity = await self.opportunities.create(SMSConnectOpportunity(
+                interest_id=interest.id, status="active", opened_at=now,
+            ))
+            source = "athlete_consent"
+        elif opportunity is not None and previous == "withdrawn" and (
+            interest.athlete_response == "interested"
+        ):
+            opportunity.status = "active"
+            opportunity.closed_at = None
+            source = "athlete_reactivation"
+        elif opportunity is not None and previous in {"active", "progressing"} and (
+            interest.athlete_response == "declined"
+        ):
+            opportunity.status = "withdrawn"
+            opportunity.closed_at = now
+            source = "athlete_withdrawal"
+        else:
+            # Completed commercial outcomes are never rewritten by a later decision.
+            return
+        await self.opportunities.add_event(SMSConnectOpportunityEvent(
+            opportunity_id=opportunity.id, actor_user_id=actor_user_id,
+            from_status=previous, to_status=opportunity.status, source=source, created_at=now,
+        ))
+
+    async def list_athlete_opportunities(self, athlete_user_id: uuid.UUID):
+        return await self.opportunities.list_for_athlete(athlete_user_id)
+
+    async def list_my_opportunities(self, requester_user_id: uuid.UUID):
+        return await self.opportunities.list_for_requester(requester_user_id)
+
+    async def transition_opportunity(
+        self, *, opportunity_id: uuid.UUID, admin_user_id: uuid.UUID,
+        data: SMSConnectOpportunityTransitionRequest,
+    ):
+        await self._require_admin(admin_user_id)
+        opportunity = await self.opportunities.get_by_id(opportunity_id)
+        if opportunity is None:
+            raise NotFoundError("SMS Connect opportunity not found")
+        await self.interests.get_by_id_for_update(opportunity.interest_id)
+        opportunity = await self.opportunities.get_for_interest_for_update(opportunity.interest_id)
+        if opportunity is None:
+            raise NotFoundError("SMS Connect opportunity not found")
+        allowed = {
+            "active": {"progressing", "unsuccessful"},
+            "progressing": {"successful", "unsuccessful"},
+        }
+        previous = opportunity.status
+        if data.status not in allowed.get(previous, set()):
+            raise ConflictError("Invalid SMS Connect opportunity transition")
+        now = datetime.now(UTC)
+        opportunity.status = data.status
+        if data.status in {"successful", "unsuccessful"}:
+            opportunity.closed_at = now
+        await self.opportunities.add_event(SMSConnectOpportunityEvent(
+            opportunity_id=opportunity.id, actor_user_id=admin_user_id,
+            from_status=previous, to_status=data.status, source="sms_admin", created_at=now,
+        ))
+        return await self.opportunities.get_response(opportunity.id)
+
     async def list_admin_interests(
         self,
         *,
@@ -218,7 +340,7 @@ class SMSConnectService:
                 f"{from_status} -> {to_status}"
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         interest.status = to_status
 

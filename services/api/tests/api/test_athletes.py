@@ -9,8 +9,8 @@ from app.api.dependencies.auth import get_current_user
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.db.session import get_db_session
 from app.schemas.auth import AuthUser
+from app.services.athlete_profile_service import AthleteProfileService
 from app.services.athlete_service import AthleteService
-
 
 USER_ID = uuid.UUID("28bbf25e-8d42-4a0a-8bc8-0f41be0fc114")
 OTHER_USER_ID = uuid.UUID("a451c6f7-b023-4bef-a5a1-f84caa15a2ac")
@@ -184,6 +184,77 @@ def test_get_athlete(
 
     assert response.status_code == 200
     assert response.json()["id"] == str(ATHLETE_ID)
+
+
+
+def test_get_enriched_athlete_profile(
+    client: TestClient,
+    athlete_dependencies,
+    monkeypatch,
+) -> None:
+    async def fake_get_profile(self, athlete_id):
+        assert athlete_id == ATHLETE_ID
+        athlete = athlete_object()
+        return {
+            "athlete": {
+                "id": athlete.id,
+                "user_id": athlete.user_id,
+                "sport_id": athlete.sport_id,
+                "first_name": athlete.first_name,
+                "last_name": athlete.last_name,
+                "nationality": athlete.nationality,
+                "country": athlete.country,
+                "residence_country_id": athlete.residence_country_id,
+                "city": athlete.city,
+                "biography": athlete.biography,
+                "created_at": athlete.created_at,
+                "updated_at": athlete.updated_at,
+            },
+            "performances": [],
+            "statistics": {
+                "identity": {
+                    "linked": False,
+                    "identity_link_id": None,
+                    "status": None,
+                    "method": None,
+                    "canonical_competitor_id": None,
+                },
+                "observations": [],
+            },
+        }
+
+    monkeypatch.setattr(AthleteProfileService, "get_profile", fake_get_profile)
+
+    response = client.get(
+        f"/api/v1/athletes/{ATHLETE_ID}/profile",
+        headers={"Authorization": "Bearer token"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["athlete"]["id"] == str(ATHLETE_ID)
+    assert payload["performances"] == []
+    assert payload["statistics"]["identity"]["linked"] is False
+    assert payload["statistics"]["observations"] == []
+
+
+def test_nonexistent_enriched_athlete_profile_returns_404(
+    client: TestClient,
+    athlete_dependencies,
+    monkeypatch,
+) -> None:
+    async def fake_get_profile(self, athlete_id):
+        assert athlete_id == ATHLETE_ID
+        raise NotFoundError("Athlete not found")
+
+    monkeypatch.setattr(AthleteProfileService, "get_profile", fake_get_profile)
+
+    response = client.get(
+        f"/api/v1/athletes/{ATHLETE_ID}/profile",
+        headers={"Authorization": "Bearer token"},
+    )
+
+    assert response.status_code == 404
 
 
 def test_list_athletes(

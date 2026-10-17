@@ -6,10 +6,13 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.models.subscription import Subscription
 from app.repositories.subscription_repository import (
     SubscriptionRepository,
 )
+from app.schemas.entitlements import CommercialEntitlements
+from app.schemas.subscription import SubscriptionAccessResponse
 
 
 class SubscriptionService:
@@ -32,9 +35,7 @@ class SubscriptionService:
     ) -> Subscription | None:
         """Return a currently usable subscription, if any."""
 
-        subscription = await self.subscriptions.get_current_for_user(
-            user_id
-        )
+        subscription = await self.subscriptions.get_current_for_user(user_id)
 
         if subscription is None:
             return None
@@ -55,10 +56,42 @@ class SubscriptionService:
 
         subscription = await self.get_current_subscription(user_id)
 
-        if subscription is None:
-            return False
+        return self._legacy_premium(subscription)
 
+    @staticmethod
+    def _legacy_premium(subscription: Subscription | None) -> bool:
         return (
-            subscription.status in {"active", "trialing"}
+            subscription is not None
+            and subscription.status in {"active", "trialing"}
             and subscription.plan_code != "free"
+        )
+
+    async def get_access(self, user_id: uuid.UUID) -> SubscriptionAccessResponse:
+        """Resolve explicit capabilities from one subscription read and server catalogue.
+
+        Legacy premium is compatibility information, not an entitlement fallback.
+        Plan availability controls new purchases, not access for existing subscribers.
+        """
+        subscription = await self.get_current_subscription(user_id)
+        premium = self._legacy_premium(subscription)
+        entitlements = CommercialEntitlements()
+        if premium:
+            plan = next(
+                (
+                    plan
+                    for plan in get_settings().sms_commercial_plans
+                    if plan.plan_code == subscription.plan_code
+                ),
+                None,
+            )
+            if plan is not None:
+                entitlements = plan.entitlements
+        return SubscriptionAccessResponse(
+            has_premium_access=premium,
+            plan_code=subscription.plan_code if subscription is not None else "free",
+            status=subscription.status if subscription is not None else "inactive",
+            current_period_end=(
+                subscription.current_period_end if subscription is not None else None
+            ),
+            entitlements=entitlements,
         )

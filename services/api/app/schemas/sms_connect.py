@@ -10,7 +10,6 @@ from pydantic import (
     Field,
 )
 
-
 InterestType = Literal[
     "trial",
     "recruitment",
@@ -27,6 +26,17 @@ InterestStatus = Literal[
     "delivered",
     "closed",
 ]
+
+
+AthleteResponseStatus = Literal["pending", "interested", "declined"]
+
+
+class SMSConnectAthleteResponseRequest(BaseModel):
+    """Athlete decision only; administrative state and contacts cannot be supplied."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    athlete_response: Literal["interested", "declined"]
 
 
 class SMSConnectInterestCreate(BaseModel):
@@ -72,6 +82,8 @@ class SMSConnectInterestResponse(BaseModel):
     message: str
 
     status: InterestStatus
+    athlete_response: AthleteResponseStatus = "pending"
+    athlete_responded_at: datetime | None = None
 
     reviewed_at: datetime | None
     delivered_at: datetime | None
@@ -118,3 +130,29 @@ class SMSConnectInterestEventResponse(BaseModel):
 
     note: str | None
     created_at: datetime
+
+
+OpportunityStatus = Literal["active", "progressing", "successful", "unsuccessful", "withdrawn"]
+
+
+class SMSConnectOpportunityResponse(BaseModel):
+    """Commercial facts only; no participant user IDs or private contacts."""
+
+    id: uuid.UUID
+    interest_id: uuid.UUID
+    status: OpportunityStatus
+    opened_at: datetime
+    closed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    organization_name: str
+    requester_role: str
+    interest_type: InterestType
+    subject: str
+    message: str
+
+
+class SMSConnectOpportunityTransitionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["progressing", "successful", "unsuccessful"]

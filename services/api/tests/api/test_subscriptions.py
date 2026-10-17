@@ -10,7 +10,8 @@ from fastapi.testclient import TestClient
 from app.api.dependencies.auth import get_current_user
 from app.db.session import get_db_session
 from app.main import app
-
+from app.schemas.entitlements import CommercialEntitlements
+from app.schemas.subscription import SubscriptionAccessResponse
 
 USER_ID = uuid.uuid4()
 
@@ -30,9 +31,7 @@ client = TestClient(app)
 
 
 def test_get_current_subscription_returns_none_when_absent() -> None:
-    with patch(
-        "app.api.v1.endpoints.subscriptions.SubscriptionService"
-    ) as service_cls:
+    with patch("app.api.v1.endpoints.subscriptions.SubscriptionService") as service_cls:
         service = service_cls.return_value
         service.get_current_subscription = AsyncMock(return_value=None)
 
@@ -43,11 +42,16 @@ def test_get_current_subscription_returns_none_when_absent() -> None:
 
 
 def test_get_subscription_access_returns_free_when_absent() -> None:
-    with patch(
-        "app.api.v1.endpoints.subscriptions.SubscriptionService"
-    ) as service_cls:
+    with patch("app.api.v1.endpoints.subscriptions.SubscriptionService") as service_cls:
         service = service_cls.return_value
-        service.get_current_subscription = AsyncMock(return_value=None)
+        service.get_access = AsyncMock(
+            return_value=SubscriptionAccessResponse(
+                has_premium_access=False,
+                plan_code="free",
+                status="inactive",
+                current_period_end=None,
+            )
+        )
 
         response = client.get("/api/v1/subscriptions/me/access")
 
@@ -57,6 +61,7 @@ def test_get_subscription_access_returns_free_when_absent() -> None:
         "plan_code": "free",
         "status": "inactive",
         "current_period_end": None,
+        "entitlements": CommercialEntitlements().model_dump(),
     }
 
 
@@ -74,13 +79,9 @@ def test_get_current_active_subscription() -> None:
         updated_at=now,
     )
 
-    with patch(
-        "app.api.v1.endpoints.subscriptions.SubscriptionService"
-    ) as service_cls:
+    with patch("app.api.v1.endpoints.subscriptions.SubscriptionService") as service_cls:
         service = service_cls.return_value
-        service.get_current_subscription = AsyncMock(
-            return_value=subscription
-        )
+        service.get_current_subscription = AsyncMock(return_value=subscription)
 
         response = client.get("/api/v1/subscriptions/me")
 
@@ -121,13 +122,9 @@ def test_get_subscription_history() -> None:
         ),
     ]
 
-    with patch(
-        "app.api.v1.endpoints.subscriptions.SubscriptionService"
-    ) as service_cls:
+    with patch("app.api.v1.endpoints.subscriptions.SubscriptionService") as service_cls:
         service = service_cls.return_value
-        service.list_user_subscriptions = AsyncMock(
-            return_value=subscriptions
-        )
+        service.list_user_subscriptions = AsyncMock(return_value=subscriptions)
 
         response = client.get("/api/v1/subscriptions/me/history")
 
@@ -148,14 +145,16 @@ def test_get_active_subscription_access() -> None:
         current_period_end=now + timedelta(days=30),
     )
 
-    with patch(
-        "app.api.v1.endpoints.subscriptions.SubscriptionService"
-    ) as service_cls:
+    with patch("app.api.v1.endpoints.subscriptions.SubscriptionService") as service_cls:
         service = service_cls.return_value
-        service.get_current_subscription = AsyncMock(
-            return_value=subscription
+        service.get_access = AsyncMock(
+            return_value=SubscriptionAccessResponse(
+                has_premium_access=True,
+                plan_code=subscription.plan_code,
+                status=subscription.status,
+                current_period_end=subscription.current_period_end,
+            )
         )
-        service.has_premium_access = AsyncMock(return_value=True)
 
         response = client.get("/api/v1/subscriptions/me/access")
 

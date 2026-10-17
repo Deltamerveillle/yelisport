@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:yelisport/core/localization/generated/app_localizations.dart';
+import 'package:yelisport/features/sms_connect/presentation/my_opportunities_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yelisport/features/auth/presentation/auth_providers.dart';
 import 'package:yelisport/features/events/presentation/events_screen.dart';
@@ -73,6 +75,16 @@ class HomeScreen extends ConsumerWidget {
                     Wrap(
                       spacing: 10,
                       children: [
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.handshake_outlined),
+                          label: Text(
+                              AppLocalizations.of(context).smsConnectTitle),
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const MyOpportunitiesScreen(),
+                            ),
+                          ),
+                        ),
                         FilledButton.icon(
                           icon: const Icon(Icons.event),
                           label: const Text('Événements'),
@@ -94,7 +106,8 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    Text('Sports', style: Theme.of(context).textTheme.titleLarge),
+                    Text('Sports',
+                        style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 12),
                     TextField(
                       decoration: const InputDecoration(
@@ -140,9 +153,12 @@ class HomeScreen extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final sport = items[index];
                     return ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.sports_soccer)),
+                      leading:
+                          const CircleAvatar(child: Icon(Icons.sports_soccer)),
                       title: Text(sport.name),
-                      subtitle: sport.description == null ? null : Text(sport.description!),
+                      subtitle: sport.description == null
+                          ? null
+                          : Text(sport.description!),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -156,9 +172,12 @@ class HomeScreen extends ConsumerWidget {
                                   : Icons.favorite_border,
                             ),
                             onPressed: () async {
-                              await ref.read(favoritesRepositoryProvider).toggleSport(
+                              await ref
+                                  .read(favoritesRepositoryProvider)
+                                  .toggleSport(
                                     sport.id,
-                                    favorite: !favoriteSports.contains(sport.id),
+                                    favorite:
+                                        !favoriteSports.contains(sport.id),
                                   );
                               ref.invalidate(favoriteSportIdsProvider);
                             },

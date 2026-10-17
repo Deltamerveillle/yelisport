@@ -33,6 +33,11 @@ class SMSConnectInterest(Base):
             "'rejected', 'delivered', 'closed')",
             name="ck_sms_connect_interest_status",
         ),
+        CheckConstraint(
+            "athlete_response IN "
+            "('pending', 'interested', 'declined')",
+            name="ck_sms_connect_athlete_response",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -102,6 +107,19 @@ class SMSConnectInterest(Base):
     )
 
     delivered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    athlete_response: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+        index=True,
+    )
+
+    athlete_responded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )

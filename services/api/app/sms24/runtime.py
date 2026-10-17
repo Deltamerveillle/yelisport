@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
@@ -17,9 +19,15 @@ from app.sms24.runner import (
     SMS24ProviderRunner,
     SMS24RunnerRepository,
 )
-
 from app.sms24.standings import SMS24StandingsRepository, StandingsIngestionService
 from app.sms24.standings_runner import StandingsProviderRunner
+from app.sms24.transfers_batch import (
+    AutomaticTransfersCursor,
+    AutomaticTransfersResult,
+    TransfersBatchOrchestrator,
+)
+from app.sms24.transfers_runner import TransfersRunner
+from app.sms24.transfers_targets import SportmonksTransfersTargetDiscovery
 
 
 def build_sms24_provider_registry(
@@ -85,3 +93,40 @@ def build_sms24_standings_runner(
         registry=build_sms24_provider_registry(settings),
         ingestion_service=StandingsIngestionService(SMS24StandingsRepository(session)),
     )
+
+
+def build_sms24_transfers_runner(
+    session: AsyncSession, *, settings: Settings | None = None,
+) -> TransfersRunner:
+    """Reuse local registration without enabling Transfers support or capabilities."""
+    return TransfersRunner(session=session, registry=build_sms24_provider_registry(settings))
+
+
+async def run_sms24_automatic_transfers(
+    session: AsyncSession, *, reference_date: date, settings: Settings | None = None,
+    max_teams: int = 20, max_players: int = 100,
+    cursor: AutomaticTransfersCursor | None = None,
+) -> AutomaticTransfersResult:
+    """Discover ephemeral targets then ingest, without committing or scheduling work."""
+    if cursor is not None and not isinstance(cursor, AutomaticTransfersCursor):
+        raise ValueError("Invalid automatic Transfers cursor")
+    cursor = cursor or AutomaticTransfersCursor()
+    registry = build_sms24_provider_registry(settings)
+    discovery = SportmonksTransfersTargetDiscovery(
+        session=session, registry=registry, max_teams=max_teams,
+    )
+    batch = TransfersBatchOrchestrator(
+        runner=TransfersRunner(session=session, registry=registry), max_players=max_players,
+    )
+    targets = await discovery.discover(
+        reference_date=reference_date, after_team_external_id=cursor.after_team_external_id,
+    )
+    result = await batch.run(
+        player_ids=targets.player_ids, after_player_external_id=cursor.after_player_external_id,
+    )
+    next_cursor = None
+    if result.has_more:
+        next_cursor = AutomaticTransfersCursor(cursor.after_team_external_id, result.next_cursor)
+    elif targets.has_more:
+        next_cursor = AutomaticTransfersCursor(targets.next_cursor)
+    return AutomaticTransfersResult(discovery=targets, batch=result, next_cursor=next_cursor)

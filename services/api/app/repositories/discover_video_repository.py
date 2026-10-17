@@ -67,6 +67,26 @@ class DiscoverVideoRepository:
         )
         return result.scalars().all()
 
+    async def list_public_by_athlete_id(
+        self,
+        athlete_id: uuid.UUID,
+    ) -> Sequence[DiscoverVideo]:
+        result = await self.session.execute(
+            select(DiscoverVideo)
+            .where(
+                DiscoverVideo.athlete_id == athlete_id,
+                DiscoverVideo.publication_status == "published",
+                DiscoverVideo.moderation_status == "approved",
+                DiscoverVideo.visibility == "public",
+                DiscoverVideo.is_active.is_(True),
+            )
+            .order_by(
+                DiscoverVideo.created_at.desc(),
+                DiscoverVideo.id.asc(),
+            )
+        )
+        return result.scalars().all()
+
     async def update(
         self,
         video: DiscoverVideo,
