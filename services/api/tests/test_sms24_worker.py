@@ -87,7 +87,7 @@ async def test_worker_default_cadence_and_failure_backoff(monkeypatch, caplog, f
     ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(worker, "get_settings", lambda: SimpleNamespace(**{
-        "sms24_api_football_key": None, "sms24_sportmonks_key": None, provider_key: "test-key",
+        "sms24_api_football_key": None, "sms24_sportmonks_key": None, "sms24_espn_enabled": False, provider_key: "test-key",
     }))
     monkeypatch.setattr(worker, "_run_ingestion", ingest)
     monkeypatch.setattr(worker, "asyncio", SimpleNamespace(
@@ -107,7 +107,7 @@ async def test_worker_default_cadence_and_failure_backoff(monkeypatch, caplog, f
 @pytest.mark.parametrize("enabled,key", [(False, "test-key"), (True, "")])
 async def test_worker_does_not_ingest_when_disabled_or_key_missing(monkeypatch, enabled, key):
     monkeypatch.setenv("SMS24_WORKER_ENABLED", str(enabled))
-    monkeypatch.setattr(worker, "get_settings", lambda: SimpleNamespace(sms24_api_football_key=key, sms24_sportmonks_key=None))
+    monkeypatch.setattr(worker, "get_settings", lambda: SimpleNamespace(sms24_api_football_key=key, sms24_sportmonks_key=None, sms24_espn_enabled=False))
     ingest = AsyncMock()
     monkeypatch.setattr(worker, "_run_ingestion", ingest)
     monkeypatch.setattr(worker, "asyncio", SimpleNamespace(sleep=AsyncMock(side_effect=asyncio.CancelledError)))

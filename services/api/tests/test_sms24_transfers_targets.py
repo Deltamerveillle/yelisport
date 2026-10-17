@@ -42,11 +42,9 @@ def no_real_http(monkeypatch):
 async def discover_payload(payload):
     def handler(request):
         assert request.url.path == "/v3/football/teams/62"
-        assert dict(request.url.params) == {
-            "include": "players",
-            "api_token": "secret-token",
-        }
-        assert "Authorization" not in request.headers
+        assert dict(request.url.params) == {"include": "players"}
+        assert request.headers["Authorization"] == "secret-token"
+        assert "secret-token" not in str(request.url)
         return httpx.Response(200, json=payload)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:

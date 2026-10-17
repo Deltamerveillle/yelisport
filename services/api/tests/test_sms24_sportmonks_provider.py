@@ -40,8 +40,9 @@ def envelope(data=None, page=1, more=False):
 @pytest.mark.asyncio
 async def test_daily_request_and_normalization():
     def handler(request):
-        assert request.url.params["api_token"] == TOKEN
-        assert "Authorization" not in request.headers
+        assert request.headers["Authorization"] == TOKEN
+        assert "api_token" not in request.url.params
+        assert TOKEN not in str(request.url)
         assert request.url.path == "/v3/football/fixtures/date/2026-09-09"
         assert request.url.params["timezone"] == "UTC"
         assert request.url.params["page"] == "1"

@@ -409,12 +409,12 @@ class SportmonksProvider(SportsDataProvider):
         try:
             if self._client is not None:
                 response = await self._client.get(
-                    f"{self.base_url}{path}", params={**params, "api_token": self.api_key}, timeout=self.timeout_seconds, follow_redirects=False,
+                    f"{self.base_url}{path}", params=params, headers={"Authorization": self.api_key}, timeout=self.timeout_seconds, follow_redirects=False,
                 )
             else:
                 async with httpx.AsyncClient() as client:
                     response = await client.get(
-                        f"{self.base_url}{path}", params={**params, "api_token": self.api_key},
+                        f"{self.base_url}{path}", params=params, headers={"Authorization": self.api_key},
                         timeout=self.timeout_seconds, follow_redirects=False,
                     )
         except Exception:
