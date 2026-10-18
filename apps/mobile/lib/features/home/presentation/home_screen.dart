@@ -115,6 +115,32 @@ class HomeScreen extends ConsumerWidget {
                       children: [
                           Card(
                             child: ListTile(
+                              leading: const Icon(Icons.psychology_outlined),
+                              title: const Text('SMS Triple Vision'),
+                              subtitle: const Text(
+                                '3 analyses IA et 3 évaluations humaines',
+                              ),
+                              trailing: const Text(
+                                'En préparation',
+                                style: TextStyle(fontSize: 11),
+                              ),
+                            ),
+                          ),
+                          Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.analytics_outlined),
+                              title: const Text('SMS Intelligence'),
+                              subtitle: const Text(
+                                'Données et analyses multisports',
+                              ),
+                              trailing: const Text(
+                                'En préparation',
+                                style: TextStyle(fontSize: 11),
+                              ),
+                            ),
+                          ),
+                          Card(
+                            child: ListTile(
                               leading: const Icon(Icons.public),
                               title: const Text('SMS Nations'),
                               subtitle: const Text('Découvrir les athlètes'),
