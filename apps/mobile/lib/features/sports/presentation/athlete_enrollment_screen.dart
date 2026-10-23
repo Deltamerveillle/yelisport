@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -112,6 +113,25 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
     }
   }
 
+  Future<String> _authorizedUpload({
+    required String athleteId,
+    required List<int> bytes,
+    required String mimeType,
+    required String mediaType,
+  }) async {
+    final api = ref.read(apiClientProvider);
+    final grant = await api.postObject('/athletes/$athleteId/media/upload-intent',
+      data: {'mime_type': mimeType, 'media_type': mediaType});
+    final path = grant['path'] as String;
+    final token = grant['token'] as String;
+    final supabaseUrl = ref.read(supabaseProvider).supabaseUrl;
+    final url = Uri.parse('$supabaseUrl/storage/v1/object/upload/sign/sms24-athlete-media/$path')
+        .replace(queryParameters: {'token': token});
+    await Dio().putUri<void>(url, data: bytes,
+      options: Options(headers: {'Content-Type': mimeType}));
+    return path;
+  }
+
   Future<void> _uploadPhoto() async {
     final athleteId = _athleteId;
     if (athleteId == null) return;
@@ -133,16 +153,10 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
       if (bytes.lengthInBytes > 8 * 1024 * 1024) {
         throw StateError('Photo trop volumineuse (8 Mo maximum)');
       }
-      final supabase = ref.read(supabaseProvider);
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) throw StateError('Session expirée');
-      final random = Random.secure();
-      final hex = List.generate(16,
-        (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
-      final uuid = '${hex.substring(0,8)}-${hex.substring(8,12)}-4${hex.substring(13,16)}-a${hex.substring(17,20)}-${hex.substring(20,32)}';
-      final path = '$userId/$athleteId/$uuid.$extension';
-      await supabase.storage.from('sms24-athlete-media')
-          .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: mime));
+      final path = await _authorizedUpload(
+        athleteId: athleteId, bytes: bytes, mimeType: mime,
+        mediaType: 'photo',
+      );
       await ref.read(apiClientProvider).postObject(
         '/athletes/$athleteId/media',
         data: {'storage_path': path, 'media_type': 'photo', 'mime_type': mime},
@@ -183,17 +197,11 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
       if (bytes.lengthInBytes > 50 * 1024 * 1024) {
         throw StateError('Vidéo trop volumineuse (50 Mo maximum)');
       }
-      final supabase = ref.read(supabaseProvider);
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) throw StateError('Session expirée');
-      final random = Random.secure();
-      final hex = List.generate(16,
-        (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
-      final uuid = '${hex.substring(0,8)}-${hex.substring(8,12)}-4${hex.substring(13,16)}-a${hex.substring(17,20)}-${hex.substring(20,32)}';
-      uploadedPath = '$userId/$athleteId/$uuid.mp4';
-      final bucket = supabase.storage.from('sms24-athlete-media');
-      await bucket.uploadBinary(uploadedPath, bytes,
-        fileOptions: const FileOptions(contentType: 'video/mp4'));
+      uploadedPath = await _authorizedUpload(
+        athleteId: athleteId, bytes: bytes, mimeType: 'video/mp4',
+        mediaType: 'video',
+      );
+      final bucket = ref.read(supabaseProvider).storage.from('sms24-athlete-media');
       final signedUrl = await bucket.createSignedUrl(uploadedPath, 120);
       player = VideoPlayerController.networkUrl(Uri.parse(signedUrl));
       await player.initialize();
