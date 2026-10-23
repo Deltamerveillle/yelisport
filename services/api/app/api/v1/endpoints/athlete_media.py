@@ -1,14 +1,18 @@
 """Owned athlete media registry. Upload bytes only through private Supabase Storage."""
 
 import uuid
+
+import httpx
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import CurrentUser
-from app.core.exceptions import ForbiddenError, NotFoundError
+from app.core.config import get_settings
+from app.core.exceptions import ApplicationError, ForbiddenError, NotFoundError
 from app.db.session import get_db_session
 from app.models.athlete_media import AthleteMedia
 from app.repositories.athlete_repository import AthleteRepository
@@ -32,6 +36,72 @@ async def _owned_athlete(
     athlete = await AthleteRepository(session).get_by_id(athlete_id)
     if athlete is None or athlete.user_id != user_id:
         raise NotFoundError("Profil sportif introuvable")
+
+
+class UploadIntentRequest(BaseModel):
+    """Only the server creates the object path, never the caller."""
+    media_type: str
+    mime_type: str
+
+
+@router.post("/upload-intent")
+async def create_upload_intent(
+    athlete_id: uuid.UUID,
+    payload: UploadIntentRequest,
+    current_user: CurrentUser,
+    session: Session,
+) -> dict[str, str]:
+    """Authorize a one-time private upload after checking ownership and plan."""
+    user_id = uuid.UUID(str(current_user.id))
+    await _owned_athlete(session, athlete_id, user_id)
+    access = await SubscriptionService(session).get_access(user_id)
+    if not access.has_premium_access:
+        raise ForbiddenError("Abonnement actif requis avant téléversement")
+    if payload.mime_type not in _EXTENSIONS:
+        raise ForbiddenError("Format de média non autorisé")
+    if (
+        payload.media_type == "photo"
+        and not payload.mime_type.startswith("image/")
+    ) or (
+        payload.media_type == "video"
+        and payload.mime_type != "video/mp4"
+    ):
+        raise ForbiddenError("Type de média incompatible")
+
+    settings = get_settings()
+    if (
+        not settings.supabase_url.startswith("https://")
+        or settings.supabase_service_role_key in ("", "change-me")
+    ):
+        raise ApplicationError(
+            "Téléversement temporairement indisponible",
+            status_code=503,
+        )
+
+    path = f"{user_id}/{athlete_id}/{uuid.uuid4()}.{_EXTENSIONS[payload.mime_type]}"
+    url = (
+        settings.supabase_url.rstrip("/")
+        + "/storage/v1/object/upload/sign/sms24-athlete-media/"
+        + path
+    )
+    headers = {
+        "Authorization": f"Bearer {settings.supabase_service_role_key}",
+        "apikey": settings.supabase_service_role_key,
+        "Content-Type": "application/json",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            response = await client.post(url, headers=headers, json={})
+        response.raise_for_status()
+        signed = response.json()
+        token = signed.get("token")
+        if not isinstance(token, str) or not token:
+            raise ValueError("Missing signed upload token")
+    except (httpx.HTTPError, ValueError) as exc:
+        raise ApplicationError(
+            "Autorisation de téléversement indisponible", status_code=503,
+        ) from exc
+    return {"path": path, "token": token}
 
 
 @router.get("", response_model=list[AthleteMediaResponse])
