@@ -9,8 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db_session
-from app.models.sports_news import SportsNewsArticle
 from app.models.sports_live import SportsDataSource
+from app.models.sports_news import SportsNewsArticle
 
 router = APIRouter(prefix="/sms24", tags=["sms24-news"])
 
