@@ -1,9 +1,7 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 import 'package:yelisport/app/di/providers.dart';
 import 'package:yelisport/features/sports/domain/sport.dart';
@@ -124,7 +122,7 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
       data: {'mime_type': mimeType, 'media_type': mediaType});
     final path = grant['path'] as String;
     final token = grant['token'] as String;
-    final supabaseUrl = ref.read(supabaseProvider).supabaseUrl;
+    final supabaseUrl = ref.read(appConfigProvider).supabaseUrl.toString();
     final url = Uri.parse('$supabaseUrl/storage/v1/object/upload/sign/sms24-athlete-media/$path')
         .replace(queryParameters: {'token': token});
     await Dio().putUri<void>(url, data: bytes,
