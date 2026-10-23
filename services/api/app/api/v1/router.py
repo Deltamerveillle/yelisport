@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     notifications,
     payments,
     sms24_live,
+    sms24_news,
     sms_connect,
     sms_nations,
     sms_proof,
@@ -40,6 +41,7 @@ router.include_router(sms_nations.router)
 router.include_router(sms_proof.router)
 router.include_router(sms_connect.router)
 router.include_router(sms24_live.router)
+router.include_router(sms24_news.router)
 router.include_router(notifications.router)
 router.include_router(payments.router)
 

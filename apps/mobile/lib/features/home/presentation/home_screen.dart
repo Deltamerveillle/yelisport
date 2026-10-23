@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yelisport/features/ads/presentation/ad_slot.dart';
 import 'package:yelisport/features/sms_nations/presentation/sms_nations_screen.dart';
 import 'package:yelisport/core/localization/generated/app_localizations.dart';
 import 'package:yelisport/features/sms_connect/presentation/my_opportunities_screen.dart';
@@ -15,7 +16,9 @@ import 'package:yelisport/features/sports/presentation/sport_detail_screen.dart'
 import 'package:yelisport/features/sports/presentation/sports_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({this.onNavigate, super.key});
+
+  final ValueChanged<int>? onNavigate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -106,6 +109,28 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 18),
+                    const AdSlot(),
+                    const SizedBox(height: 18),
+                    Text('Le sport en temps réel',
+                        style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 10),
+                    Wrap(spacing: 10, runSpacing: 8, children: [
+                      FilledButton.icon(
+                        onPressed: onNavigate == null ? null : () => onNavigate!(1),
+                        icon: const Icon(Icons.sports_soccer),
+                        label: const Text('Rencontres & Live'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: onNavigate == null ? null : () => onNavigate!(2),
+                        icon: const Icon(Icons.newspaper_outlined),
+                        label: const Text('Actualités'),
+                      ),
+                    ]),
+                    const SizedBox(height: 10),
+                    Text('Les résultats et les nouvelles apparaissent après '
+                      'la collecte et la validation des sources.',
+                      style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 18),
                     Text(
                       'Les espaces SMS24',
                       style: Theme.of(context).textTheme.titleLarge,
@@ -120,11 +145,15 @@ class HomeScreen extends ConsumerWidget {
                               subtitle: const Text('Découvrir les athlètes'),
                               trailing: const Icon(Icons.chevron_right),
                               onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => const SmsNationsScreen(),
-                                  ),
-                                );
+                                if (onNavigate != null) {
+                                  onNavigate!(3);
+                                } else {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const SmsNationsScreen(),
+                                    ),
+                                  );
+                                }
                               },
                             ),
                           ),
@@ -170,11 +199,13 @@ class HomeScreen extends ConsumerWidget {
                               title: const Text('SMS Connect'),
                               subtitle: const Text('Mes opportunités'),
                               trailing: const Icon(Icons.chevron_right),
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const MyOpportunitiesScreen(),
-                                ),
-                              ),
+                              onTap: () => onNavigate != null
+                                  ? onNavigate!(4)
+                                  : Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => const MyOpportunitiesScreen(),
+                                      ),
+                                    ),
                             ),
                           ),
                       ],
@@ -214,6 +245,8 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
+                    const AdSlot(compact: true),
+                    const SizedBox(height: 18),
                     Text('Sports',
                         style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 12),
@@ -261,8 +294,7 @@ class HomeScreen extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final sport = items[index];
                     return ListTile(
-                      leading:
-                          const CircleAvatar(child: Icon(Icons.sports_soccer)),
+                      leading: CircleAvatar(child: Icon(iconForSport(sport.slug))),
                       title: Text(sport.name),
                       subtitle: sport.description == null
                           ? null

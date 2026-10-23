@@ -31,7 +31,7 @@ class SportDetailScreen extends ConsumerWidget {
           children: [
             CircleAvatar(
               radius: 44,
-              child: Icon(_iconFor(item.slug), size: 44),
+              child: Icon(iconForSport(item.slug), size: 44),
             ),
             const SizedBox(height: 24),
             Text(
@@ -49,11 +49,21 @@ class SportDetailScreen extends ConsumerWidget {
     );
   }
 
-  IconData _iconFor(String sportSlug) {
-    return switch (sportSlug) {
-      'basketball' => Icons.sports_basketball,
-      'athletics' => Icons.directions_run,
-      _ => Icons.sports_soccer,
-    };
-  }
+}
+
+IconData iconForSport(String sportSlug) {
+  return switch (sportSlug) {
+    'basketball' => Icons.sports_basketball,
+    'rugby' => Icons.sports_rugby,
+    'handball' => Icons.sports_handball,
+    'volleyball' => Icons.sports_volleyball,
+    'tennis' => Icons.sports_tennis,
+    'baseball' => Icons.sports_baseball,
+    'american-football' => Icons.sports_football,
+    'hockey' => Icons.sports_hockey,
+    'golf' => Icons.sports_golf,
+    'athletics' => Icons.directions_run,
+    'football' => Icons.sports_soccer,
+    _ => Icons.sports,
+  };
 }

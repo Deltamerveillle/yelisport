@@ -85,7 +85,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 loading: () => const LinearProgressIndicator(),
                 error: (error, _) => const Text('Sports indisponibles.'),
                 data: (items) => DropdownButtonFormField<String>(
-                  value: _sportId,
+                  initialValue: _sportId,
                   decoration: const InputDecoration(labelText: 'Sport'),
                   items: items
                       .map(
