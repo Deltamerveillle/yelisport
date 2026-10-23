@@ -4,7 +4,6 @@ import uuid
 from typing import Annotated
 
 import httpx
-
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 from sqlalchemy import select
