@@ -145,11 +145,15 @@ class HomeScreen extends ConsumerWidget {
                               subtitle: const Text('Découvrir les athlètes'),
                               trailing: const Icon(Icons.chevron_right),
                               onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => const SmsNationsScreen(),
-                                  ),
-                                );
+                                if (onNavigate != null) {
+                                  onNavigate!(3);
+                                } else {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const SmsNationsScreen(),
+                                    ),
+                                  );
+                                }
                               },
                             ),
                           ),
@@ -195,11 +199,13 @@ class HomeScreen extends ConsumerWidget {
                               title: const Text('SMS Connect'),
                               subtitle: const Text('Mes opportunités'),
                               trailing: const Icon(Icons.chevron_right),
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const MyOpportunitiesScreen(),
-                                ),
-                              ),
+                              onTap: () => onNavigate != null
+                                  ? onNavigate!(4)
+                                  : Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => const MyOpportunitiesScreen(),
+                                      ),
+                                    ),
                             ),
                           ),
                       ],
@@ -288,8 +294,7 @@ class HomeScreen extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final sport = items[index];
                     return ListTile(
-                      leading:
-                          const CircleAvatar(child: Icon(Icons.sports_soccer)),
+                      leading: CircleAvatar(child: Icon(iconForSport(sport.slug))),
                       title: Text(sport.name),
                       subtitle: sport.description == null
                           ? null
