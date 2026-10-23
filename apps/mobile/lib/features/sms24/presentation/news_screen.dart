@@ -40,7 +40,8 @@ class NewsScreen extends ConsumerWidget {
           ],
         )),
         data: (items) => RefreshIndicator(
-          onRefresh: () async { await ref.refresh(sms24NewsProvider.future); },
+          onRefresh: () async { final updatedNews = ref.refresh(sms24NewsProvider.future);
+            await updatedNews; },
           child: items.isEmpty
               ? ListView(children: const [
                   SizedBox(height: 140),
