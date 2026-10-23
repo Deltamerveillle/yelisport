@@ -35,7 +35,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 840;
     final pages = <Widget>[
-      const HomeScreen(),
+      HomeScreen(onNavigate: (index) => setState(() => _tab = index)),
       const FixturesScreen(),
       const NewsScreen(),
       const SmsNationsScreen(),
