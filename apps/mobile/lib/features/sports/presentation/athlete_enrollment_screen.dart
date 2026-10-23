@@ -49,7 +49,9 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
     } catch (_) {
       if (mounted) setState(() => _error = 'Impossible de retrouver le passeport existant.');
     } finally {
-      if (mounted) setState(() => _profileChecked = true);
+      if (mounted) {
+        setState(() => _profileChecked = true);
+      }
     }
   }
 
@@ -107,7 +109,9 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
             'l’existence éventuelle d’un profil pour ce sport.');
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -169,7 +173,9 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
           'Envoi impossible. Le stockage privé doit être configuré et '
           'ton abonnement actif. Aucun média n’a été publié.');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -235,7 +241,9 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
           'la durée de 15 à 30 secondes et la configuration du stockage.');
     } finally {
       await player?.dispose();
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -362,7 +370,9 @@ class _SubscriptionStepState extends ConsumerState<_SubscriptionStep> {
       if (mounted) setState(() => _message =
           'Paiement non disponible pour cette offre. Aucun abonnement activé.');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -381,13 +391,16 @@ class _SubscriptionStepState extends ConsumerState<_SubscriptionStep> {
         const SizedBox(height: 15),
         if (snapshot.hasData)
           for (final raw in snapshot.data!)
-            RadioListTile<String>(
+            ListTile(
               title: Text((raw as Map)['name'].toString()),
               subtitle: Text('${raw['amount_minor']} ${raw['currency']} '
                   '• ${raw['duration_days']} jours'),
-              value: raw['plan_code'].toString(),
-              groupValue: _selectedPlan,
-              onChanged: (value) => setState(() => _selectedPlan = value),
+              leading: Icon(_selectedPlan == raw['plan_code'].toString()
+                  ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+              selected: _selectedPlan == raw['plan_code'].toString(),
+              onTap: () => setState(
+                () => _selectedPlan = raw['plan_code'].toString(),
+              ),
             ),
         if (snapshot.connectionState == ConnectionState.waiting)
           const LinearProgressIndicator(),
