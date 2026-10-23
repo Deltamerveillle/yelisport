@@ -1,6 +1,6 @@
 """Public read-only feed of explicitly published SMS24 news articles."""
-from datetime import datetime
 import uuid
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
