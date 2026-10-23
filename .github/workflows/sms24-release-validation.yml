@@ -5,6 +5,7 @@ on:
     paths:
       - "services/api/app/api/v1/endpoints/sms24_news.py"
       - "services/api/app/api/v1/router.py"
+      - "services/api/app/main.py"
       - "services/api/app/db/migrations/versions/20261023_0044_seed_multisport_catalogue.py"
       - "infrastructure/docker/api/Dockerfile"
       - ".github/workflows/sms24-release-validation.yml"
