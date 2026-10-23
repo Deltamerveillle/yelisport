@@ -15,6 +15,8 @@ import 'package:yelisport/features/settings/presentation/settings_screen.dart';
 import 'package:yelisport/features/sports/presentation/sport_detail_screen.dart';
 import 'package:yelisport/features/sports/presentation/sports_providers.dart';
 
+final selectedSportSlugProvider = StateProvider.autoDispose<String?>((ref) => null);
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({this.onNavigate, super.key});
 
@@ -28,6 +30,13 @@ class HomeScreen extends ConsumerWidget {
     final favoriteSports =
         ref.watch(favoriteSportIdsProvider).valueOrNull ?? const <String>{};
     final displayName = profile.valueOrNull?.displayName;
+    final selectedSlug = ref.watch(selectedSportSlugProvider);
+    if (selectedSlug != null) {
+      return SportDetailScreen(
+        slug: selectedSlug,
+        onReturn: () => ref.read(selectedSportSlugProvider.notifier).state = null,
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('SMS24 • Succès Mondial Sports'),
@@ -325,11 +334,8 @@ class HomeScreen extends ConsumerWidget {
                           const Icon(Icons.chevron_right),
                         ],
                       ),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => SportDetailScreen(slug: sport.slug),
-                        ),
-                      ),
+                      onTap: () =>
+                          ref.read(selectedSportSlugProvider.notifier).state = sport.slug,
                     );
                   },
                 );
