@@ -1,9 +1,9 @@
 """Owned athlete media registry. Upload bytes only through private Supabase Storage."""
 
 import uuid
+from typing import Annotated
 
 import httpx
-from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
