@@ -1,0 +1,46 @@
+name: SMS24 Flutter Web Build
+
+on:
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/sms24-web-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flutter-web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Restore Flutter dependencies
+        run: flutter pub get
+      - name: Generate missing web platform scaffold in CI only
+        run: |
+          if [ ! -f web/index.html ]; then
+            flutter create --platforms=web --project-name=yelisport .
+            # flutter create generates a demo test targeting MyApp (not our app).
+            rm -f test/widget_test.dart
+          fi
+      - name: Check Flutter project
+        run: flutter analyze
+      - name: Run Flutter tests
+        run: flutter test
+      - name: Compile a web build without deployment credentials
+        run: |
+          flutter build web --release \
+            --dart-define=APP_ENV=test \
+            --dart-define=API_BASE_URL=https://sms24-backend.onrender.com/api/v1 \
+            --dart-define=SUPABASE_URL=https://example.supabase.co \
+            --dart-define=SUPABASE_ANON_KEY=ci-build-only
+      - name: Verify compiled assets exist
+        run: test -s build/web/index.html && test -s build/web/main.dart.js
