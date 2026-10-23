@@ -22,4 +22,11 @@ using (
   and (storage.foldername(name))[1] = (select auth.uid()::text)
 );
 
--- Deliberately no UPDATE/DELETE policies and no anonymous SELECT policy.
+create policy "SMS24 athlete media delete own prefix"
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'sms24-athlete-media'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+-- No anonymous SELECT policy. Media remains private until moderated.
