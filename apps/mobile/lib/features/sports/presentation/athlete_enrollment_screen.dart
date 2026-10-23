@@ -169,9 +169,11 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
         ));
       }
     } catch (_) {
-      if (mounted) setState(() => _error =
-          'Envoi impossible. Le stockage privé doit être configuré et '
-          'ton abonnement actif. Aucun média n’a été publié.');
+      if (mounted) {
+        setState(() => _error =
+            'Envoi impossible. Le stockage privé doit être configuré et '
+            'ton abonnement actif. Aucun média n’a été publié.');
+      }
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -236,9 +238,11 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
               .from('sms24-athlete-media').remove([uploadedPath]);
         } catch (_) { /* Cleanup can be retried by the owner. */ }
       }
-      if (mounted) setState(() => _error =
-          'La vidéo n’a pas été enregistrée. Vérifie le format MP4, '
-          'la durée de 15 à 30 secondes et la configuration du stockage.');
+      if (mounted) {
+        setState(() => _error =
+            'La vidéo n’a pas été enregistrée. Vérifie le format MP4, '
+            'la durée de 15 à 30 secondes et la configuration du stockage.');
+      }
     } finally {
       await player?.dispose();
       if (mounted) {
@@ -362,13 +366,17 @@ class _SubscriptionStepState extends ConsumerState<_SubscriptionStep> {
     try {
       final payment = await ref.read(apiClientProvider)
           .postObject('/payments/initiate', data: {'plan_code': code});
-      if (mounted) setState(() => _message =
-          'Demande de paiement créée : ${payment['reference']}. '
-          'Statut : ${payment['status']}. L’abonnement ne sera ouvert '
-          'qu’après confirmation effective du paiement.');
+      if (mounted) {
+        setState(() => _message =
+            'Demande de paiement créée : ${payment['reference']}. '
+            'Statut : ${payment['status']}. L’abonnement ne sera ouvert '
+            'qu’après confirmation effective du paiement.');
+      }
     } catch (_) {
-      if (mounted) setState(() => _message =
-          'Paiement non disponible pour cette offre. Aucun abonnement activé.');
+      if (mounted) {
+        setState(() => _message =
+            'Paiement non disponible pour cette offre. Aucun abonnement activé.');
+      }
     } finally {
       if (mounted) {
         setState(() => _busy = false);
