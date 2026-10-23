@@ -76,7 +76,8 @@ class FixturesScreen extends ConsumerWidget {
               ),
               data: (items) => RefreshIndicator(
                 onRefresh: () async {
-                  await ref.refresh(fixturesProvider(status).future);
+                  final updatedFixtures = ref.refresh(fixturesProvider(status).future);
+                  await updatedFixtures;
                 },
                 child: items.isEmpty
                     ? ListView(
