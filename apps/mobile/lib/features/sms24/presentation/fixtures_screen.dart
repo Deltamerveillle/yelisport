@@ -122,7 +122,7 @@ class _FixtureCard extends StatelessWidget {
       final score = item['score'];
       String? points;
       if (score is Map) {
-        final value = score['total'] ?? score['current'] ?? score['score'];
+        final value = score['value'] ?? score['total'] ?? score['current'] ?? score['score'];
         if (value is num || value is String) points = value.toString();
       }
       return points == null ? name : '$name ($points)';
