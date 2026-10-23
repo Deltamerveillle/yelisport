@@ -1,0 +1,49 @@
+name: SMS24 Release Validation
+
+on:
+  pull_request:
+    paths:
+      - "services/api/app/api/v1/endpoints/sms24_news.py"
+      - "services/api/app/api/v1/router.py"
+      - "services/api/app/db/migrations/versions/20261023_0044_seed_multisport_catalogue.py"
+      - "infrastructure/docker/api/Dockerfile"
+      - ".github/workflows/sms24-release-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-sms24-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/api/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Lint changed SMS24 backend files
+        run: ruff check app/api/v1/endpoints/sms24_news.py app/db/migrations/versions/20261023_0044_seed_multisport_catalogue.py
+      - name: Compile API modules
+        run: python -m compileall -q app
+      - name: Verify Alembic migration graph
+        run: |
+          python - <<'PY'
+          from alembic.config import Config
+          from alembic.script import ScriptDirectory
+
+          scripts = ScriptDirectory.from_config(Config("alembic.ini"))
+          assert scripts.get_heads() == ["20261023_0044"], scripts.get_heads()
+          print("SMS24 Alembic head confirmed: 20261023_0044")
+          PY
+        env:
+          APP_ENV: test
+      - name: Run API smoke tests
+        run: pytest -q tests/api/test_sports.py
+        env:
+          APP_ENV: test
