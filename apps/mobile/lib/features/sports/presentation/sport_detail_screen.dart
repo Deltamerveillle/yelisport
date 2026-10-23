@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yelisport/features/sports/presentation/sports_providers.dart';
+import 'package:yelisport/features/sports/presentation/athlete_enrollment_screen.dart';
 
 class SportDetailScreen extends ConsumerWidget {
   const SportDetailScreen({required this.slug, this.onReturn, super.key});
@@ -59,6 +60,16 @@ class SportDetailScreen extends ConsumerWidget {
               item.name,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              icon: const Icon(Icons.person_add_alt_1),
+              label: const Text('Je suis athlète • créer mon passeport'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => AthleteEnrollmentScreen(sport: item),
+                ),
+              ),
             ),
             if (item.description != null) ...[
               const SizedBox(height: 20),
