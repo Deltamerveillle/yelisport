@@ -28,6 +28,8 @@ jobs:
         run: |
           if [ ! -f web/index.html ]; then
             flutter create --platforms=web --project-name=yelisport .
+            # flutter create generates a demo test targeting MyApp (not our app).
+            rm -f test/widget_test.dart
           fi
       - name: Check Flutter project
         run: flutter analyze
