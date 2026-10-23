@@ -29,6 +29,30 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
   String? _athleteId;
   String? _error;
   int? _refreshKey;
+  late Future<Map<String, dynamic>> _accessFuture;
+  bool _profileChecked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _accessFuture = _access();
+  }
+
+  Future<void> _resumeProfile() async {
+    try {
+      final profiles = await ref.read(apiClientProvider).getList('/athletes/me');
+      for (final raw in profiles) {
+        if (raw is Map && raw['sport_id']?.toString() == widget.sport.id) {
+          if (mounted) setState(() { _athleteId = raw['id']?.toString(); });
+          break;
+        }
+      }
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Impossible de retrouver le passeport existant.');
+    } finally {
+      if (mounted) setState(() => _profileChecked = true);
+    }
+  }
 
   @override
   void dispose() {
@@ -41,7 +65,10 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
   Future<Map<String, dynamic>> _access() =>
       ref.read(apiClientProvider).getObject('/subscriptions/me/access');
 
-  void _reload() => setState(() => _refreshKey = (_refreshKey ?? 0) + 1);
+  void _reload() => setState(() {
+    _refreshKey = (_refreshKey ?? 0) + 1;
+    _accessFuture = _access();
+  });
 
   Future<void> _createAthlete() async {
     if (!_formKey.currentState!.validate()) return;
@@ -52,6 +79,12 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
         throw StateError('Abonnement actif requis pour continuer.');
       }
       final api = ref.read(apiClientProvider);
+      final profiles = await api.getList('/athletes/me');
+      if (profiles.any((raw) => raw is Map &&
+          raw['sport_id']?.toString() == widget.sport.id)) {
+        await _resumeProfile();
+        return;
+      }
       final profile = await api.postObject('/athletes', data: {
         'sport_id': widget.sport.id,
         'first_name': _firstName.text.trim(),
@@ -60,6 +93,7 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
         'country': _country.text.trim(),
       });
       final id = profile['id'].toString();
+      if (mounted) setState(() => _athleteId = id);
       await api.postObject('/athletes/$id/passport', data: {
         'discipline': _speciality.text.trim().isEmpty
             ? widget.sport.name : _speciality.text.trim(),
@@ -205,7 +239,7 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
       appBar: AppBar(title: Text('Inscription • ${widget.sport.name}')),
       body: FutureBuilder<Map<String, dynamic>>(
         key: ValueKey(_refreshKey),
-        future: _access(),
+        future: _accessFuture,
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             if (snapshot.hasError) {
@@ -217,6 +251,12 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
           }
           if (snapshot.data?['has_premium_access'] != true) {
             return _SubscriptionStep(onReload: _reload);
+          }
+          if (!_profileChecked) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && !_profileChecked) _resumeProfile();
+            });
+            return const Center(child: CircularProgressIndicator());
           }
           return Form(
             key: _formKey,
