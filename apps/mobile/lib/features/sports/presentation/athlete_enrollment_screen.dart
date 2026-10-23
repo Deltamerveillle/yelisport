@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:video_player/video_player.dart';
 import 'package:yelisport/app/di/providers.dart';
 import 'package:yelisport/features/sports/domain/sport.dart';
 
@@ -126,6 +127,78 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
     }
   }
 
+  Future<void> _uploadVideo() async {
+    final athleteId = _athleteId;
+    if (athleteId == null) return;
+    final video = await ImagePicker().pickVideo(
+      source: ImageSource.gallery,
+      maxDuration: const Duration(seconds: 30),
+    );
+    if (video == null) return;
+    setState(() { _busy = true; _error = null; });
+    VideoPlayerController? player;
+    String? uploadedPath;
+    try {
+      if ((await _access())['has_premium_access'] != true) {
+        throw StateError('Abonnement inactif');
+      }
+      if (!video.name.toLowerCase().endsWith('.mp4')) {
+        throw StateError('Format MP4 requis');
+      }
+      final bytes = await video.readAsBytes();
+      if (bytes.lengthInBytes > 50 * 1024 * 1024) {
+        throw StateError('Vidéo trop volumineuse (50 Mo maximum)');
+      }
+      final supabase = ref.read(supabaseProvider);
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) throw StateError('Session expirée');
+      final random = Random.secure();
+      final hex = List.generate(16,
+        (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+      final uuid = '${hex.substring(0,8)}-${hex.substring(8,12)}-4${hex.substring(13,16)}-a${hex.substring(17,20)}-${hex.substring(20,32)}';
+      uploadedPath = '$userId/$athleteId/$uuid.mp4';
+      final bucket = supabase.storage.from('sms24-athlete-media');
+      await bucket.uploadBinary(uploadedPath, bytes,
+        fileOptions: const FileOptions(contentType: 'video/mp4'));
+      final signedUrl = await bucket.createSignedUrl(uploadedPath, 120);
+      player = VideoPlayerController.networkUrl(Uri.parse(signedUrl));
+      await player.initialize();
+      final duration = player.value.duration;
+      final seconds = duration.inMilliseconds / 1000;
+      if (seconds < 15 || seconds > 30) {
+        throw StateError('La vidéo doit durer entre 15 et 30 secondes');
+      }
+      await ref.read(apiClientProvider).postObject(
+        '/athletes/$athleteId/media',
+        data: {
+          'storage_path': uploadedPath,
+          'media_type': 'video',
+          'mime_type': 'video/mp4',
+          'duration_seconds': seconds.ceil(),
+        },
+      );
+      uploadedPath = null;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Vidéo déposée pour modération. Non publiée.'),
+        ));
+      }
+    } catch (error) {
+      if (uploadedPath != null) {
+        try {
+          await ref.read(supabaseProvider).storage
+              .from('sms24-athlete-media').remove([uploadedPath]);
+        } catch (_) { /* Cleanup can be retried by the owner. */ }
+      }
+      if (mounted) setState(() => _error =
+          'La vidéo n’a pas été enregistrée. Vérifie le format MP4, '
+          'la durée de 15 à 30 secondes et la configuration du stockage.');
+    } finally {
+      await player?.dispose();
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -179,9 +252,14 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
                     label: const Text('Téléverser une photo'),
                   ),
                   const SizedBox(height: 12),
-                  const Text('La vidéo courte (15–30 secondes) sera '
-                      'activée après validation du stockage et du contrôle '
-                      'automatique de durée.'),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.video_library_outlined),
+                    onPressed: _busy ? null : _uploadVideo,
+                    label: const Text('Téléverser une vidéo (15–30 s)'),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text('Photos et vidéos sont conservées dans un '
+                      'stockage privé et soumises à modération avant diffusion.'),
                 ],
                 if (_error != null) ...[
                   const SizedBox(height: 12),
