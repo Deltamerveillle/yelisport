@@ -3,15 +3,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yelisport/features/sports/presentation/sports_providers.dart';
 
 class SportDetailScreen extends ConsumerWidget {
-  const SportDetailScreen({required this.slug, super.key});
+  const SportDetailScreen({required this.slug, this.onReturn, super.key});
 
   final String slug;
+  final VoidCallback? onReturn;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sport = ref.watch(sportDetailProvider(slug));
     return Scaffold(
-      appBar: AppBar(title: const Text('Fiche du sport')),
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Retour à tous les sports',
+          onPressed: onReturn ?? () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: const Text('Fiche du sport'),
+        actions: [
+          TextButton.icon(
+            onPressed: onReturn ?? () => Navigator.of(context).maybePop(),
+            icon: const Icon(Icons.list),
+            label: const Text('Tous les sports'),
+          ),
+        ],
+      ),
       body: sport.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
@@ -29,6 +44,12 @@ class SportDetailScreen extends ConsumerWidget {
         data: (item) => ListView(
           padding: const EdgeInsets.all(24),
           children: [
+            TextButton.icon(
+              onPressed: onReturn ?? () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.home_outlined),
+              label: const Text('Accueil › Tous les sports'),
+            ),
+            const SizedBox(height: 18),
             CircleAvatar(
               radius: 44,
               child: Icon(iconForSport(item.slug), size: 44),
