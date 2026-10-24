@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Sequence
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,18 +34,18 @@ class SMSConnectInterestRepository:
         self,
         interest_id: uuid.UUID,
     ) -> SMSConnectInterest | None:
-        return await self.session.scalar(
+        return cast(SMSConnectInterest | None, await self.session.scalar(
             select(SMSConnectInterest).where(
                 SMSConnectInterest.id
                 == interest_id
             )
-        )
+        ))
 
     async def get_by_id_for_update(
         self,
         interest_id: uuid.UUID,
     ) -> SMSConnectInterest | None:
-        return await self.session.scalar(
+        return cast(SMSConnectInterest | None, await self.session.scalar(
             select(SMSConnectInterest)
             .where(
                 SMSConnectInterest.id
@@ -52,7 +53,7 @@ class SMSConnectInterestRepository:
             )
             .with_for_update()
             .execution_options(populate_existing=True)
-        )
+        ))
 
     async def save(
         self,
