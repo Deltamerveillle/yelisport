@@ -2,9 +2,9 @@
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 PublicationStatus = Literal["draft", "published", "archived"]
 ModerationStatus = Literal["pending", "approved", "rejected", "flagged"]
@@ -33,6 +33,14 @@ class DiscoverVideoUpdate(BaseModel):
     caption: str | None = Field(default=None, max_length=1000)
     duration_seconds: int | None = Field(default=None, ge=15, le=30)
     visibility: VisibilityStatus | None = None
+
+    @model_validator(mode="after")
+    def reject_null_required_fields(self) -> Self:
+        """Explicit null cannot clear database-required fields in a partial update."""
+        for field in ("video_url", "duration_seconds", "visibility"):
+            if field in self.model_fields_set and getattr(self, field) is None:
+                raise ValueError(f"{field} cannot be null")
+        return self
 
 
 class DiscoverVideoResponse(BaseModel):
