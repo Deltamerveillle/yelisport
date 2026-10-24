@@ -5,10 +5,12 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any, cast
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Select
 
 from app.models.sports_live import SportsDataSource, SportsDataSourceCapability
 from app.sms24.ingestion import (
@@ -77,7 +79,7 @@ class SMS24RunnerRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
-    def _active_capability_sources(capability: str):
+    def _active_capability_sources(capability: str) -> Select[Any]:
         return (
             select(SportsDataSource)
             .join(SportsDataSourceCapability,
@@ -98,8 +100,13 @@ class SMS24RunnerRepository:
     async def get_active_source_for_capability(
         self, slug: str, capability: str,
     ) -> SportsDataSource | None:
-        return await self.session.scalar(
-            self._active_capability_sources(capability).where(SportsDataSource.slug == slug)
+        return cast(
+            SportsDataSource | None,
+            await self.session.scalar(
+                self._active_capability_sources(capability).where(
+                    SportsDataSource.slug == slug
+                )
+            ),
         )
 
     async def mark_failure(
