@@ -1,10 +1,10 @@
 """Athlete enrolment security regression tests."""
 
 import uuid
-
-import httpx
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+
+import httpx
 
 from app.api.dependencies.auth import get_current_user
 from app.db.session import get_db_session
