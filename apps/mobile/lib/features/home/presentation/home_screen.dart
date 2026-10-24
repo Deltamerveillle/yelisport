@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yelisport/app/theme/app_colors.dart';
 import 'package:yelisport/features/ads/presentation/ad_slot.dart';
 import 'package:yelisport/features/sms_nations/presentation/sms_nations_screen.dart';
 import 'package:yelisport/core/localization/generated/app_localizations.dart';
@@ -39,7 +40,7 @@ class HomeScreen extends ConsumerWidget {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SMS24 • Succès Mondial Sports'),
+        title: const Text('SMS24  •  SUCCÈS MONDIAL SPORTS'),
         actions: [
           IconButton(
             tooltip: 'Mes favoris',
@@ -90,7 +91,7 @@ class HomeScreen extends ConsumerWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF101B30),
+                        color: AppColors.primary,
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: const Column(
@@ -99,7 +100,7 @@ class HomeScreen extends ConsumerWidget {
                           Text(
                             'SUCCÈS MONDIAL SPORTS',
                             style: TextStyle(
-                              color: Color(0xFFD6A847),
+                              color: AppColors.secondary,
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1.5,
@@ -117,6 +118,10 @@ class HomeScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    const Text('LE MONDE VOIT VOTRE TALENT',
+                      style: TextStyle(color: AppColors.success,
+                        fontWeight: FontWeight.w700, letterSpacing: 1.3)),
                     const SizedBox(height: 18),
                     const AdSlot(),
                     const SizedBox(height: 18),
