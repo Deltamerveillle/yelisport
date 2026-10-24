@@ -48,8 +48,11 @@ async def fake_session():
     yield FakeSession()
 
 
-def test_sports_requires_authentication(client: TestClient) -> None:
-    assert client.get("/api/v1/sports").status_code == 403
+def test_sports_public_without_authentication(client: TestClient) -> None:
+    client.app.dependency_overrides[get_db_session] = fake_session
+    response = client.get("/api/v1/sports")
+    assert response.status_code == 200
+    assert response.json()[0]["slug"] == "football"
 
 
 def test_sports_returns_active_catalogue(client: TestClient) -> None:
@@ -82,11 +85,7 @@ def test_sports_accepts_a_search_query(client: TestClient) -> None:
 
 
 def test_sport_detail_returns_selected_sport(client: TestClient) -> None:
-    client.app.dependency_overrides[get_auth_service] = FakeAuthService
     client.app.dependency_overrides[get_db_session] = fake_session
-    response = client.get(
-        "/api/v1/sports/football",
-        headers={"Authorization": "Bearer access-token"},
-    )
+    response = client.get("/api/v1/sports/football")
     assert response.status_code == 200
     assert response.json()["name"] == "Football"
