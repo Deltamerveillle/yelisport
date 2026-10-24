@@ -1,10 +1,14 @@
 """Read-side persistence for SMS24 Live."""
 
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import func, select, union
+from sqlalchemy.sql import Select
+from sqlalchemy.sql.selectable import Exists
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.sport import Sport
@@ -31,7 +35,7 @@ class SMS24ParticipantView:
     logo_url: str | None
     position: int
     role: str | None
-    score: dict
+    score: dict[str, Any]
     result_status: str | None
     canonical_competitor_id: uuid.UUID | None = None
 
@@ -53,8 +57,8 @@ class SMS24FixtureView:
     status: str
     live_clock: str | None
     venue: str | None
-    result: dict
-    metadata: dict
+    result: dict[str, Any]
+    metadata: dict[str, Any]
     source_updated_at: datetime | None
     fetched_at: datetime
     participants: list[SMS24ParticipantView]
@@ -169,7 +173,7 @@ class SMS24LiveRepository:
         self.session = session
 
     @staticmethod
-    def _fixture_has_team(team_id: uuid.UUID):
+    def _fixture_has_team(team_id: uuid.UUID) -> Exists:
         return (
             select(SportsFixtureParticipant.id)
             .join(SportsCompetitor, SportsCompetitor.id == SportsFixtureParticipant.competitor_id)
@@ -181,7 +185,7 @@ class SMS24LiveRepository:
         )
 
     @staticmethod
-    def _active_standings():
+    def _active_standings() -> Select[Any]:
         return (
             select(SportsStanding.id)
             .join(SportsDataSource, SportsDataSource.id == SportsStanding.source_id)
@@ -189,7 +193,7 @@ class SMS24LiveRepository:
         )
 
     @staticmethod
-    def _active_fixtures():
+    def _active_fixtures() -> Select[Any]:
         return (
             select(SportsFixture.id)
             .join(SportsDataSource, SportsDataSource.id == SportsFixture.source_id)
@@ -205,7 +209,9 @@ class SMS24LiveRepository:
         )
 
     @staticmethod
-    def _competition_view(competition, sport) -> SMS24CompetitionView:
+    def _competition_view(
+        competition: SportsCanonicalCompetition, sport: Sport
+    ) -> SMS24CompetitionView:
         return SMS24CompetitionView(
             id=competition.id, name=competition.name, sport_slug=sport.slug,
             sport_name=sport.name, country_code=competition.country_code,
@@ -638,7 +644,7 @@ class SMS24LiveRepository:
 
     async def _build_fixture_views(
         self,
-        rows: list,
+        rows: Sequence[Any],
     ) -> list[SMS24FixtureView]:
         if not rows:
             return []
