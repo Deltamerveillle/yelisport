@@ -8,11 +8,13 @@ provider data does not grant verification or mutate Athlete/Passport/eligibility
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import TypeVar
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.base import Base
 from app.models.athlete import Athlete
 from app.models.sports_live import (
     SportsCanonicalCompetition,
@@ -32,14 +34,17 @@ from app.sms24.providers.transfers import (
 )
 
 
+_Model = TypeVar("_Model", bound=Base)
+
+
 class SMS24TransfersRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def _locked(self, model, identity):
+    async def _locked(self, model: type[_Model], identity: uuid.UUID) -> _Model:
         row = await self.session.scalar(
             select(model)
-            .where(model.id == identity)
+            .where(model.id == identity)  # type: ignore[attr-defined]
             .with_for_update()
             .execution_options(populate_existing=True)
         )
@@ -47,7 +52,9 @@ class SMS24TransfersRepository:
             raise ValueError("Unknown explicit transfer graph identity")
         return row
 
-    async def _competitor(self, identity, *, kind, sport_id=None):
+    async def _competitor(
+        self, identity: uuid.UUID, *, kind: str, sport_id: uuid.UUID | None = None
+    ) -> SportsCanonicalCompetitor:
         row = await self._locked(SportsCanonicalCompetitor, identity)
         if row.competitor_type != kind or (sport_id is not None and row.sport_id != sport_id):
             raise ValueError("Transfer competitor has an incompatible type or sport")
@@ -199,6 +206,8 @@ class SMS24TransfersRepository:
                     )
                     .execution_options(populate_existing=True)
                 )
+                if observation is None:
+                    raise ValueError('Transfer observation missing after upsert')
                 if observation.athlete_external_id != transfer.athlete_external_id:
                     raise ValueError(
                         "A provider transfer identity cannot change athlete implicitly"
