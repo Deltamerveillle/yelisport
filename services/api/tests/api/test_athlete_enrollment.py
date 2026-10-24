@@ -233,3 +233,102 @@ def test_upload_intent_fails_closed_if_storage_signing_fails(client):
         assert "server-only-test-secret" not in response.text
     finally:
         client.app.dependency_overrides.clear()
+
+
+def test_register_media_rejects_missing_storage_object(client):
+    """An owned path alone must not create a media record."""
+    async def auth():
+        return SimpleNamespace(id=str(USER))
+
+    async def db():
+        yield AsyncMock()
+
+    client.app.dependency_overrides[get_current_user] = auth
+    client.app.dependency_overrides[get_db_session] = db
+    try:
+        with (
+            patch("app.api.v1.endpoints.athlete_media.AthleteRepository") as owners,
+            patch("app.api.v1.endpoints.athlete_media.SubscriptionService") as subs,
+            patch("app.api.v1.endpoints.athlete_media.get_settings") as settings,
+            patch("app.api.v1.endpoints.athlete_media.httpx.AsyncClient") as http,
+        ):
+            owners.return_value.get_by_id = AsyncMock(
+                return_value=SimpleNamespace(user_id=USER),
+            )
+            subs.return_value.get_access = AsyncMock(
+                return_value=SimpleNamespace(has_premium_access=True),
+            )
+            settings.return_value = SimpleNamespace(
+                supabase_url="https://example.supabase.co",
+                supabase_service_role_key="server-only-test-secret",
+            )
+            fake = httpx.Response(
+                404,
+                json={"message": "Object not found"},
+                request=httpx.Request("GET", "https://example.supabase.co"),
+            )
+            http.return_value.__aenter__.return_value.get = AsyncMock(return_value=fake)
+            response = client.post(
+                f"/api/v1/athletes/{ATHLETE}/media",
+                json={
+                    "storage_path": f"{USER}/{ATHLETE}/{uuid.uuid4()}.jpg",
+                    "media_type": "photo",
+                    "mime_type": "image/jpeg",
+                },
+            )
+        assert response.status_code == 409
+        assert "server-only-test-secret" not in response.text
+    finally:
+        client.app.dependency_overrides.clear()
+
+
+def test_register_media_rejects_mismatched_storage_metadata(client):
+    """Do not trust MIME or size claimed by an uploaded filename."""
+    async def auth():
+        return SimpleNamespace(id=str(USER))
+
+    async def db():
+        yield AsyncMock()
+
+    client.app.dependency_overrides[get_current_user] = auth
+    client.app.dependency_overrides[get_db_session] = db
+    try:
+        with (
+            patch("app.api.v1.endpoints.athlete_media.AthleteRepository") as owners,
+            patch("app.api.v1.endpoints.athlete_media.SubscriptionService") as subs,
+            patch("app.api.v1.endpoints.athlete_media.get_settings") as settings,
+            patch("app.api.v1.endpoints.athlete_media.httpx.AsyncClient") as http,
+        ):
+            owners.return_value.get_by_id = AsyncMock(
+                return_value=SimpleNamespace(user_id=USER),
+            )
+            subs.return_value.get_access = AsyncMock(
+                return_value=SimpleNamespace(has_premium_access=True),
+            )
+            settings.return_value = SimpleNamespace(
+                supabase_url="https://example.supabase.co",
+                supabase_service_role_key="server-only-test-secret",
+            )
+            file_path = f"{USER}/{ATHLETE}/{uuid.uuid4()}.jpg"
+            fake = httpx.Response(
+                200,
+                json={
+                    "bucket_id": "sms24-athlete-media",
+                    "name": file_path,
+                    "metadata": {"size": 2000, "mimetype": "video/mp4"},
+                },
+                request=httpx.Request("GET", "https://example.supabase.co"),
+            )
+            http.return_value.__aenter__.return_value.get = AsyncMock(return_value=fake)
+            response = client.post(
+                f"/api/v1/athletes/{ATHLETE}/media",
+                json={
+                    "storage_path": file_path,
+                    "media_type": "photo",
+                    "mime_type": "image/jpeg",
+                },
+            )
+        assert response.status_code == 403
+        assert "server-only-test-secret" not in response.text
+    finally:
+        client.app.dependency_overrides.clear()
