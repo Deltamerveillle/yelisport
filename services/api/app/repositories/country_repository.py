@@ -1,6 +1,7 @@
 """Repository for SMS Nations countries."""
 
 import uuid
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,23 +23,23 @@ class CountryRepository:
         self,
         iso2: str,
     ) -> Country | None:
-        return await self.session.scalar(
+        return cast(Country | None, await self.session.scalar(
             select(Country).where(
                 Country.iso2 == iso2.upper(),
                 Country.is_active.is_(True),
             )
-        )
+        ))
 
     async def get_by_iso3(
         self,
         iso3: str,
     ) -> Country | None:
-        return await self.session.scalar(
+        return cast(Country | None, await self.session.scalar(
             select(Country).where(
                 Country.iso3 == iso3.upper(),
                 Country.is_active.is_(True),
             )
-        )
+        ))
 
     async def list_active(
         self,
