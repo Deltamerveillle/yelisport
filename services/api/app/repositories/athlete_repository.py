@@ -1,6 +1,7 @@
 """Persistence operations for athletes."""
 
 import uuid
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +31,7 @@ class AthleteRepository:
         if for_update:
             query = query.with_for_update()
 
-        return await self.session.scalar(query)
+        return cast(Athlete | None, await self.session.scalar(query))
 
     async def get_by_user_and_sport(
         self,

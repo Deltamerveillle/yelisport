@@ -72,8 +72,9 @@ class ESPNProvider(SportsDataProvider):
             return "cancelled"
         if "SUSPEND" in name or "INTERRUPT" in name:
             return "suspended"
+        state = details.get("state")
         return {"pre": "scheduled", "in": "live", "post": "finished"}.get(
-            details.get("state"), "scheduled"
+            state if isinstance(state, str) else "", "scheduled"
         )
 
     @classmethod

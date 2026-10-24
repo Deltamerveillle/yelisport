@@ -85,9 +85,9 @@ class StandingsProviderRunner:
     ) -> StandingsRunnerResult:
         if not targets or any(not isinstance(slug, str) or not slug.strip() for slug in targets):
             raise ValueError("Supply explicit standings provider mappings")
-        for slug, target in targets.items():
-            validate_standings_request(target)
-            if slug == "api-football" and target.league_external_id is None:
+        for slug, requested_target in targets.items():
+            validate_standings_request(requested_target)
+            if slug == "api-football" and requested_target.league_external_id is None:
                 raise ValueError("API-Football standings require a league mapping")
         if await self.session.get(SportsSeason, season_id) is None:
             raise ValueError("Standings require an existing canonical season")

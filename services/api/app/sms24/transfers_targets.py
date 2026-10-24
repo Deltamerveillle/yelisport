@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import select, true
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -87,7 +87,7 @@ class SportmonksTransfersTargetDiscovery:
                     Sport.is_active.is_(True),
                     SportsCompetitor.external_id.collate("C") > after_team_external_id
                     if after_team_external_id is not None
-                    else True,
+                    else true(),
                 )
                 .order_by(SportsCompetitor.external_id.collate("C"))
                 .limit(self.max_teams + 1)

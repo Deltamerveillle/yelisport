@@ -99,7 +99,7 @@ class SMS24IngestionRepository:
             Sport.slug == slug,
             Sport.is_active.is_(True),
         )
-        return await self.session.scalar(stmt)
+        return cast(Sport | None, await self.session.scalar(stmt))
 
     async def upsert_competition(
         self,

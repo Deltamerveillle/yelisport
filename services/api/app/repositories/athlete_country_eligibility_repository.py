@@ -1,6 +1,7 @@
 """Repository for SMS Nations athlete country eligibility."""
 
 import uuid
+from typing import cast
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,12 +40,13 @@ class AthleteCountryEligibilityRepository:
         athlete_id: uuid.UUID,
         country_id: uuid.UUID,
     ) -> AthleteCountryEligibility | None:
-        return await self.session.scalar(
+        eligibility = await self.session.scalar(
             select(AthleteCountryEligibility).where(
                 AthleteCountryEligibility.athlete_id == athlete_id,
                 AthleteCountryEligibility.country_id == country_id,
             )
         )
+        return cast(AthleteCountryEligibility | None, eligibility)
 
     async def clear_primary_for_athlete(
         self,

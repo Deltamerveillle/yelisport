@@ -7,6 +7,7 @@ both observations and state have been saved. No worker or scheduling lives here.
 import hashlib
 from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime
+from typing import cast
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,11 +72,12 @@ class SMS24TransfersCheckpointRepository:
     async def _read(self) -> SMS24JobCheckpoint | None:
         if not await self.try_acquire_lock():
             raise CheckpointLockNotAcquired("checkpoint_lock_not_acquired")
-        return await self.session.scalar(
+        checkpoint = await self.session.scalar(
             select(SMS24JobCheckpoint)
             .where(SMS24JobCheckpoint.job_key == self.job_key)
             .execution_options(populate_existing=True),
         )
+        return cast(SMS24JobCheckpoint | None, checkpoint)
 
     @staticmethod
     def _snapshot(row: SMS24JobCheckpoint) -> TransfersCheckpoint:
