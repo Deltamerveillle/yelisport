@@ -13,7 +13,6 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import Base
-
 from app.models.sports_live import (
     SportsCanonicalCompetition,
     SportsCanonicalCompetitor,
@@ -41,7 +40,7 @@ class SMS24PlayerStatisticsRepository:
     async def _locked(self, model: type[_Model], identity: uuid.UUID) -> _Model:
         row = await self.session.scalar(
             select(model)
-            .where(getattr(model, 'id') == identity)
+            .where(model.id == identity)  # type: ignore[attr-defined]
             .with_for_update()
             .execution_options(populate_existing=True),
         )
