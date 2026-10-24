@@ -332,3 +332,63 @@ def test_register_media_rejects_mismatched_storage_metadata(client):
         assert "server-only-test-secret" not in response.text
     finally:
         client.app.dependency_overrides.clear()
+
+
+def test_athlete_creation_requires_active_subscription(client):
+    """The backend must enforce paid access even if a client bypasses its UI."""
+    async def auth():
+        return SimpleNamespace(id=str(USER))
+
+    async def db():
+        yield AsyncMock()
+
+    client.app.dependency_overrides[get_current_user] = auth
+    client.app.dependency_overrides[get_db_session] = db
+    try:
+        with (
+            patch("app.api.v1.endpoints.athletes.SubscriptionService") as subs,
+            patch("app.api.v1.endpoints.athletes.AthleteService") as athletes,
+        ):
+            subs.return_value.get_access = AsyncMock(
+                return_value=SimpleNamespace(has_premium_access=False),
+            )
+            response = client.post(
+                "/api/v1/athletes",
+                json={
+                    "sport_id": str(uuid.uuid4()),
+                    "first_name": "Test",
+                    "last_name": "Athlete",
+                },
+            )
+            assert response.status_code == 403
+            athletes.return_value.create_athlete.assert_not_awaited()
+    finally:
+        client.app.dependency_overrides.clear()
+
+
+def test_passport_creation_requires_active_subscription(client):
+    """Passport creation cannot bypass subscription verification."""
+    async def auth():
+        return SimpleNamespace(id=str(USER))
+
+    async def db():
+        yield AsyncMock()
+
+    client.app.dependency_overrides[get_current_user] = auth
+    client.app.dependency_overrides[get_db_session] = db
+    try:
+        with (
+            patch("app.api.v1.endpoints.athlete_passports.SubscriptionService") as subs,
+            patch("app.api.v1.endpoints.athlete_passports.AthletePassportService") as passport,
+        ):
+            subs.return_value.get_access = AsyncMock(
+                return_value=SimpleNamespace(has_premium_access=False),
+            )
+            response = client.post(
+                f"/api/v1/athletes/{ATHLETE}/passport",
+                json={"discipline": "Football"},
+            )
+            assert response.status_code == 403
+            passport.return_value.create_passport.assert_not_awaited()
+    finally:
+        client.app.dependency_overrides.clear()
