@@ -11,25 +11,6 @@ from urllib.parse import quote
 
 import httpx
 
-
-class _SportmonksTokenFilter(logging.Filter):
-    _pattern = re.compile(r'([?&]api_token=)[^&\s"]+')
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        if record.name == "httpx":
-            message = record.getMessage()
-            sanitized = self._pattern.sub(r"\1[REDACTED]", message)
-            if sanitized != message:
-                record.msg = sanitized
-                record.args = ()
-        return True
-
-
-_httpx_logger = logging.getLogger("httpx")
-if not any(isinstance(f, _SportmonksTokenFilter) for f in _httpx_logger.filters):
-    _httpx_logger.addFilter(_SportmonksTokenFilter())
-
-
 from app.sms24.providers.base import (
     ProviderCompetition,
     ProviderFetchResult,
@@ -50,6 +31,27 @@ from app.sms24.providers.standings import (
 )
 from app.sms24.providers.standings_normalization import normalize_sportmonks_standing
 from app.sms24.providers.transfers import ProviderTransfer, ProviderTransfersResult
+
+
+
+class _SportmonksTokenFilter(logging.Filter):
+    _pattern = re.compile(r'([?&]api_token=)[^&\s"]+')
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.name == "httpx":
+            message = record.getMessage()
+            sanitized = self._pattern.sub(r"\1[REDACTED]", message)
+            if sanitized != message:
+                record.msg = sanitized
+                record.args = ()
+        return True
+
+
+_httpx_logger = logging.getLogger("httpx")
+if not any(isinstance(f, _SportmonksTokenFilter) for f in _httpx_logger.filters):
+    _httpx_logger.addFilter(_SportmonksTokenFilter())
+
+
 
 
 class SportmonksProvider(SportsDataProvider):
