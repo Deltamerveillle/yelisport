@@ -91,15 +91,8 @@ async def list_my_moderation_reports(
         AsyncSession,
         Depends(get_db_session),
     ],
-    limit: int = Query(
-        default=50,
-        ge=1,
-        le=100,
-    ),
-    offset: int = Query(
-        default=0,
-        ge=0,
-    ),
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List reports created by the current user."""
 
@@ -126,22 +119,10 @@ async def admin_list_moderation_reports(
         AsyncSession,
         Depends(get_db_session),
     ],
-    report_status: ModerationStatus | None = Query(
-        default=None,
-        alias="status",
-    ),
-    resource_type: ModerationResourceType | None = Query(
-        default=None,
-    ),
-    limit: int = Query(
-        default=50,
-        ge=1,
-        le=100,
-    ),
-    offset: int = Query(
-        default=0,
-        ge=0,
-    ),
+    report_status: Annotated[ModerationStatus | None, Query(alias="status")] = None,
+    resource_type: Annotated[ModerationResourceType | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """Administrative moderation queue."""
 
