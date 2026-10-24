@@ -311,7 +311,9 @@ class SMS24IngestionRepository:
             predicates=[SportsCanonicalCompetitor.canonical_key == key],
         )
 
-    async def resolve_season(self, *, canonical_competition_id: uuid.UUID, label: str) -> SportsSeason:
+    async def resolve_season(
+        self, *, canonical_competition_id: uuid.UUID, label: str
+    ) -> SportsSeason:
         normalized_label = normalize_season_label(label)
         return await self._resolve_exact(
             SportsSeason,
