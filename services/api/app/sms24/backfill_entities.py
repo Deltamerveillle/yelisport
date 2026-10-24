@@ -57,7 +57,8 @@ async def backfill_historical_canonical_entities(
     )
     for competition_observation in competitions:
         result.competitions_processed += 1
-        has_season = bool(competition_observation.season and competition_observation.season.strip())
+        season_label = competition_observation.season
+        has_season = bool(season_label and season_label.strip())
         if has_season:
             result.seasons_processed += 1
         try:
@@ -80,10 +81,11 @@ async def backfill_historical_canonical_entities(
         result.competitions_resolved += 1
         if has_season:
             try:
-                assert competition_observation.season is not None
+                if season_label is None:
+                    raise ValueError('Missing season label')
                 await repository.resolve_season(
                     canonical_competition_id=canonical.id,
-                    label=competition_observation.season,
+                    label=season_label,
                 )
             except ValueError:
                 result.seasons_skipped += 1
@@ -122,5 +124,7 @@ async def backfill_historical_canonical_entities(
     result.canonical_competitors_total = await session.scalar(
         select(func.count()).select_from(SportsCanonicalCompetitor)
     ) or 0
-    result.seasons_total = await session.scalar(select(func.count()).select_from(SportsSeason)) or 0
+    result.seasons_total = (
+        await session.scalar(select(func.count()).select_from(SportsSeason)) or 0
+    )
     return result
