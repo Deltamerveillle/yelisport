@@ -75,6 +75,10 @@ class AuthService:
             raise ApplicationError(
                 "Jeton invalide ou expiré", code="invalid_access_token", status_code=401
             ) from exc
+        if response is None:
+            raise ApplicationError(
+                "Jeton invalide ou expiré", code="invalid_access_token", status_code=401
+            )
         return self._user(response.user)
 
     def sign_out(self, access_token: str) -> None:
