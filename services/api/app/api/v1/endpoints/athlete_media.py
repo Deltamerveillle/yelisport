@@ -56,6 +56,8 @@ async def create_upload_intent(
     access = await SubscriptionService(session).get_access(user_id)
     if not access.has_premium_access:
         raise ForbiddenError("Abonnement actif requis avant téléversement")
+    if payload.media_type not in {"photo", "video"}:
+        raise ForbiddenError("Type de média non autorisé")
     if payload.mime_type not in _EXTENSIONS:
         raise ForbiddenError("Format de média non autorisé")
     if (
@@ -101,6 +103,60 @@ async def create_upload_intent(
             "Autorisation de téléversement indisponible", status_code=503,
         ) from exc
     return {"path": path, "token": token}
+
+
+
+async def _verify_uploaded_object(
+    path: str, mime_type: str, media_type: str,
+) -> None:
+    """Check the object exists and matches the claimed upload before recording it."""
+    settings = get_settings()
+    if (
+        not settings.supabase_url.startswith("https://")
+        or settings.supabase_service_role_key in ("", "change-me")
+    ):
+        raise ApplicationError(
+            "Vérification du stockage indisponible", status_code=503,
+        )
+
+    url = (
+        settings.supabase_url.rstrip("/")
+        + "/storage/v1/object/info/sms24-athlete-media/"
+        + path
+    )
+    headers = {
+        "Authorization": f"Bearer {settings.supabase_service_role_key}",
+        "apikey": settings.supabase_service_role_key,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            response = await client.get(url, headers=headers)
+        if response.status_code == 404:
+            raise ApplicationError(
+                "Le fichier n'a pas été téléversé", status_code=409,
+            )
+        response.raise_for_status()
+        info = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        raise ApplicationError(
+            "Vérification du stockage indisponible", status_code=503,
+        ) from exc
+
+    if not isinstance(info, dict):
+        raise ForbiddenError("Métadonnées de fichier invalides")
+    metadata = info.get("metadata")
+    if not isinstance(metadata, dict):
+        raise ForbiddenError("Métadonnées de fichier invalides")
+    limit = 8 * 1024 * 1024 if media_type == "photo" else 50 * 1024 * 1024
+    size = metadata.get("size")
+    if (
+        info.get("bucket_id") != "sms24-athlete-media"
+        or info.get("name") != path
+        or metadata.get("mimetype") != mime_type
+        or type(size) is not int
+        or not 0 < size <= limit
+    ):
+        raise ForbiddenError("Fichier incompatible avec le dépôt déclaré")
 
 
 @router.get("", response_model=list[AthleteMediaResponse])
@@ -153,6 +209,8 @@ async def register_uploaded_media(
         uuid.UUID(parts[2].split(".")[0])
     except (TypeError, ValueError) as exc:
         raise ForbiddenError("Nom de média non autorisé") from exc
+
+    await _verify_uploaded_object(path, data.mime_type, data.media_type)
 
     item = AthleteMedia(
         athlete_id=athlete_id,
