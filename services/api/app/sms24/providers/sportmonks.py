@@ -33,7 +33,6 @@ from app.sms24.providers.standings_normalization import normalize_sportmonks_sta
 from app.sms24.providers.transfers import ProviderTransfer, ProviderTransfersResult
 
 
-
 class _SportmonksTokenFilter(logging.Filter):
     _pattern = re.compile(r'([?&]api_token=)[^&\s"]+')
 
