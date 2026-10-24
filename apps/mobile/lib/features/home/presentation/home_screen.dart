@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:yelisport/app/theme/app_colors.dart';
 import 'package:yelisport/features/ads/presentation/ad_slot.dart';
+import 'package:yelisport/features/home/presentation/sms_space_screen.dart';
 import 'package:yelisport/features/sms_nations/presentation/sms_nations_screen.dart';
 import 'package:yelisport/core/localization/generated/app_localizations.dart';
 import 'package:yelisport/features/sms_connect/presentation/my_opportunities_screen.dart';
@@ -152,6 +153,21 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(height: 10),
                     Column(
                       children: [
+                          for (final space in const [SmsSpace.tripleVision, SmsSpace.intelligence])
+                            Card(
+                              child: ListTile(
+                                leading: Icon(space == SmsSpace.tripleVision
+                                    ? Icons.psychology_outlined : Icons.analytics_outlined),
+                                title: Text(space.title),
+                                subtitle: Text(space.introduction),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => SmsSpaceScreen(space: space),
+                                  ),
+                                ),
+                              ),
+                            ),
                           Card(
                             child: ListTile(
                               leading: const Icon(Icons.public),
@@ -176,8 +192,12 @@ class HomeScreen extends ConsumerWidget {
                               leading: const Icon(Icons.stars),
                               title: const Text('SMS Talent'),
                               subtitle: const Text('Talents sportifs'),
-                              trailing: const Text('En préparation',
-                                  style: TextStyle(fontSize: 11)),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const SmsSpaceScreen(space: SmsSpace.talent),
+                                ),
+                              ),
                             ),
                           ),
                           Card(
@@ -185,8 +205,12 @@ class HomeScreen extends ConsumerWidget {
                               leading: const Icon(Icons.play_circle_outline),
                               title: const Text('SMS Discover'),
                               subtitle: const Text('Vidéos et découvertes'),
-                              trailing: const Text('En préparation',
-                                  style: TextStyle(fontSize: 11)),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const SmsSpaceScreen(space: SmsSpace.discover),
+                                ),
+                              ),
                             ),
                           ),
                           Card(
@@ -194,8 +218,12 @@ class HomeScreen extends ConsumerWidget {
                               leading: const Icon(Icons.badge_outlined),
                               title: const Text('SMS Passport'),
                               subtitle: const Text('Passeport sportif'),
-                              trailing: const Text('En préparation',
-                                  style: TextStyle(fontSize: 11)),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const SmsSpaceScreen(space: SmsSpace.passport),
+                                ),
+                              ),
                             ),
                           ),
                           Card(
@@ -203,8 +231,12 @@ class HomeScreen extends ConsumerWidget {
                               leading: const Icon(Icons.verified_outlined),
                               title: const Text('SMS Proof'),
                               subtitle: const Text('Performances'),
-                              trailing: const Text('En préparation',
-                                  style: TextStyle(fontSize: 11)),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const SmsSpaceScreen(space: SmsSpace.proof),
+                                ),
+                              ),
                             ),
                           ),
                           Card(
