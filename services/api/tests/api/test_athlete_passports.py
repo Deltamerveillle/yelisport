@@ -1,6 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -75,7 +76,11 @@ def passport_dependencies(client: TestClient):
     client.app.dependency_overrides[get_current_user] = override_current_user
     client.app.dependency_overrides[get_db_session] = override_db
 
-    yield session
+    with patch("app.api.v1.endpoints.athlete_passports.SubscriptionService") as subscriptions:
+        subscriptions.return_value.get_access = AsyncMock(
+            return_value=SimpleNamespace(has_premium_access=True)
+        )
+        yield session
 
     client.app.dependency_overrides.clear()
 
