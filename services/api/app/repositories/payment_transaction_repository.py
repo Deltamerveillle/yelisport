@@ -23,7 +23,9 @@ class PaymentTransactionRepository:
         )
         result.scalar_one()
 
-    async def get_pending_for_plan(self, user_id: uuid.UUID, plan_code: str):
+    async def get_pending_for_plan(
+        self, user_id: uuid.UUID, plan_code: str
+    ) -> PaymentTransaction | None:
         result = await self.session.execute(
             select(PaymentTransaction)
             .where(
