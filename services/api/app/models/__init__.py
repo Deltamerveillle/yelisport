@@ -89,6 +89,8 @@ __all__ = [
     "Sport",
     "Country",
     "Athlete",
+    "AthleteMedia",
+    "AthletePerformanceVerification",
     "AthleteCountryEligibility",
     "AthletePassport",
     "AthletePerformance",
