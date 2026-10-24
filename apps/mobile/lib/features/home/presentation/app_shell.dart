@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:yelisport/app/theme/app_colors.dart';
 import 'package:yelisport/features/home/presentation/home_screen.dart';
+import 'package:yelisport/features/home/presentation/sms_space_screen.dart';
 import 'package:yelisport/features/sms24/presentation/fixtures_screen.dart';
 import 'package:yelisport/features/sms24/presentation/news_screen.dart';
 import 'package:yelisport/features/sms_nations/presentation/sms_nations_screen.dart';
@@ -20,19 +21,34 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _tab = 0;
+  // Child routes stay inside the shell so the global navigation never disappears.
+  final GlobalKey<NavigatorState> _contentKey = GlobalKey<NavigatorState>();
+  final ValueNotifier<int> _activeTab = ValueNotifier<int>(0);
+
+  @override
+  void dispose() {
+    _activeTab.dispose();
+    super.dispose();
+  }
 
   static const _names = <String>[
     'Accueil', 'Rencontres', 'Actualités', 'SMS Nations',
     'SMS Connect', 'Événements', 'Mon profil', 'Paramètres',
+    'Espaces SMS24',
   ];
 
   static const _icons = <IconData>[
     Icons.home_outlined, Icons.sports_soccer, Icons.newspaper_outlined,
     Icons.public, Icons.handshake_outlined, Icons.event_outlined,
-    Icons.person_outline, Icons.settings_outlined,
+    Icons.person_outline, Icons.settings_outlined, Icons.apps_outlined,
   ];
 
-  void _select(int index) => setState(() => _tab = index);
+  void _select(int index) {
+    // Switching destination exits the current detail page automatically.
+    _contentKey.currentState?.popUntil((route) => route.isFirst);
+    _activeTab.value = index;
+    setState(() => _tab = index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,13 +64,16 @@ class _AppShellState extends State<AppShell> {
       const ProfileScreen(),
       const SettingsScreen(),
       _MoreScreen(onSelect: _select),
+      for (final space in SmsSpace.values)
+        SmsSpaceScreen(space: space),
+      const SmsSportsDirectoryScreen(),
     ];
 
     return Scaffold(
       body: Row(children: [
         if (wide) ...[
           NavigationRail(
-            selectedIndex: _tab == 8 ? 0 : _tab,
+            selectedIndex: _tab < _names.length ? _tab : 8,
             onDestinationSelected: _select,
             extended: width >= 1120,
             scrollable: true,
@@ -105,7 +124,20 @@ class _AppShellState extends State<AppShell> {
           ),
           const VerticalDivider(width: 1, color: Color(0xFFDCE2E9)),
         ],
-        Expanded(child: IndexedStack(index: _tab, children: tabs)),
+        Expanded(
+          child: Navigator(
+            key: _contentKey,
+            onGenerateRoute: (_) => MaterialPageRoute<void>(
+              builder: (_) => ValueListenableBuilder<int>(
+                valueListenable: _activeTab,
+                builder: (context, active, _) => IndexedStack(
+                  index: active,
+                  children: tabs,
+                ),
+              ),
+            ),
+          ),
+        ),
       ]),
       bottomNavigationBar: wide ? null : NavigationBar(
         selectedIndex: _tab < 4 ? _tab : 4,
@@ -132,7 +164,7 @@ class _MoreScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Les espaces SMS24')),
       body: ListView(children: [
-        for (var i = 4; i < _AppShellState._names.length; i++)
+        for (var i = 4; i < 8; i++)
           ListTile(
             leading: Icon(_AppShellState._icons[i]),
             title: Text(_AppShellState._names[i]),
@@ -140,9 +172,25 @@ class _MoreScreen extends StatelessWidget {
             onTap: () => onSelect(i),
           ),
         const Divider(),
-        const ListTile(
-          title: Text('SMS Talent • SMS Discover • SMS Passport • SMS Proof'),
-          subtitle: Text('Parcours complémentaires en cours d’intégration'),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 10, 16, 6),
+          child: Text('DÉCOUVRIR LES ESPACES SMS24'),
+        ),
+        for (var i = 0; i < SmsSpace.values.length; i++)
+          ListTile(
+            leading: const Icon(Icons.explore_outlined),
+            title: Text(SmsSpace.values[i].title),
+            subtitle: Text(SmsSpace.values[i].introduction),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => onSelect(9 + i),
+          ),
+        const Divider(),
+        ListTile(
+          leading: const Icon(Icons.sports),
+          title: const Text('Tous les sports'),
+          subtitle: const Text('Choisir une discipline ou créer mon passeport'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => onSelect(15),
         ),
       ]),
     );
