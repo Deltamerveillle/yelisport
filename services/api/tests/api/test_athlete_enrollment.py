@@ -86,3 +86,58 @@ def test_athlete_media_rejects_overlong_video(client):
         assert response.status_code == 422
     finally:
         client.app.dependency_overrides.clear()
+
+
+def test_upload_intent_denies_inactive_subscription(client):
+    """Even a logged-in owner cannot obtain signed upload access without a plan."""
+    async def auth():
+        return SimpleNamespace(id=str(USER))
+
+    async def db():
+        yield AsyncMock()
+
+    client.app.dependency_overrides[get_current_user] = auth
+    client.app.dependency_overrides[get_db_session] = db
+    try:
+        with (
+            patch("app.api.v1.endpoints.athlete_media.AthleteRepository") as owners,
+            patch("app.api.v1.endpoints.athlete_media.SubscriptionService") as subs,
+        ):
+            owners.return_value.get_by_id = AsyncMock(
+                return_value=SimpleNamespace(user_id=USER),
+            )
+            subs.return_value.get_access = AsyncMock(
+                return_value=SimpleNamespace(has_premium_access=False),
+            )
+            response = client.post(
+                f"/api/v1/athletes/{ATHLETE}/media/upload-intent",
+                json={"media_type": "video", "mime_type": "video/mp4"},
+            )
+        assert response.status_code == 403
+        assert "token" not in response.text
+    finally:
+        client.app.dependency_overrides.clear()
+
+
+def test_upload_intent_denies_other_athletes(client):
+    """Owner checks run before any storage signing calls."""
+    async def auth():
+        return SimpleNamespace(id=str(USER))
+
+    async def db():
+        yield AsyncMock()
+
+    client.app.dependency_overrides[get_current_user] = auth
+    client.app.dependency_overrides[get_db_session] = db
+    try:
+        with patch("app.api.v1.endpoints.athlete_media.AthleteRepository") as owners:
+            owners.return_value.get_by_id = AsyncMock(
+                return_value=SimpleNamespace(user_id=uuid.uuid4()),
+            )
+            response = client.post(
+                f"/api/v1/athletes/{ATHLETE}/media/upload-intent",
+                json={"media_type": "photo", "mime_type": "image/png"},
+            )
+        assert response.status_code == 404
+    finally:
+        client.app.dependency_overrides.clear()
