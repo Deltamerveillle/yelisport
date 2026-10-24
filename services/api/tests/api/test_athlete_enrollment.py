@@ -361,7 +361,7 @@ def test_athlete_creation_requires_active_subscription(client):
                 },
             )
             assert response.status_code == 403
-            athletes.return_value.create_athlete.assert_not_awaited()
+            athletes.return_value.create_athlete.assert_not_called()
     finally:
         client.app.dependency_overrides.clear()
 
@@ -389,6 +389,6 @@ def test_passport_creation_requires_active_subscription(client):
                 json={"discipline": "Football"},
             )
             assert response.status_code == 403
-            passport.return_value.create_passport.assert_not_awaited()
+            passport.return_value.create_passport.assert_not_called()
     finally:
         client.app.dependency_overrides.clear()
