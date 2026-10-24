@@ -70,8 +70,10 @@ class DiscoverAthleteProfileService:
 
         return DiscoverAthleteProfileResponse(
             athlete=DiscoverAthleteIdentityResponse.model_validate(athlete),
-            passport=discoverable.passport and AthletePassportResponse.model_validate(
-                discoverable.passport
+            passport=(
+                AthletePassportResponse.model_validate(discoverable.passport)
+                if discoverable.passport is not None
+                else None
             ),
             performances=[
                 AthletePerformanceResponse.model_validate(performance)
