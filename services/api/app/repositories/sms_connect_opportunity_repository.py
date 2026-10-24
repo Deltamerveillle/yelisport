@@ -1,10 +1,11 @@
 """Opportunity persistence and explicitly projected, ownership-scoped reads."""
 
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import Any, cast
 
 from sqlalchemy import select
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
@@ -61,13 +62,13 @@ class SMSConnectOpportunityRepository:
             Interest.message,
         ).join(Interest, Interest.id == Opportunity.interest_id)
 
-    async def get_response(self, opportunity_id: uuid.UUID) -> Mapping[str, Any]:
+    async def get_response(self, opportunity_id: uuid.UUID) -> RowMapping:
         result = await self.session.execute(
             self._read_query().where(Opportunity.id == opportunity_id)
         )
         return result.mappings().one()
 
-    async def list_for_athlete(self, user_id: uuid.UUID) -> Sequence[Mapping[str, Any]]:
+    async def list_for_athlete(self, user_id: uuid.UUID) -> Sequence[RowMapping]:
         result = await self.session.execute(
             self._read_query()
             .join(
