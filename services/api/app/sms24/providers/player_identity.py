@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 
 def validate_player_identity_text(value: str, limit: int) -> None:
@@ -33,6 +33,7 @@ def validate_player_identity(value: ProviderPlayerIdentity) -> None:
         raise ValueError("Player identity timestamp must be timezone-aware")
 
 
+@runtime_checkable
 class PlayerIdentityProvider(Protocol):
     async def fetch_team_player_ids(
         self,
