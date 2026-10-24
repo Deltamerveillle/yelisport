@@ -1,6 +1,7 @@
 """SMS Passport endpoints."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,7 +43,7 @@ async def create_passport(
     athlete_id: uuid.UUID,
     payload: AthletePassportCreate,
     current_user: CurrentUser,
-    session: AsyncSession = Depends(get_db_session),
+    session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> AthletePassportResponse:
     service = _service(session)
 
@@ -66,7 +67,7 @@ async def create_passport(
 async def get_passport(
     athlete_id: uuid.UUID,
     current_user: CurrentUser,
-    session: AsyncSession = Depends(get_db_session),
+    session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> AthletePassportResponse:
     service = _service(session)
 
@@ -85,7 +86,7 @@ async def update_passport(
     athlete_id: uuid.UUID,
     payload: AthletePassportUpdate,
     current_user: CurrentUser,
-    session: AsyncSession = Depends(get_db_session),
+    session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> AthletePassportResponse:
     service = _service(session)
 
@@ -109,7 +110,7 @@ async def update_passport(
 async def delete_passport(
     athlete_id: uuid.UUID,
     current_user: CurrentUser,
-    session: AsyncSession = Depends(get_db_session),
+    session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> None:
     service = _service(session)
 
