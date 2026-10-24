@@ -1,6 +1,8 @@
 """Business rules for SMS Talent."""
 
 import uuid
+from collections.abc import Sequence
+from typing import Any
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -102,7 +104,7 @@ class TalentService:
         resource_url: str,
         title: str | None = None,
         description: str | None = None,
-        metadata_json: dict | None = None,
+        metadata_json: dict[str, Any] | None = None,
     ) -> TalentSubmissionItem:
         application = await self.applications.get_by_id(application_id)
 
@@ -135,7 +137,7 @@ class TalentService:
         *,
         application_id: uuid.UUID,
         user_id: uuid.UUID,
-    ):
+    ) -> Sequence[TalentSubmissionItem]:
         application = await self.applications.get_by_id(application_id)
 
         if application is None:
@@ -311,7 +313,7 @@ class TalentService:
         *,
         application_id: uuid.UUID,
         evaluator_user_id: uuid.UUID,
-        scores: dict,
+        scores: dict[str, Any],
         overall_score: Decimal,
         recommendation: str | None = None,
         comments: str | None = None,
