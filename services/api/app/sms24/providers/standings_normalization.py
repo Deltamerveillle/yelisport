@@ -33,7 +33,7 @@ SPORTMONKS_DETAIL_FIELDS = {
 }
 
 
-def _object(value: Any, field: str) -> dict:
+def _object(value: Any, field: str) -> dict[str, Any]:
     if value is None:
         return {}
     if not isinstance(value, dict):
@@ -90,20 +90,20 @@ def validate_standing(row: ProviderStanding) -> None:
     _identifier(row.participant.external_id, "participant id", required=True)
     if not isinstance(row.participant.name, str) or not row.participant.name.strip():
         raise ValueError("Standings participant name is required")
-    for field in fields(row):
-        value = getattr(row, field.name)
-        if field.type == int | None and value is not None and type(value) is not int:
-            raise ValueError(f"Standings {field.name} must be an integer")
+    for dataclass_field in fields(row):
+        value = getattr(row, dataclass_field.name)
+        if dataclass_field.type == int | None and value is not None and type(value) is not int:
+            raise ValueError(f"Standings {dataclass_field.name} must be an integer")
         if (
-            field.name == "external_id"
-            or field.name.endswith("_external_id")
-            or field.name
+            dataclass_field.name == "external_id"
+            or dataclass_field.name.endswith("_external_id")
+            or dataclass_field.name
             in {
                 "external_competition_id",
                 "external_season_id",
             }
         ):
-            _identifier(value, field.name)
+            _identifier(value, dataclass_field.name)
     for field, limit in (
         ("form", 200),
         ("movement_status", 80),
@@ -186,7 +186,7 @@ def normalize_sportmonks_standing(item: Any) -> ProviderStanding:
         details = []
     if not isinstance(details, list):
         raise ValueError("Standings details must be a list")
-    seen = {}
+    seen: dict[str, int | None] = {}
     for detail in details:
         detail = _object(detail, "detail")
         type_id = detail.get("type_id")
