@@ -7,9 +7,9 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import func, select, union
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.selectable import Exists
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.sport import Sport
 from app.models.sports_live import (
