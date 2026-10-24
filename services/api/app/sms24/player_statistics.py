@@ -29,7 +29,6 @@ from app.sms24.providers.player_statistics import (
     validate_statistics_timestamp,
 )
 
-
 _Model = TypeVar('_Model', bound=Base)
 
 
