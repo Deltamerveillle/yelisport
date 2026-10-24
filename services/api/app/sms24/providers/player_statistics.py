@@ -29,7 +29,7 @@ def _json_object(value: Any) -> None:
     except (ValueError, TypeError, RecursionError) as exc:
         raise ValueError("Statistics JSON must contain finite JSON values") from exc
 
-    def check(item):
+    def check(item: Any) -> None:
         if type(item) is dict:
             for key, child in item.items():
                 if type(key) is not str or "\x00" in key:
