@@ -84,7 +84,7 @@ def build_player_statistic_observation_key(value: ProviderPlayerStatistic) -> st
     identity = (
         ["external_id", value.external_id]
         if value.external_id is not None
-        else ["record_reference", value.record_reference]
+        else ["record_reference", value.record_reference or ""]
     )
     encoded = json.dumps(identity, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     return "sms24:player-statistic:" + hashlib.sha256(encoded).hexdigest()
