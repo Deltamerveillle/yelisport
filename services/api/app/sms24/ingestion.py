@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any, TypeVar, cast
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.base import Base
 from app.models.sport import Sport
 from app.models.sports_live import (
     SportsCanonicalCompetition,
@@ -40,6 +43,8 @@ from app.sms24.providers import (
     ProviderParticipant,
     SportsDataProvider,
 )
+
+_Model = TypeVar("_Model", bound=Base)
 
 ALLOWED_FIXTURE_STATUSES = {
     "scheduled",
@@ -84,7 +89,7 @@ class SMS24IngestionRepository:
             SportsDataSource.slug == slug,
             SportsDataSource.is_active.is_(True),
         )
-        return await self.session.scalar(stmt)
+        return cast(SportsDataSource | None, await self.session.scalar(stmt))
 
     async def get_active_sport(
         self,
@@ -99,8 +104,8 @@ class SMS24IngestionRepository:
     async def upsert_competition(
         self,
         *,
-        source_id,
-        sport_id,
+        source_id: uuid.UUID,
+        sport_id: uuid.UUID,
         competition: ProviderCompetition,
         fetched_at: datetime,
     ) -> SportsCompetition:
@@ -157,8 +162,8 @@ class SMS24IngestionRepository:
     async def upsert_competitor(
         self,
         *,
-        source_id,
-        sport_id,
+        source_id: uuid.UUID,
+        sport_id: uuid.UUID,
         participant: ProviderParticipant,
         fetched_at: datetime,
     ) -> SportsCompetitor:
@@ -203,7 +208,14 @@ class SMS24IngestionRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one()
 
-    async def _resolve_exact(self, model, *, constraint, values, predicates):
+    async def _resolve_exact(
+        self,
+        model: type[_Model],
+        *,
+        constraint: str,
+        values: dict[str, Any],
+        predicates: list[Any],
+    ) -> _Model:
         """Insert once, or read the winner of a concurrent unique-key insert."""
         exact_stmt = select(model).where(*predicates)
         existing = await self.session.scalar(exact_stmt)
@@ -220,7 +232,7 @@ class SMS24IngestionRepository:
             return created
         existing = await self.session.scalar(exact_stmt)
         if existing is None:
-            raise RuntimeError(f"Unable to resolve SMS24 {model.__tablename__}")
+            raise RuntimeError(f"Unable to resolve SMS24 {model.__name__}")
         return existing
 
     async def resolve_canonical_competition(
@@ -299,7 +311,7 @@ class SMS24IngestionRepository:
             predicates=[SportsCanonicalCompetitor.canonical_key == key],
         )
 
-    async def resolve_season(self, *, canonical_competition_id, label: str) -> SportsSeason:
+    async def resolve_season(self, *, canonical_competition_id: uuid.UUID, label: str) -> SportsSeason:
         normalized_label = normalize_season_label(label)
         return await self._resolve_exact(
             SportsSeason,
@@ -318,7 +330,7 @@ class SMS24IngestionRepository:
     async def resolve_canonical_fixture(
         self,
         *,
-        sport_id,
+        sport_id: uuid.UUID,
         candidate: CanonicalFixtureCandidate,
         tolerance_minutes: int = 5,
     ) -> SportsCanonicalFixture:
@@ -388,8 +400,8 @@ class SMS24IngestionRepository:
     async def upsert_fixture(
         self,
         *,
-        source_id,
-        sport_id,
+        source_id: uuid.UUID,
+        sport_id: uuid.UUID,
         competition_id,
         canonical_fixture_id,
         fixture: ProviderFixture,
@@ -439,8 +451,8 @@ class SMS24IngestionRepository:
     async def upsert_participant(
         self,
         *,
-        fixture_id,
-        competitor_id,
+        fixture_id: uuid.UUID,
+        competitor_id: uuid.UUID,
         participant: ProviderParticipant,
     ) -> SportsFixtureParticipant:
         stmt = (
