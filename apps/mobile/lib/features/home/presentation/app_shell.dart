@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yelisport/features/auth/presentation/auth_providers.dart';
+import 'package:yelisport/features/auth/presentation/sign_in_screen.dart';
+import 'package:yelisport/features/home/presentation/public_home_screen.dart';
 import 'package:yelisport/app/theme/app_colors.dart';
 import 'package:yelisport/features/home/presentation/home_screen.dart';
 import 'package:yelisport/features/home/presentation/sms_space_screen.dart';
@@ -12,14 +16,14 @@ import 'package:yelisport/features/settings/presentation/settings_screen.dart';
 
 /// Persistent destination navigation on desktop and smaller screens.
 /// Core destinations are switched in-place, never pushed on a back stack.
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   int _tab = 0;
   // Child routes stay inside the shell so the global navigation never disappears.
   final GlobalKey<NavigatorState> _contentKey = GlobalKey<NavigatorState>();
@@ -52,17 +56,22 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = ref.watch(authStateProvider);
+    final loggedIn = (auth.valueOrNull?.session ??
+        ref.watch(authRepositoryProvider).currentSession) != null;
     final width = MediaQuery.sizeOf(context).width;
     final wide = width >= 840;
     final tabs = <Widget>[
-      HomeScreen(onNavigate: _select),
+      loggedIn ? HomeScreen(onNavigate: _select)
+          : PublicHomeScreen(onNavigate: _select),
       const FixturesScreen(),
       const NewsScreen(),
-      const SmsNationsScreen(),
+      loggedIn ? const SmsNationsScreen()
+          : SmsSpaceScreen(space: SmsSpace.talent),
       const MyOpportunitiesScreen(),
-      const EventsScreen(),
-      const ProfileScreen(),
-      const SettingsScreen(),
+      loggedIn ? const EventsScreen() : const SignInScreen(),
+      loggedIn ? const ProfileScreen() : const SignInScreen(),
+      loggedIn ? const SettingsScreen() : const SignInScreen(),
       _MoreScreen(onSelect: _select),
       for (final space in SmsSpace.values)
         SmsSpaceScreen(space: space),
