@@ -1,12 +1,12 @@
 """Tests for SMS Nations discovery repository."""
 
 import uuid
+from datetime import UTC
 
 import pytest
 from sqlalchemy.dialects import postgresql
 
 from app.repositories.sms_nations_repository import SMSNationsRepository
-
 
 ATHLETE_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 SPORT_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
@@ -343,7 +343,7 @@ async def test_latest_completed_talent_evaluation_is_selected():
 
 @pytest.mark.asyncio
 async def test_result_exposes_only_aggregate_talent_data():
-    from datetime import datetime, timezone
+    from datetime import datetime
     from decimal import Decimal
 
     completed_at = datetime(
@@ -352,7 +352,7 @@ async def test_result_exposes_only_aggregate_talent_data():
         4,
         18,
         30,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
 
     session = FakeSession(

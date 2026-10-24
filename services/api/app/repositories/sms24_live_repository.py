@@ -1,8 +1,8 @@
 """Read-side persistence for SMS24 Live."""
 
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-import uuid
 
 from sqlalchemy import func, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,14 +11,13 @@ from app.models.sport import Sport
 from app.models.sports_live import (
     SportsCanonicalCompetition,
     SportsCanonicalCompetitor,
-    SportsSeason,
     SportsCompetition,
     SportsCompetitor,
     SportsDataSource,
     SportsFixture,
     SportsFixtureParticipant,
+    SportsSeason,
 )
-
 from app.models.sports_standings import SportsStanding
 
 

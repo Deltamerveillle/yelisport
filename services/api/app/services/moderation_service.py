@@ -29,12 +29,11 @@ from app.repositories.user_role_repository import (
     UserRoleRepository,
 )
 from app.schemas.moderation import (
-    UserModerationAction,
     DiscoverModerationDecision,
     ModerationReportCreate,
     ModerationTransitionRequest,
+    UserModerationAction,
 )
-
 
 _ALLOWED_TRANSITIONS = {
     "submitted": {

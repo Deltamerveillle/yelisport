@@ -11,7 +11,6 @@ from app.models.athlete_performance_verification import (
 )
 from app.services.sms_proof_service import SMSProofService
 
-
 PERFORMANCE_ID = uuid.uuid4()
 ATHLETE_ID = uuid.uuid4()
 VERIFIER_ID = uuid.uuid4()

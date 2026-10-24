@@ -2,11 +2,10 @@
 
 from typing import Any
 
-from supabase import Client, create_client
-
 from app.core.config import Settings, get_settings
 from app.core.exceptions import ApplicationError
 from app.schemas.auth import AuthSession, AuthUser, SignUpResponse
+from supabase import Client, create_client
 
 
 class AuthService:

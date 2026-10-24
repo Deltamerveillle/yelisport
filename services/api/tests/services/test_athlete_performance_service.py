@@ -15,7 +15,6 @@ from app.services.athlete_performance_service import (
     AthletePerformanceService,
 )
 
-
 USER_ID = uuid.UUID(
     "11111111-1111-1111-1111-111111111111"
 )

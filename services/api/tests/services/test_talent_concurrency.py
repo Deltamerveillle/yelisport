@@ -2,6 +2,7 @@
 
 import asyncio
 import uuid
+from datetime import UTC
 
 import pytest
 from sqlalchemy import delete, func, select
@@ -237,7 +238,7 @@ async def test_concurrent_final_evaluations_complete_application() -> None:
     the application cannot remain stuck in "submitted" after all three
     independent evaluations have been submitted.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
     from decimal import Decimal
 
     owner_id = uuid.uuid4()
@@ -301,7 +302,7 @@ async def test_concurrent_final_evaluations_complete_application() -> None:
                 user_id=owner_id,
                 sport_id=sport_id,
                 status="submitted",
-                submitted_at=datetime.now(timezone.utc),
+                submitted_at=datetime.now(UTC),
             )
         )
 
@@ -319,7 +320,7 @@ async def test_concurrent_final_evaluations_complete_application() -> None:
                     scores={"technical": 70},
                     overall_score=Decimal("70"),
                     recommendation="recommended",
-                    submitted_at=datetime.now(timezone.utc),
+                    submitted_at=datetime.now(UTC),
                 ),
                 TalentEvaluation(
                     id=evaluation_ids[1],

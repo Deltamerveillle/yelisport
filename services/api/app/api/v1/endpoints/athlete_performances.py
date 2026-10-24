@@ -17,7 +17,6 @@ from app.services.athlete_performance_service import (
     AthletePerformanceService,
 )
 
-
 router = APIRouter(
     tags=["SMS Performance"],
 )

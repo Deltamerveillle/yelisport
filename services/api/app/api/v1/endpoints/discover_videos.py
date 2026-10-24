@@ -15,7 +15,6 @@ from app.schemas.discover_video import (
 )
 from app.services.discover_video_service import DiscoverVideoService
 
-
 router = APIRouter(
     tags=["SMS Discover"],
 )

@@ -1,6 +1,6 @@
 """Sportmonks V3 contract tests. All HTTP traffic uses MockTransport."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -8,7 +8,7 @@ import pytest
 from app.sms24.providers import ProviderCompetition, ProviderFixture, ProviderParticipant
 from app.sms24.providers.sportmonks import SportmonksProvider
 
-DAY = datetime(2026, 9, 9, tzinfo=timezone.utc)
+DAY = datetime(2026, 9, 9, tzinfo=UTC)
 TOKEN = "test-only-sportmonks-token"
 
 
@@ -16,7 +16,7 @@ def fixture_payload(state=5, goals=(2, 1), penalties=None):
     scores = []
     for description, values in (("CURRENT", goals), ("PENALTIES", penalties)):
         if values is not None:
-            for participant_id, role, value in zip((11, 22), ("home", "away"), values):
+            for participant_id, role, value in zip((11, 22), ("home", "away"), values, strict=False):
                 scores.append({"participant_id": participant_id, "description": description,
                                "score": {"participant": role, "goals": value}})
     return {
@@ -65,7 +65,7 @@ async def test_daily_request_and_normalization():
     assert fixture.live_clock == "93"
     assert fixture.competition.country_code == "CI"
     assert fixture.competition.season == "2026/2027"
-    assert result.raw_count == 1 and result.fetched_at.tzinfo == timezone.utc
+    assert result.raw_count == 1 and result.fetched_at.tzinfo == UTC
 
 
 @pytest.mark.parametrize("key", [None, "", "   "])
@@ -147,7 +147,7 @@ async def test_errors_are_sanitized_and_health_fails(failure, caplog):
         health = await provider.check_health()
     assert health.is_healthy is False
     assert TOKEN not in health.message and TOKEN not in caplog.text
-    assert health.checked_at.tzinfo == timezone.utc
+    assert health.checked_at.tzinfo == UTC
 
 
 @pytest.mark.asyncio
@@ -188,7 +188,7 @@ def test_scores_and_outcomes(state, goals, penalties, outcomes):
         team["meta"]["winner"] = False if state == 5 else None
     fixture = SportmonksProvider(api_key=TOKEN)._normalize_fixture(data)
     assert [p.result_status for p in fixture.participants] == outcomes
-    assert fixture.result["goals"] == dict(zip(("home", "away"), goals))
+    assert fixture.result["goals"] == dict(zip(("home", "away"), goals, strict=False))
     if penalties:
         assert fixture.result["score"]["penalty"] == {"home": 4, "away": 5}
     if state == 7:

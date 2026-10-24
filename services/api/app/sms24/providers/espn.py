@@ -5,7 +5,7 @@ Not registered by default. Evaluate data licensing before production use.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -162,7 +162,7 @@ class ESPNProvider(SportsDataProvider):
         starts_until: datetime | None = None,
         live_only: bool = False,
     ) -> ProviderFetchResult:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if sport_slug not in (None, "football"):
             return ProviderFetchResult(fetched_at=now)
         self._aware(starts_from)
@@ -184,12 +184,12 @@ class ESPNProvider(SportsDataProvider):
             fixtures.append(fixture)
         return ProviderFetchResult(
             fixtures=fixtures,
-            fetched_at=datetime.now(timezone.utc),
+            fetched_at=datetime.now(UTC),
             raw_count=len(payload["events"]),
         )
 
     async def check_health(self) -> ProviderHealthResult:
-        checked_at = datetime.now(timezone.utc)
+        checked_at = datetime.now(UTC)
         try:
             await self._get_payload()
         except (httpx.HTTPError, ValueError) as exc:

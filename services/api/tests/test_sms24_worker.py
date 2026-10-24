@@ -1,6 +1,6 @@
 import asyncio
-from datetime import datetime, timezone
 import signal
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -23,7 +23,7 @@ def test_sms24_worker_builds_current_utc_day_window():
             12,
             34,
             56,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
     )
 
@@ -34,14 +34,14 @@ def test_sms24_worker_builds_current_utc_day_window():
         0,
         0,
         0,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
 
     assert starts_until.date().isoformat() == (
         "2026-09-07"
     )
 
-    assert starts_until.tzinfo == timezone.utc
+    assert starts_until.tzinfo == UTC
 
 
 def test_sms24_worker_rejects_invalid_interval(

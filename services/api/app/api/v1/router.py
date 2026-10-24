@@ -4,8 +4,8 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     athlete_country_eligibilities,
-    athlete_passports,
     athlete_media,
+    athlete_passports,
     athlete_performances,
     countries,
     discover_athletes,

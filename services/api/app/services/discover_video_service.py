@@ -13,8 +13,8 @@ from app.schemas.discover_video import (
     DiscoverVideoCreate,
     DiscoverVideoUpdate,
 )
-
 from app.services.moderation_service import ModerationService
+
 
 class DiscoverVideoService:
     """Business rules for SMS Discover."""

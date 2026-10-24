@@ -14,7 +14,6 @@ from pydantic import (
     field_validator,
 )
 
-
 VerificationStatus = Literal[
     "declared",
     "documented",

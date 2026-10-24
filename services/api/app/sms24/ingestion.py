@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -41,7 +40,6 @@ from app.sms24.providers import (
     ProviderParticipant,
     SportsDataProvider,
 )
-
 
 ALLOWED_FIXTURE_STATUSES = {
     "scheduled",
@@ -515,7 +513,7 @@ class SMS24IngestionService:
                 f"Active SMS24 source not configured: {provider_slug}"
             )
 
-        fetched_at = result.fetched_at or datetime.now(timezone.utc)
+        fetched_at = result.fetched_at or datetime.now(UTC)
 
         stats = SMS24IngestionStats(
             provider_slug=provider_slug,

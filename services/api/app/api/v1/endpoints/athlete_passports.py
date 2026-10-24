@@ -16,7 +16,6 @@ from app.schemas.athlete_passport import (
 )
 from app.services.athlete_passport_service import AthletePassportService
 
-
 router = APIRouter(
     prefix="/athletes/{athlete_id}/passport",
     tags=["SMS Passport"],

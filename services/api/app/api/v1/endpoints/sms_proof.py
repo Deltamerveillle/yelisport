@@ -14,7 +14,6 @@ from app.schemas.sms_proof import (
 )
 from app.services.sms_proof_service import SMSProofService
 
-
 router = APIRouter(tags=["SMS Proof"])
 
 

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +19,6 @@ from app.sms24.providers import (
     ProviderFetchResult,
     ProviderRegistry,
 )
-
 
 logger = logging.getLogger("sms24.runner")
 
@@ -157,7 +156,7 @@ class SMS24ProviderRunner:
         self.ingestion_service = ingestion_service
         self.max_result_age = max_result_age
         self.now_fn = now_fn or (
-            lambda: datetime.now(timezone.utc)
+            lambda: datetime.now(UTC)
         )
 
     async def run(

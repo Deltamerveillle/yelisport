@@ -15,8 +15,6 @@ from app.api.dependencies.auth import CurrentUser
 from app.db.session import get_db_session
 from app.schemas.discover_video import DiscoverVideoResponse
 from app.schemas.moderation import (
-    UserModerationAction,
-    UserModerationResponse,
     DiscoverModerationDecision,
     ModerationAdminReportResponse,
     ModerationEventResponse,
@@ -25,11 +23,12 @@ from app.schemas.moderation import (
     ModerationResourceType,
     ModerationStatus,
     ModerationTransitionRequest,
+    UserModerationAction,
+    UserModerationResponse,
 )
 from app.services.moderation_service import (
     ModerationService,
 )
-
 
 router = APIRouter(
     prefix="/moderation",

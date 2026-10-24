@@ -12,7 +12,6 @@ from app.db.session import get_db_session
 from app.schemas.auth import AuthUser
 from app.services.discover_video_service import DiscoverVideoService
 
-
 USER_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 ATHLETE_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
 VIDEO_ID = uuid.UUID("33333333-3333-3333-3333-333333333333")
@@ -461,10 +460,10 @@ def test_request_discover_publication(
     )
 
     response = client.post(
-        (
+
             f"/api/v1/athletes/{ATHLETE_ID}/"
             f"discover-videos/{VIDEO_ID}/publish"
-        )
+
     )
 
     assert response.status_code == 200

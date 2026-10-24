@@ -6,7 +6,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-
 EligibilityStatus = Literal[
     "declared",
     "documented",

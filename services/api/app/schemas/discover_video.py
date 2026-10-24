@@ -6,7 +6,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
-
 PublicationStatus = Literal["draft", "published", "archived"]
 ModerationStatus = Literal["pending", "approved", "rejected", "flagged"]
 VisibilityStatus = Literal["public", "private", "unlisted"]

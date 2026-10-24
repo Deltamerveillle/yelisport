@@ -11,7 +11,6 @@ from app.db.session import get_db_session
 from app.schemas.auth import AuthUser
 from app.services.athlete_passport_service import AthletePassportService
 
-
 USER_ID = uuid.UUID("28bbf25e-8d42-4a0a-8bc8-0f41be0fc114")
 OTHER_USER_ID = uuid.UUID("a451c6f7-b023-4bef-a5a1-f84caa15a2ac")
 ATHLETE_ID = uuid.UUID("f42cc315-a4b8-4da5-9f7b-c1094cae2658")
