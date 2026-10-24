@@ -218,7 +218,7 @@ class SportmonksProvider(SportsDataProvider):
             statistics[row.external_id] = row
         return ProviderPlayerStatisticsResult(
             fetched_at=datetime.now(UTC),
-            statistics=tuple(statistics[key] for key in sorted(statistics)),
+            statistics=tuple(statistics[key] for key in sorted(statistics, key=str)),
         )
 
     @classmethod
@@ -442,7 +442,7 @@ class SportmonksProvider(SportsDataProvider):
             player_id = self._transfer_id(membership.get("player_id"))
             if self._transfer_id(membership.get("team_id")) != team_external_id:
                 raise ValueError("Sportmonks membership team does not match request")
-            bounds = []
+            bounds: list[date | None] = []
             for field in ("start", "end"):
                 if field not in membership:
                     raise ValueError("Sportmonks membership date field missing")
@@ -523,7 +523,7 @@ class SportmonksProvider(SportsDataProvider):
         ):
             raise ValueError("Sportmonks invalid pagination")
         # Reconstruct the next request locally; never follow an upstream next_page URL.
-        return pagination["has_more"]
+        return pagination["has_more"] is True
 
     @staticmethod
     def _day(starts_from: datetime | None, starts_until: datetime | None) -> str:
@@ -562,7 +562,7 @@ class SportmonksProvider(SportsDataProvider):
         state_id = item.get("state_id")
         if type(state_id) is not int:
             state_id = None
-        status = self.STATUS_MAP.get(state_id, "unknown")
+        status = self.STATUS_MAP.get(state_id, "unknown") if state_id is not None else "unknown"
         teams = item.get("participants")
         if not isinstance(teams, list) or len(teams) != 2:
             raise ValueError("Sportmonks requires two participants")
@@ -595,7 +595,7 @@ class SportmonksProvider(SportsDataProvider):
                 elif all(type(deciding.get(r)) is int for r in ("home", "away")):
                     own, other = deciding[role], deciding["away" if role == "home" else "home"]
                     # An unresolved shootout or administrative result is not a draw.
-                    if own != other:
+                    if own != other and own is not None and other is not None:
                         outcome = "winner" if own > other else "loser"
                     elif state_id in (5, 7):
                         outcome = "draw"
@@ -682,7 +682,7 @@ class SportmonksProvider(SportsDataProvider):
             return {}
         if not isinstance(raw, list):
             raise ValueError("Sportmonks scores must be a list")
-        scores = {}
+        scores: dict[str, dict[str, int | None]] = {}
         roles = {str(team["id"]): role for role, team in teams.items()}
         for entry in raw:
             if not isinstance(entry, dict) or not isinstance(entry.get("score"), dict):
