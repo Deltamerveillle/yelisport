@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Sequence
+from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import (
@@ -10,6 +11,7 @@ from fastapi import (
     Query,
     status,
 )
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import (
@@ -260,7 +262,7 @@ async def admin_interest_events(
 async def athlete_opportunities(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     current_user: Annotated[AuthUser, Depends(get_current_user)],
-):
+) -> Sequence[RowMapping]:
     return await SMSConnectService(session).list_athlete_opportunities(
         uuid.UUID(str(current_user.id))
     )
@@ -270,7 +272,7 @@ async def athlete_opportunities(
 async def my_opportunities(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     current_user: Annotated[AuthUser, Depends(get_current_user)],
-):
+) -> Sequence[RowMapping]:
     return await SMSConnectService(session).list_my_opportunities(uuid.UUID(str(current_user.id)))
 
 
