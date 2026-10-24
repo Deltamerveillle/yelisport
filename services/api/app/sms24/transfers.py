@@ -33,7 +33,6 @@ from app.sms24.providers.transfers import (
     build_transfer_observation_key,
 )
 
-
 _Model = TypeVar("_Model", bound=Base)
 
 
