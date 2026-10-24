@@ -238,8 +238,8 @@ class SMS24IngestionRepository:
     async def resolve_canonical_competition(
         self,
         *,
-        sport_id,
-        source_id,
+        sport_id: uuid.UUID,
+        source_id: uuid.UUID,
         competition: ProviderCompetition,
     ) -> SportsCanonicalCompetition:
         sport = await self.session.get(Sport, sport_id)
@@ -275,8 +275,8 @@ class SMS24IngestionRepository:
     async def resolve_canonical_competitor(
         self,
         *,
-        sport_id,
-        source_id,
+        sport_id: uuid.UUID,
+        source_id: uuid.UUID,
         participant: ProviderParticipant,
     ) -> SportsCanonicalCompetitor:
         sport = await self.session.get(Sport, sport_id)
@@ -402,8 +402,8 @@ class SMS24IngestionRepository:
         *,
         source_id: uuid.UUID,
         sport_id: uuid.UUID,
-        competition_id,
-        canonical_fixture_id,
+        competition_id: uuid.UUID | None,
+        canonical_fixture_id: uuid.UUID,
         fixture: ProviderFixture,
         fetched_at: datetime,
     ) -> SportsFixture:
