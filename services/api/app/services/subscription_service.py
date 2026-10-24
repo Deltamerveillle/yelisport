@@ -75,7 +75,7 @@ class SubscriptionService:
         subscription = await self.get_current_subscription(user_id)
         premium = self._legacy_premium(subscription)
         entitlements = CommercialEntitlements()
-        if premium:
+        if premium and subscription is not None:
             plan = next(
                 (
                     plan
