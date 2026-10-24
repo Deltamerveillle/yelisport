@@ -714,3 +714,48 @@ async def test_unverified_sms_evaluator_cannot_be_assigned() -> None:
         )
 
     service.evaluations.create.assert_not_awaited()
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("scores", "expected"),
+    [
+        (("51", "51", "51"), True),
+        (("50.01", "70", "99"), True),
+        (("50", "70", "99"), False),
+        (("49.99", "70", "99"), False),
+        (("70", None, "99"), False),
+    ],
+)
+async def test_three_human_scores_must_each_exceed_fifty(
+    scores: tuple[str | None, str | None, str | None],
+    expected: bool,
+) -> None:
+    service = build_service()
+    app = application(status="completed")
+    service.applications.get_by_id.return_value = app
+
+    completed = [
+        evaluation(application_id=app.id, status="submitted")
+        for _ in range(3)
+    ]
+    for item, score in zip(completed, scores, strict=True):
+        item.overall_score = Decimal(score) if score is not None else None
+    service.evaluations.list_for_application.return_value = completed
+
+    actual = await service.meets_unanimous_score_threshold(
+        application_id=app.id,
+    )
+    assert actual is expected
+    service.evaluations.list_for_application.assert_awaited_once_with(app.id)
+
+
+@pytest.mark.asyncio
+async def test_score_threshold_unavailable_before_three_final_evaluations() -> None:
+    service = build_service()
+    app = application(status="submitted")
+    service.applications.get_by_id.return_value = app
+
+    with pytest.raises(ValueError, match="remain confidential until completion"):
+        await service.meets_unanimous_score_threshold(application_id=app.id)
+
+    service.evaluations.list_for_application.assert_not_awaited()

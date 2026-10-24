@@ -413,3 +413,23 @@ class TalentService:
             )
 
         return evaluations
+
+    async def meets_unanimous_score_threshold(
+        self,
+        *,
+        application_id: uuid.UUID,
+    ) -> bool:
+        """Check the human score threshold without issuing a recommendation.
+
+        All three independent evaluators must score strictly above 50/100.
+        A nonqualifying result does not alter the athlete's subscription
+        benefits, public visibility, or eligibility for paid promotion.
+        """
+        evaluations = await self.get_completed_evaluations(
+            application_id=application_id,
+        )
+        return all(
+            evaluation.overall_score is not None
+            and evaluation.overall_score > Decimal("50")
+            for evaluation in evaluations
+        )
