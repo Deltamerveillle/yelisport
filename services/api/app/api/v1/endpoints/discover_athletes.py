@@ -66,7 +66,7 @@ async def search_discover_athletes(
     team_name: str | None = Query(default=None, max_length=180),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-):
+) -> list[DiscoverAthleteResponse]:
     """Search athletes who explicitly opted in to opportunities."""
 
     return await DiscoverAthleteService(session).search(
