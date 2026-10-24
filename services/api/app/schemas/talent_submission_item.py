@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
@@ -23,7 +23,7 @@ class TalentSubmissionItemCreate(BaseModel):
     resource_url: HttpUrl
     title: str | None = Field(default=None, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
-    metadata_json: dict | None = None
+    metadata_json: dict[str, Any] | None = None
 
 
 class TalentSubmissionItemResponse(BaseModel):
@@ -37,6 +37,6 @@ class TalentSubmissionItemResponse(BaseModel):
     resource_url: str
     title: str | None
     description: str | None
-    metadata_json: dict | None
+    metadata_json: dict[str, Any] | None
     created_at: datetime
     updated_at: datetime
