@@ -11,25 +11,6 @@ from urllib.parse import quote
 
 import httpx
 
-
-class _SportmonksTokenFilter(logging.Filter):
-    _pattern = re.compile(r'([?&]api_token=)[^&\s"]+')
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        if record.name == "httpx":
-            message = record.getMessage()
-            sanitized = self._pattern.sub(r"\1[REDACTED]", message)
-            if sanitized != message:
-                record.msg = sanitized
-                record.args = ()
-        return True
-
-
-_httpx_logger = logging.getLogger("httpx")
-if not any(isinstance(f, _SportmonksTokenFilter) for f in _httpx_logger.filters):
-    _httpx_logger.addFilter(_SportmonksTokenFilter())
-
-
 from app.sms24.providers.base import (
     ProviderCompetition,
     ProviderFetchResult,
@@ -52,6 +33,24 @@ from app.sms24.providers.standings_normalization import normalize_sportmonks_sta
 from app.sms24.providers.transfers import ProviderTransfer, ProviderTransfersResult
 
 
+class _SportmonksTokenFilter(logging.Filter):
+    _pattern = re.compile(r'([?&]api_token=)[^&\s"]+')
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.name == "httpx":
+            message = record.getMessage()
+            sanitized = self._pattern.sub(r"\1[REDACTED]", message)
+            if sanitized != message:
+                record.msg = sanitized
+                record.args = ()
+        return True
+
+
+_httpx_logger = logging.getLogger("httpx")
+if not any(isinstance(f, _SportmonksTokenFilter) for f in _httpx_logger.filters):
+    _httpx_logger.addFilter(_SportmonksTokenFilter())
+
+
 class SportmonksProvider(SportsDataProvider):
     normalize_standing = staticmethod(normalize_sportmonks_standing)
 
@@ -61,17 +60,39 @@ class SportmonksProvider(SportsDataProvider):
     INCLUDES = "participants;league.country;season;state;scores;periods;venue"
     # V3 state IDs: https://docs.sportmonks.com/v3/definitions/states
     STATUS_MAP = {
-        1: "scheduled", 2: "live", 3: "live", 4: "live", 5: "finished",
-        6: "live", 7: "finished", 8: "finished", 9: "live", 10: "postponed",
-        11: "suspended", 12: "cancelled", 13: "scheduled", 14: "finished",
-        15: "suspended", 16: "scheduled", 17: "finished", 18: "suspended",
-        19: "unknown", 20: "cancelled", 21: "live", 22: "live", 25: "live",
+        1: "scheduled",
+        2: "live",
+        3: "live",
+        4: "live",
+        5: "finished",
+        6: "live",
+        7: "finished",
+        8: "finished",
+        9: "live",
+        10: "postponed",
+        11: "suspended",
+        12: "cancelled",
+        13: "scheduled",
+        14: "finished",
+        15: "suspended",
+        16: "scheduled",
+        17: "finished",
+        18: "suspended",
+        19: "unknown",
+        20: "cancelled",
+        21: "live",
+        22: "live",
+        25: "live",
         26: "unknown",
     }
 
     def __init__(
-        self, *, api_key: str, base_url: str | None = None,
-        timeout_seconds: float = 15.0, max_pages: int = 100,
+        self,
+        *,
+        api_key: str,
+        base_url: str | None = None,
+        timeout_seconds: float = 15.0,
+        max_pages: int = 100,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         if not isinstance(api_key, str) or not api_key.strip():
@@ -85,8 +106,11 @@ class SportmonksProvider(SportsDataProvider):
         self._client = client
 
     async def fetch_fixtures(
-        self, *, sport_slug: str | None = None,
-        starts_from: datetime | None = None, starts_until: datetime | None = None,
+        self,
+        *,
+        sport_slug: str | None = None,
+        starts_from: datetime | None = None,
+        starts_until: datetime | None = None,
         live_only: bool = False,
     ) -> ProviderFetchResult:
         if sport_slug not in (None, "football"):
@@ -108,13 +132,17 @@ class SportmonksProvider(SportsDataProvider):
                 fixtures.append(fixture)
             if live_only or not self._has_more(payload, page):
                 return ProviderFetchResult(
-                    fixtures=fixtures, raw_count=len(fixtures),
+                    fixtures=fixtures,
+                    raw_count=len(fixtures),
                     fetched_at=datetime.now(UTC),
                 )
         raise RuntimeError("Sportmonks pagination limit exceeded")
 
     async def fetch_standings(
-        self, *, season: str, league_external_id: str | None = None,
+        self,
+        *,
+        season: str,
+        league_external_id: str | None = None,
     ) -> ProviderStandingsResult:
         validate_standings_request(ProviderStandingsRequest(season, league_external_id))
         if season in {".", ".."}:
@@ -123,10 +151,14 @@ class SportmonksProvider(SportsDataProvider):
         rows = []
         seen = set()
         for page in range(1, self.max_pages + 1):
-            payload = await self._get_json(path, params={
-                "include": "participant;details.type;rule.type",
-                "page": str(page), "per_page": "50",
-            })
+            payload = await self._get_json(
+                path,
+                params={
+                    "include": "participant;details.type;rule.type",
+                    "page": str(page),
+                    "per_page": "50",
+                },
+            )
             for raw_row in payload["data"]:
                 row = self.normalize_standing(raw_row)
                 if row.external_season_id != season or (
@@ -156,7 +188,9 @@ class SportmonksProvider(SportsDataProvider):
         raise RuntimeError("Sportmonks standings pagination limit exceeded")
 
     async def fetch_player_statistics(
-        self, *, athlete_external_id: str,
+        self,
+        *,
+        athlete_external_id: str,
     ) -> ProviderPlayerStatisticsResult:
         """Season observations identified only by Sportmonks' statistics record ID."""
         if not isinstance(athlete_external_id, str):
@@ -164,7 +198,8 @@ class SportmonksProvider(SportsDataProvider):
         self._transfer_id(athlete_external_id)
         payload = await self._get_json(
             f"/players/{athlete_external_id}",
-            params={"include": "statistics.details.type"}, data_type=dict,
+            params={"include": "statistics.details.type"},
+            data_type=dict,
         )
         player = payload["data"]
         if self._transfer_id(player.get("id")) != athlete_external_id:
@@ -183,12 +218,15 @@ class SportmonksProvider(SportsDataProvider):
             statistics[row.external_id] = row
         return ProviderPlayerStatisticsResult(
             fetched_at=datetime.now(UTC),
-            statistics=tuple(statistics[key] for key in sorted(statistics)),
+            statistics=tuple(statistics[key] for key in sorted(statistics, key=str)),
         )
 
     @classmethod
     def _normalize_player_statistic(
-        cls, item: Any, athlete_external_id: str, athlete_name: str | None,
+        cls,
+        item: Any,
+        athlete_external_id: str,
+        athlete_name: str | None,
     ) -> ProviderPlayerStatistic:
         if not isinstance(item, dict):
             raise ValueError("Sportmonks statistic must be an object")
@@ -226,8 +264,11 @@ class SportmonksProvider(SportsDataProvider):
                 raise ValueError("Sportmonks duplicate statistic detail type")
             if "value" not in detail:
                 raise ValueError("Sportmonks statistic detail value is missing")
-            metric = {"detail_id": detail["id"], "type_id": detail["type_id"],
-                      "value": detail["value"]}
+            metric = {
+                "detail_id": detail["id"],
+                "type_id": detail["type_id"],
+                "value": detail["value"],
+            }
             if "type" in detail:
                 kind = detail["type"]
                 if not isinstance(kind, dict):
@@ -241,8 +282,11 @@ class SportmonksProvider(SportsDataProvider):
                         metric[field] = kind[field]
             metrics[type_id] = metric
         return ProviderPlayerStatistic(
-            external_id=external_id, athlete_external_id=player_id, athlete_name=athlete_name,
-            scope="season", metrics={key: metrics[key] for key in sorted(metrics)},
+            external_id=external_id,
+            athlete_external_id=player_id,
+            athlete_name=athlete_name,
+            scope="season",
+            metrics={key: metrics[key] for key in sorted(metrics)},
             metadata=metadata,
         )
 
@@ -275,7 +319,8 @@ class SportmonksProvider(SportsDataProvider):
                 transfers.append(transfer)
             if not more:
                 return ProviderTransfersResult(
-                    fetched_at=datetime.now(UTC), transfers=tuple(transfers),
+                    fetched_at=datetime.now(UTC),
+                    transfers=tuple(transfers),
                 )
             if not payload["data"]:
                 raise ValueError("Sportmonks empty Transfers page with more pages")
@@ -285,8 +330,12 @@ class SportmonksProvider(SportsDataProvider):
     def _transfer_id(value: Any) -> str:
         """Sportmonks numeric IDs, without coercing booleans or repairing input."""
         identifier = SportmonksProvider._id(value)
-        if (len(identifier) > 160 or not identifier.isascii()
-                or not identifier.isdecimal() or int(identifier) <= 0):
+        if (
+            len(identifier) > 160
+            or not identifier.isascii()
+            or not identifier.isdecimal()
+            or int(identifier) <= 0
+        ):
             raise ValueError("Sportmonks invalid Transfers identifier")
         return identifier
 
@@ -308,13 +357,18 @@ class SportmonksProvider(SportsDataProvider):
         return ProviderTransfer(
             external_id=cls._transfer_id(item.get("id")),
             athlete_external_id=cls._transfer_id(item.get("player_id")),
-            from_team_external_id=(cls._transfer_id(item["from_team_id"])
-                                   if item.get("from_team_id") is not None else None),
-            to_team_external_id=(cls._transfer_id(item["to_team_id"])
-                                 if item.get("to_team_id") is not None else None),
+            from_team_external_id=(
+                cls._transfer_id(item["from_team_id"])
+                if item.get("from_team_id") is not None
+                else None
+            ),
+            to_team_external_id=(
+                cls._transfer_id(item["to_team_id"]) if item.get("to_team_id") is not None else None
+            ),
             reported_date=reported_date,
-            reported_type=(cls._transfer_id(item["type_id"])
-                           if item.get("type_id") is not None else None),
+            reported_type=(
+                cls._transfer_id(item["type_id"]) if item.get("type_id") is not None else None
+            ),
             metadata=dict(item),
         )
 
@@ -330,38 +384,50 @@ class SportmonksProvider(SportsDataProvider):
         except Exception:
             healthy = False
         return ProviderHealthResult(
-            is_healthy=healthy, checked_at=checked_at,
+            is_healthy=healthy,
+            checked_at=checked_at,
             latency_ms=int((time.perf_counter() - started) * 1000),
             message="Sportmonks reachable" if healthy else "Sportmonks unavailable",
         )
 
     async def fetch_player_identity(
-        self, *, athlete_external_id: str,
+        self,
+        *,
+        athlete_external_id: str,
     ) -> ProviderPlayerIdentity:
         """Retrieve official provider identity independently of statistics."""
         if not isinstance(athlete_external_id, str):
             raise ValueError("Sportmonks invalid player identity request")
         self._transfer_id(athlete_external_id)
         payload = await self._get_json(
-            f"/players/{athlete_external_id}", params={}, data_type=dict,
+            f"/players/{athlete_external_id}",
+            params={},
+            data_type=dict,
         )
         player = payload["data"]
         external_id = self._transfer_id(player.get("id"))
         if external_id != athlete_external_id:
             raise ValueError("Sportmonks player identity does not match request")
         return ProviderPlayerIdentity(
-            external_id=external_id, name=player.get("name"), fetched_at=datetime.now(UTC),
+            external_id=external_id,
+            name=player.get("name"),
+            fetched_at=datetime.now(UTC),
         )
 
     async def fetch_team_player_ids(
-        self, *, team_external_id: str, reference_date: date,
+        self,
+        *,
+        team_external_id: str,
+        reference_date: date,
     ) -> tuple[str, ...]:
         """Active membership IDs only; no player catalogue or human identity lookup."""
         if not isinstance(team_external_id, str) or type(reference_date) is not date:
             raise ValueError("Sportmonks invalid team discovery request")
         self._transfer_id(team_external_id)
         payload = await self._get_json(
-            f"/teams/{team_external_id}", params={"include": "players"}, data_type=dict,
+            f"/teams/{team_external_id}",
+            params={"include": "players"},
+            data_type=dict,
         )
         team = payload["data"]
         if self._transfer_id(team.get("id")) != team_external_id:
@@ -376,7 +442,7 @@ class SportmonksProvider(SportsDataProvider):
             player_id = self._transfer_id(membership.get("player_id"))
             if self._transfer_id(membership.get("team_id")) != team_external_id:
                 raise ValueError("Sportmonks membership team does not match request")
-            bounds = []
+            bounds: list[date | None] = []
             for field in ("start", "end"):
                 if field not in membership:
                     raise ValueError("Sportmonks membership date field missing")
@@ -403,19 +469,30 @@ class SportmonksProvider(SportsDataProvider):
         return tuple(sorted(players))
 
     async def _get_json(
-        self, path: str, *, params: dict[str, str], data_type: type = list,
+        self,
+        path: str,
+        *,
+        params: dict[str, str],
+        data_type: type = list,
     ) -> dict[str, Any]:
         # Do not propagate transport errors, response bodies or URLs: they may echo secrets.
         try:
             if self._client is not None:
                 response = await self._client.get(
-                    f"{self.base_url}{path}", params=params, headers={"Authorization": self.api_key}, timeout=self.timeout_seconds, follow_redirects=False,
+                    f"{self.base_url}{path}",
+                    params=params,
+                    headers={"Authorization": self.api_key},
+                    timeout=self.timeout_seconds,
+                    follow_redirects=False,
                 )
             else:
                 async with httpx.AsyncClient() as client:
                     response = await client.get(
-                        f"{self.base_url}{path}", params=params, headers={"Authorization": self.api_key},
-                        timeout=self.timeout_seconds, follow_redirects=False,
+                        f"{self.base_url}{path}",
+                        params=params,
+                        headers={"Authorization": self.api_key},
+                        timeout=self.timeout_seconds,
+                        follow_redirects=False,
                     )
         except Exception:
             raise RuntimeError("Sportmonks request failed") from None
@@ -426,8 +503,10 @@ class SportmonksProvider(SportsDataProvider):
         except ValueError:
             raise ValueError("Sportmonks invalid JSON") from None
         if (
-            not isinstance(payload, dict) or not isinstance(payload.get("data"), data_type)
-            or payload.get("error") or payload.get("errors")
+            not isinstance(payload, dict)
+            or not isinstance(payload.get("data"), data_type)
+            or payload.get("error")
+            or payload.get("errors")
         ):
             raise ValueError("Sportmonks invalid response envelope")
         return payload
@@ -444,7 +523,7 @@ class SportmonksProvider(SportsDataProvider):
         ):
             raise ValueError("Sportmonks invalid pagination")
         # Reconstruct the next request locally; never follow an upstream next_page URL.
-        return pagination["has_more"]
+        return pagination["has_more"] is True
 
     @staticmethod
     def _day(starts_from: datetime | None, starts_until: datetime | None) -> str:
@@ -465,9 +544,7 @@ class SportmonksProvider(SportsDataProvider):
                 raise ValueError
             parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
             # Sportmonks returns naive starting_at in the requested timezone (UTC).
-            return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else (
-                parsed.astimezone(UTC)
-            )
+            return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else (parsed.astimezone(UTC))
         except (ValueError, TypeError):
             raise ValueError("Sportmonks invalid fixture timestamp") from None
 
@@ -485,7 +562,7 @@ class SportmonksProvider(SportsDataProvider):
         state_id = item.get("state_id")
         if type(state_id) is not int:
             state_id = None
-        status = self.STATUS_MAP.get(state_id, "unknown")
+        status = self.STATUS_MAP.get(state_id, "unknown") if state_id is not None else "unknown"
         teams = item.get("participants")
         if not isinstance(teams, list) or len(teams) != 2:
             raise ValueError("Sportmonks requires two participants")
@@ -518,16 +595,22 @@ class SportmonksProvider(SportsDataProvider):
                 elif all(type(deciding.get(r)) is int for r in ("home", "away")):
                     own, other = deciding[role], deciding["away" if role == "home" else "home"]
                     # An unresolved shootout or administrative result is not a draw.
-                    if own != other:
+                    if own != other and own is not None and other is not None:
                         outcome = "winner" if own > other else "loser"
                     elif state_id in (5, 7):
                         outcome = "draw"
-            participants.append(ProviderParticipant(
-                external_id=self._id(team["id"]), name=team["name"],
-                short_name=team.get("short_code"), logo_url=team.get("image_path"),
-                role=role, position=position, score={"value": current.get(role)},
-                result_status=outcome,
-            ))
+            participants.append(
+                ProviderParticipant(
+                    external_id=self._id(team["id"]),
+                    name=team["name"],
+                    short_name=team.get("short_code"),
+                    logo_url=team.get("image_path"),
+                    role=role,
+                    position=position,
+                    score={"value": current.get(role)},
+                    result_status=outcome,
+                )
+            )
         league = item.get("league") or {}
         season = item.get("season") or {}
         competition = None
@@ -535,41 +618,62 @@ class SportmonksProvider(SportsDataProvider):
             country = league.get("country") or {}
             code = country.get("iso2") if isinstance(country, dict) else None
             competition = ProviderCompetition(
-                external_id=self._id(league["id"]), name=str(league["name"]),
+                external_id=self._id(league["id"]),
+                name=str(league["name"]),
                 jurisdiction_name=(
                     country["name"].strip() or None
-                    if isinstance(country, dict) and isinstance(country.get("name"), str) else None
+                    if isinstance(country, dict) and isinstance(country.get("name"), str)
+                    else None
                 ),
                 country_code=(
                     code.upper()
-                    if isinstance(code, str) and len(code) == 2
-                    and code.isascii() and code.isalpha() else None
+                    if isinstance(code, str)
+                    and len(code) == 2
+                    and code.isascii()
+                    and code.isalpha()
+                    else None
                 ),
-                season=(str(season["name"])
-                        if isinstance(season, dict) and season.get("name") else None),
+                season=(
+                    str(season["name"]) if isinstance(season, dict) and season.get("name") else None
+                ),
                 logo_url=league.get("image_path"),
             )
         periods = item.get("periods") or []
-        minutes = [p["minutes"] for p in periods if isinstance(p, dict)
-                   and type(p.get("minutes")) is int] if isinstance(periods, list) else []
+        minutes = (
+            [p["minutes"] for p in periods if isinstance(p, dict) and type(p.get("minutes")) is int]
+            if isinstance(periods, list)
+            else []
+        )
         venue = item.get("venue") or {}
         return ProviderFixture(
-            external_id=external_id, sport_slug="football", starts_at=starts_at, status=status,
+            external_id=external_id,
+            sport_slug="football",
+            starts_at=starts_at,
+            status=status,
             name=f"{participants[0].name} vs {participants[1].name}",
-            participants=participants, competition=competition,
+            participants=participants,
+            competition=competition,
             live_clock=str(max(minutes)) if minutes else None,
             venue=venue.get("name") if isinstance(venue, dict) else None,
-            result={"goals": current, "score": {
-                "halftime": scores.get("1ST_HALF", {"home": None, "away": None}),
-                "fulltime": scores.get("2ND_HALF", {"home": None, "away": None}),
-                "extratime": current if state_id == 7 or (state_id == 8 and
-                    any(k in scores for k in ("EXTRA_TIME", "EXTRA_TIME_ONLY")))
+            result={
+                "goals": current,
+                "score": {
+                    "halftime": scores.get("1ST_HALF", {"home": None, "away": None}),
+                    "fulltime": scores.get("2ND_HALF", {"home": None, "away": None}),
+                    "extratime": current
+                    if state_id == 7
+                    or (
+                        state_id == 8
+                        and any(k in scores for k in ("EXTRA_TIME", "EXTRA_TIME_ONLY"))
+                    )
                     else {"home": None, "away": None},
-                "penalty": scores.get("PENALTIES", {"home": None, "away": None}),
-            }},
+                    "penalty": scores.get("PENALTIES", {"home": None, "away": None}),
+                },
+            },
             metadata={"provider_state_id": state_id},
             source_updated_at=self._datetime(item["last_processed_at"])
-            if item.get("last_processed_at") else None,
+            if item.get("last_processed_at")
+            else None,
         )
 
     @staticmethod
@@ -578,14 +682,20 @@ class SportmonksProvider(SportsDataProvider):
             return {}
         if not isinstance(raw, list):
             raise ValueError("Sportmonks scores must be a list")
-        scores = {}
+        scores: dict[str, dict[str, int | None]] = {}
         roles = {str(team["id"]): role for role, team in teams.items()}
         for entry in raw:
             if not isinstance(entry, dict) or not isinstance(entry.get("score"), dict):
                 raise ValueError("Sportmonks invalid score")
             description = entry.get("description")
-            if description not in ("CURRENT", "1ST_HALF", "2ND_HALF", "PENALTIES",
-                                   "EXTRA_TIME", "EXTRA_TIME_ONLY"):
+            if description not in (
+                "CURRENT",
+                "1ST_HALF",
+                "2ND_HALF",
+                "PENALTIES",
+                "EXTRA_TIME",
+                "EXTRA_TIME_ONLY",
+            ):
                 continue
             role = roles.get(str(entry.get("participant_id")))
             value = entry["score"].get("goals")

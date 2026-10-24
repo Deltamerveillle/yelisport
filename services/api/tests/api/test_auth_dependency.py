@@ -10,7 +10,6 @@ from app.api.dependencies import auth as auth_dependency
 from app.core.exceptions import ApplicationError
 from app.schemas.auth import AuthUser
 
-
 USER_ID = uuid.uuid4()
 
 

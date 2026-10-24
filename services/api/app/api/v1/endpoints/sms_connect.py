@@ -10,6 +10,7 @@ from fastapi import (
     Query,
     status,
 )
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import (
@@ -95,11 +96,12 @@ async def list_my_interests(
 ]:
     """List professional interests sent by the user."""
 
-    return await SMSConnectService(
-        session
-    ).list_my_interests(
-        uuid.UUID(str(current_user.id))
-    )
+    return [
+        SMSConnectInterestResponse.model_validate(item)
+        for item in await SMSConnectService(session).list_my_interests(
+            uuid.UUID(str(current_user.id))
+        )
+    ]
 
 
 @router.get(
@@ -122,11 +124,12 @@ async def athlete_inbox(
 ]:
     """List interests formally delivered to this athlete."""
 
-    return await SMSConnectService(
-        session
-    ).list_athlete_inbox(
-        uuid.UUID(str(current_user.id))
-    )
+    return [
+        SMSConnectInterestResponse.model_validate(item)
+        for item in await SMSConnectService(session).list_athlete_inbox(
+            uuid.UUID(str(current_user.id))
+        )
+    ]
 
 
 @router.patch(
@@ -183,16 +186,13 @@ async def admin_list_interests(
 ]:
     """Internal SMS review queue."""
 
-    return await SMSConnectService(
-        session
-    ).list_admin_interests(
-        admin_user_id=uuid.UUID(
-            str(current_user.id)
-        ),
-        interest_status=interest_status,
-        limit=limit,
-        offset=offset,
-    )
+    return [
+        SMSConnectInterestResponse.model_validate(item)
+        for item in await SMSConnectService(session).list_admin_interests(
+            admin_user_id=uuid.UUID(str(current_user.id)),
+            interest_status=interest_status, limit=limit, offset=offset,
+        )
+    ]
 
 
 @router.patch(
@@ -248,21 +248,20 @@ async def admin_interest_events(
 ]:
     """Return immutable administrative transition history."""
 
-    return await SMSConnectService(
-        session
-    ).list_interest_events(
-        interest_id=interest_id,
-        admin_user_id=uuid.UUID(
-            str(current_user.id)
-        ),
-    )
+    return [
+        SMSConnectInterestEventResponse.model_validate(item)
+        for item in await SMSConnectService(session).list_interest_events(
+            interest_id=interest_id,
+            admin_user_id=uuid.UUID(str(current_user.id)),
+        )
+    ]
 
 
 @router.get("/athlete/opportunities", response_model=list[SMSConnectOpportunityResponse])
 async def athlete_opportunities(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     current_user: Annotated[AuthUser, Depends(get_current_user)],
-):
+) -> Sequence[RowMapping]:
     return await SMSConnectService(session).list_athlete_opportunities(
         uuid.UUID(str(current_user.id))
     )
@@ -272,7 +271,7 @@ async def athlete_opportunities(
 async def my_opportunities(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     current_user: Annotated[AuthUser, Depends(get_current_user)],
-):
+) -> Sequence[RowMapping]:
     return await SMSConnectService(session).list_my_opportunities(uuid.UUID(str(current_user.id)))
 
 

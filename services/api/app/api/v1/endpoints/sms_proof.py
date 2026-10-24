@@ -8,12 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import CurrentUser
 from app.db.session import get_db_session
+from app.models.athlete_performance_verification import AthletePerformanceVerification
 from app.schemas.sms_proof import (
     SMSProofDecisionRequest,
     SMSProofVerificationResponse,
 )
 from app.services.sms_proof_service import SMSProofService
-
 
 router = APIRouter(tags=["SMS Proof"])
 
@@ -31,7 +31,7 @@ async def verify_athlete_performance(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> AthletePerformanceVerification:
     """Record an authorized, auditable performance decision."""
 
     service = SMSProofService(session)
@@ -65,7 +65,7 @@ async def list_performance_verifications(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> list[AthletePerformanceVerification]:
     """Return verification history to authorized SMS administrators."""
 
     service = SMSProofService(session)

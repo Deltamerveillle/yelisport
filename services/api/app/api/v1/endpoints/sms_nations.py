@@ -17,7 +17,6 @@ from app.schemas.sms_nations import (
 )
 from app.services.sms_nations_service import SMSNationsService
 
-
 router = APIRouter(
     prefix="/sms-nations",
     tags=["sms-nations"],

@@ -232,7 +232,7 @@ async def run_worker() -> None:
     )
 
     while True:
-        delay = config.page_interval_seconds
+        delay: float = config.page_interval_seconds
 
         try:
             iteration = await _run_iteration(config)

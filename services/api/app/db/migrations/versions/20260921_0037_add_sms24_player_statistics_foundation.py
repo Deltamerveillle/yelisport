@@ -53,13 +53,13 @@ def upgrade() -> None:
         # they must never be manufactured as zero by this schema.
         sa.Column(
             "metrics_json",
-            postgresql.JSONB(),
+            postgresql.JSONB(),  # type: ignore[no-untyped-call]
             server_default=sa.text("'{}'::jsonb"),
             nullable=False,
         ),
         sa.Column(
             "metadata_json",
-            postgresql.JSONB(),
+            postgresql.JSONB(),  # type: ignore[no-untyped-call]
             server_default=sa.text("'{}'::jsonb"),
             nullable=False,
         ),

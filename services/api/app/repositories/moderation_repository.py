@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Sequence
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,23 +32,23 @@ class ModerationReportRepository:
         self,
         report_id: uuid.UUID,
     ) -> ModerationReport | None:
-        return await self.session.scalar(
+        return cast(ModerationReport | None, await self.session.scalar(
             select(ModerationReport).where(
                 ModerationReport.id == report_id
             )
-        )
+        ))
 
     async def get_by_id_for_update(
         self,
         report_id: uuid.UUID,
     ) -> ModerationReport | None:
-        return await self.session.scalar(
+        return cast(ModerationReport | None, await self.session.scalar(
             select(ModerationReport)
             .where(
                 ModerationReport.id == report_id
             )
             .with_for_update()
-        )
+        ))
 
     async def get_open_publication_review(
         self,
@@ -56,7 +57,7 @@ class ModerationReportRepository:
     ) -> ModerationReport | None:
         """Return the current open Discover publication review, if any."""
 
-        return await self.session.scalar(
+        return cast(ModerationReport | None, await self.session.scalar(
             select(ModerationReport)
             .where(
                 ModerationReport.resource_type
@@ -74,7 +75,7 @@ class ModerationReportRepository:
                 ModerationReport.id.asc(),
             )
             .limit(1)
-        )
+        ))
 
     async def list_for_reporter(
         self,

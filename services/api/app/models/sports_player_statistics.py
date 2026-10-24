@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -79,8 +80,8 @@ class SportsPlayerStatisticObservation(Base):
     )
     scope: Mapped[str] = mapped_column(String(20), default="unknown", server_default="unknown")
     period_label: Mapped[str | None] = mapped_column(String(100))
-    metrics_json: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
-    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+    metrics_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     source_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

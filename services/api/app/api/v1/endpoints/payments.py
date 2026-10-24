@@ -18,7 +18,7 @@ Configuration = Annotated[Settings, Depends(get_settings)]
 
 
 @router.get("/plans", response_model=list[CommercialPlan])
-async def list_plans(settings: Configuration):
+async def list_plans(settings: Configuration) -> list[CommercialPlan]:
     return [p for p in settings.sms_commercial_plans if p.active and p.purchasable]
 
 
@@ -28,7 +28,7 @@ async def initiate_payment(
     current_user: CurrentUser,
     session: Session,
     settings: Configuration,
-):
+) -> PaymentResponse:
     try:
         transaction = await PaymentInitiationService(
             session, settings.sms_commercial_plans
@@ -47,7 +47,7 @@ async def get_payment(
     current_user: CurrentUser,
     session: Session,
     settings: Configuration,
-):
+) -> PaymentResponse:
     transaction = await PaymentInitiationService(session, settings.sms_commercial_plans).get_owned(
         user_id=uuid.UUID(str(current_user.id)), transaction_id=transaction_id
     )

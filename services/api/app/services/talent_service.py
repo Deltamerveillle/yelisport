@@ -1,8 +1,10 @@
 """Business rules for SMS Talent."""
 
 import uuid
-from datetime import datetime, timezone
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -102,7 +104,7 @@ class TalentService:
         resource_url: str,
         title: str | None = None,
         description: str | None = None,
-        metadata_json: dict | None = None,
+        metadata_json: dict[str, Any] | None = None,
     ) -> TalentSubmissionItem:
         application = await self.applications.get_by_id(application_id)
 
@@ -135,7 +137,7 @@ class TalentService:
         *,
         application_id: uuid.UUID,
         user_id: uuid.UUID,
-    ):
+    ) -> Sequence[TalentSubmissionItem]:
         application = await self.applications.get_by_id(application_id)
 
         if application is None:
@@ -213,7 +215,7 @@ class TalentService:
             )
 
         application.status = "submitted"
-        application.submitted_at = datetime.now(timezone.utc)
+        application.submitted_at = datetime.now(UTC)
 
         return await self.applications.update(application)
 
@@ -311,7 +313,7 @@ class TalentService:
         *,
         application_id: uuid.UUID,
         evaluator_user_id: uuid.UUID,
-        scores: dict,
+        scores: dict[str, Any],
         overall_score: Decimal,
         recommendation: str | None = None,
         comments: str | None = None,
@@ -347,7 +349,7 @@ class TalentService:
         if not scores:
             raise ValueError("Evaluation scores are required")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         evaluation.scores = scores
         evaluation.overall_score = overall_score
@@ -411,3 +413,23 @@ class TalentService:
             )
 
         return evaluations
+
+    async def meets_unanimous_score_threshold(
+        self,
+        *,
+        application_id: uuid.UUID,
+    ) -> bool:
+        """Check the human score threshold without issuing a recommendation.
+
+        All three independent evaluators must score strictly above 50/100.
+        A nonqualifying result does not alter the athlete's subscription
+        benefits, public visibility, or eligibility for paid promotion.
+        """
+        evaluations = await self.get_completed_evaluations(
+            application_id=application_id,
+        )
+        return all(
+            evaluation.overall_score is not None
+            and evaluation.overall_score > Decimal("50")
+            for evaluation in evaluations
+        )

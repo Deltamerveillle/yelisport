@@ -1,6 +1,6 @@
 """Tests for the SMS24 provider abstraction."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -12,8 +12,7 @@ from app.sms24.providers import (
     SportsDataProvider,
 )
 
-
-NOW = datetime(2026, 9, 6, 22, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 6, 22, 0, tzinfo=UTC)
 
 
 class FakeProvider(SportsDataProvider):

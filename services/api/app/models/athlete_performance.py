@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -114,7 +115,7 @@ class AthletePerformance(Base):
     #   "rebounds": 8,
     #   "assists": 5
     # }
-    metrics: Mapped[dict] = mapped_column(
+    metrics: Mapped[dict[str, Any]] = mapped_column(
         JSONB,
         nullable=False,
         default=dict,

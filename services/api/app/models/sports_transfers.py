@@ -7,6 +7,7 @@ in SMS24TransfersRepository; foreign keys and identity uniqueness live in Postgr
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -167,6 +168,6 @@ class SportsTransferObservation(TransferTimestamps, Base):
     to_team_name: Mapped[str | None] = mapped_column(String(200))
     reported_date: Mapped[date | None] = mapped_column(Date)
     reported_type: Mapped[str | None] = mapped_column(String(200))
-    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     source_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -2,7 +2,7 @@
 
 import uuid
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -129,7 +129,7 @@ class NotificationService:
         if not notification.is_read:
             notification.is_read = True
             notification.read_at = datetime.now(
-                timezone.utc
+                UTC
             )
 
         return await self.notifications.save(

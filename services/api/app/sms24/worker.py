@@ -6,13 +6,12 @@ import asyncio
 import logging
 import os
 import signal
-from datetime import datetime, time, timezone
+from datetime import UTC, datetime, time
 
 from app.core.config import get_settings
 from app.db.session import SessionFactory, engine
 from app.sms24.runner import SMS24AllProvidersFailed
 from app.sms24.runtime import build_sms24_provider_registry, build_sms24_runner
-
 
 logger = logging.getLogger("sms24.worker")
 
@@ -67,18 +66,18 @@ def _utc_day_window(
             "now must be timezone-aware"
         )
 
-    current = now.astimezone(timezone.utc)
+    current = now.astimezone(UTC)
 
     starts_from = datetime.combine(
         current.date(),
         time.min,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
 
     starts_until = datetime.combine(
         current.date(),
         time.max,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
 
     return starts_from, starts_until
@@ -100,7 +99,7 @@ async def _run_ingestion(
         else:
             starts_from, starts_until = (
                 _utc_day_window(
-                    datetime.now(timezone.utc)
+                    datetime.now(UTC)
                 )
             )
 

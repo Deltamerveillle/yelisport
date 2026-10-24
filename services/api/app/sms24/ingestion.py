@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from typing import Any, TypeVar, cast
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.base import Base
 from app.models.sport import Sport
 from app.models.sports_live import (
     SportsCanonicalCompetition,
@@ -42,6 +44,7 @@ from app.sms24.providers import (
     SportsDataProvider,
 )
 
+_Model = TypeVar("_Model", bound=Base)
 
 ALLOWED_FIXTURE_STATUSES = {
     "scheduled",
@@ -86,7 +89,7 @@ class SMS24IngestionRepository:
             SportsDataSource.slug == slug,
             SportsDataSource.is_active.is_(True),
         )
-        return await self.session.scalar(stmt)
+        return cast(SportsDataSource | None, await self.session.scalar(stmt))
 
     async def get_active_sport(
         self,
@@ -96,13 +99,13 @@ class SMS24IngestionRepository:
             Sport.slug == slug,
             Sport.is_active.is_(True),
         )
-        return await self.session.scalar(stmt)
+        return cast(Sport | None, await self.session.scalar(stmt))
 
     async def upsert_competition(
         self,
         *,
-        source_id,
-        sport_id,
+        source_id: uuid.UUID,
+        sport_id: uuid.UUID,
         competition: ProviderCompetition,
         fetched_at: datetime,
     ) -> SportsCompetition:
@@ -126,7 +129,8 @@ class SMS24IngestionRepository:
                 name=competition.name,
                 country_code=competition.country_code,
                 jurisdiction_name=competition.jurisdiction_name,
-                normalized_jurisdiction=normalize_jurisdiction(competition.jurisdiction_name) or None,
+                normalized_jurisdiction=normalize_jurisdiction(competition.jurisdiction_name)
+                or None,
                 season=competition.season,
                 logo_url=competition.logo_url,
                 source_updated_at=competition.source_updated_at,
@@ -140,7 +144,8 @@ class SMS24IngestionRepository:
                     "name": competition.name,
                     "country_code": competition.country_code,
                     "jurisdiction_name": competition.jurisdiction_name,
-                    "normalized_jurisdiction": normalize_jurisdiction(competition.jurisdiction_name) or None,
+                    "normalized_jurisdiction": normalize_jurisdiction(competition.jurisdiction_name)
+                    or None,
                     "season": competition.season,
                     "logo_url": competition.logo_url,
                     "source_updated_at": competition.source_updated_at,
@@ -157,8 +162,8 @@ class SMS24IngestionRepository:
     async def upsert_competitor(
         self,
         *,
-        source_id,
-        sport_id,
+        source_id: uuid.UUID,
+        sport_id: uuid.UUID,
         participant: ProviderParticipant,
         fetched_at: datetime,
     ) -> SportsCompetitor:
@@ -203,8 +208,14 @@ class SMS24IngestionRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one()
 
-
-    async def _resolve_exact(self, model, *, constraint, values, predicates):
+    async def _resolve_exact(
+        self,
+        model: type[_Model],
+        *,
+        constraint: str,
+        values: dict[str, Any],
+        predicates: list[Any],
+    ) -> _Model:
         """Insert once, or read the winner of a concurrent unique-key insert."""
         exact_stmt = select(model).where(*predicates)
         existing = await self.session.scalar(exact_stmt)
@@ -221,11 +232,15 @@ class SMS24IngestionRepository:
             return created
         existing = await self.session.scalar(exact_stmt)
         if existing is None:
-            raise RuntimeError(f"Unable to resolve SMS24 {model.__tablename__}")
+            raise RuntimeError(f"Unable to resolve SMS24 {model.__name__}")
         return existing
 
     async def resolve_canonical_competition(
-        self, *, sport_id, source_id, competition: ProviderCompetition,
+        self,
+        *,
+        sport_id: uuid.UUID,
+        source_id: uuid.UUID,
+        competition: ProviderCompetition,
     ) -> SportsCanonicalCompetition:
         sport = await self.session.get(Sport, sport_id)
         if sport is None:
@@ -235,8 +250,11 @@ class SMS24IngestionRepository:
             raise ValueError("Unknown source for SMS24 canonical competition")
         jurisdiction = normalize_jurisdiction(competition.jurisdiction_name)
         key = build_canonical_competition_key(
-            sport.slug, competition.name, competition.jurisdiction_name,
-            source_slug=source.slug, external_id=competition.external_id,
+            sport.slug,
+            competition.name,
+            competition.jurisdiction_name,
+            source_slug=source.slug,
+            external_id=competition.external_id,
         )
         return await self._resolve_exact(
             SportsCanonicalCompetition,
@@ -255,7 +273,11 @@ class SMS24IngestionRepository:
         )
 
     async def resolve_canonical_competitor(
-        self, *, sport_id, source_id, participant: ProviderParticipant,
+        self,
+        *,
+        sport_id: uuid.UUID,
+        source_id: uuid.UUID,
+        participant: ProviderParticipant,
     ) -> SportsCanonicalCompetitor:
         sport = await self.session.get(Sport, sport_id)
         if sport is None:
@@ -267,8 +289,12 @@ class SMS24IngestionRepository:
         if context and (len(context) != 2 or not context.isascii() or not context.isalpha()):
             context = None
         key = build_canonical_competitor_key(
-            sport.slug, participant.competitor_type, participant.name, context,
-            source_slug=source.slug, external_id=participant.external_id,
+            sport.slug,
+            participant.competitor_type,
+            participant.name,
+            context,
+            source_slug=source.slug,
+            external_id=participant.external_id,
         )
         return await self._resolve_exact(
             SportsCanonicalCompetitor,
@@ -285,7 +311,9 @@ class SMS24IngestionRepository:
             predicates=[SportsCanonicalCompetitor.canonical_key == key],
         )
 
-    async def resolve_season(self, *, canonical_competition_id, label: str) -> SportsSeason:
+    async def resolve_season(
+        self, *, canonical_competition_id: uuid.UUID, label: str
+    ) -> SportsSeason:
         normalized_label = normalize_season_label(label)
         return await self._resolve_exact(
             SportsSeason,
@@ -304,7 +332,7 @@ class SMS24IngestionRepository:
     async def resolve_canonical_fixture(
         self,
         *,
-        sport_id,
+        sport_id: uuid.UUID,
         candidate: CanonicalFixtureCandidate,
         tolerance_minutes: int = 5,
     ) -> SportsCanonicalFixture:
@@ -321,19 +349,14 @@ class SMS24IngestionRepository:
         if exact is not None:
             return exact
 
-        starts_from = candidate.starts_at - timedelta(
-            minutes=tolerance_minutes
-        )
-        starts_until = candidate.starts_at + timedelta(
-            minutes=tolerance_minutes
-        )
+        starts_from = candidate.starts_at - timedelta(minutes=tolerance_minutes)
+        starts_until = candidate.starts_at + timedelta(minutes=tolerance_minutes)
 
         candidate_stmt = (
             select(SportsCanonicalFixture)
             .where(
                 SportsCanonicalFixture.sport_id == sport_id,
-                SportsCanonicalFixture.participant_signature
-                == participant_signature,
+                SportsCanonicalFixture.participant_signature == participant_signature,
                 SportsCanonicalFixture.starts_at >= starts_from,
                 SportsCanonicalFixture.starts_at <= starts_until,
             )
@@ -358,9 +381,7 @@ class SMS24IngestionRepository:
                 participant_signature=participant_signature,
                 starts_at=candidate.starts_at,
             )
-            .on_conflict_do_nothing(
-                constraint="uq_sports_canonical_fixtures_key"
-            )
+            .on_conflict_do_nothing(constraint="uq_sports_canonical_fixtures_key")
             .returning(SportsCanonicalFixture)
         )
 
@@ -374,19 +395,17 @@ class SMS24IngestionRepository:
         # the deterministic identity between our SELECT and INSERT.
         concurrent = await self.session.scalar(exact_stmt)
         if concurrent is None:
-            raise RuntimeError(
-                "Unable to resolve SMS24 canonical fixture"
-            )
+            raise RuntimeError("Unable to resolve SMS24 canonical fixture")
 
         return concurrent
 
     async def upsert_fixture(
         self,
         *,
-        source_id,
-        sport_id,
-        competition_id,
-        canonical_fixture_id,
+        source_id: uuid.UUID,
+        sport_id: uuid.UUID,
+        competition_id: uuid.UUID | None,
+        canonical_fixture_id: uuid.UUID,
         fixture: ProviderFixture,
         fetched_at: datetime,
     ) -> SportsFixture:
@@ -434,8 +453,8 @@ class SMS24IngestionRepository:
     async def upsert_participant(
         self,
         *,
-        fixture_id,
-        competitor_id,
+        fixture_id: uuid.UUID,
+        competitor_id: uuid.UUID,
         participant: ProviderParticipant,
     ) -> SportsFixtureParticipant:
         stmt = (
@@ -507,15 +526,11 @@ class SMS24IngestionService:
     ) -> SMS24IngestionStats:
         provider_slug = provider.slug.strip().lower()
 
-        source = await self.repository.get_active_source(
-            provider_slug
-        )
+        source = await self.repository.get_active_source(provider_slug)
         if source is None:
-            raise ValueError(
-                f"Active SMS24 source not configured: {provider_slug}"
-            )
+            raise ValueError(f"Active SMS24 source not configured: {provider_slug}")
 
-        fetched_at = result.fetched_at or datetime.now(timezone.utc)
+        fetched_at = result.fetched_at or datetime.now(UTC)
 
         stats = SMS24IngestionStats(
             provider_slug=provider_slug,
@@ -553,13 +568,10 @@ class SMS24IngestionService:
     ) -> None:
         self._validate_fixture(fixture)
 
-        sport = await self.repository.get_active_sport(
-            fixture.sport_slug
-        )
+        sport = await self.repository.get_active_sport(fixture.sport_slug)
         if sport is None:
             raise ValueError(
-                "Unknown or inactive sport for SMS24 ingestion: "
-                f"{fixture.sport_slug}"
+                "Unknown or inactive sport for SMS24 ingestion: " f"{fixture.sport_slug}"
             )
 
         unique_participants: list[ProviderParticipant] = []
@@ -577,22 +589,15 @@ class SMS24IngestionService:
         canonical_candidate = CanonicalFixtureCandidate(
             sport_slug=fixture.sport_slug,
             starts_at=fixture.starts_at,
-            participants=[
-                participant.name
-                for participant in unique_participants
-            ],
+            participants=[participant.name for participant in unique_participants],
             competition_name=(
-                fixture.competition.name
-                if fixture.competition is not None
-                else None
+                fixture.competition.name if fixture.competition is not None else None
             ),
         )
 
-        canonical_fixture = (
-            await self.repository.resolve_canonical_fixture(
-                sport_id=sport.id,
-                candidate=canonical_candidate,
-            )
+        canonical_fixture = await self.repository.resolve_canonical_fixture(
+            sport_id=sport.id,
+            candidate=canonical_candidate,
         )
 
         competition_id = None
@@ -641,49 +646,29 @@ class SMS24IngestionService:
         fixture: ProviderFixture,
     ) -> None:
         if not fixture.external_id.strip():
-            raise ValueError(
-                "Provider fixture external_id must not be empty"
-            )
+            raise ValueError("Provider fixture external_id must not be empty")
 
         if not fixture.sport_slug.strip():
-            raise ValueError(
-                "Provider fixture sport_slug must not be empty"
-            )
+            raise ValueError("Provider fixture sport_slug must not be empty")
 
         if fixture.status not in ALLOWED_FIXTURE_STATUSES:
-            raise ValueError(
-                f"Unsupported SMS24 fixture status: {fixture.status}"
-            )
+            raise ValueError(f"Unsupported SMS24 fixture status: {fixture.status}")
 
         if fixture.starts_at.tzinfo is None:
-            raise ValueError(
-                "SMS24 fixture starts_at must be timezone-aware"
-            )
+            raise ValueError("SMS24 fixture starts_at must be timezone-aware")
 
     @staticmethod
     def _validate_participant(
         participant: ProviderParticipant,
     ) -> None:
         if not participant.external_id.strip():
-            raise ValueError(
-                "Provider participant external_id must not be empty"
-            )
+            raise ValueError("Provider participant external_id must not be empty")
 
         if not participant.name.strip():
-            raise ValueError(
-                "Provider participant name must not be empty"
-            )
+            raise ValueError("Provider participant name must not be empty")
 
-        if (
-            participant.competitor_type
-            not in ALLOWED_COMPETITOR_TYPES
-        ):
-            raise ValueError(
-                "Unsupported SMS24 competitor type: "
-                f"{participant.competitor_type}"
-            )
+        if participant.competitor_type not in ALLOWED_COMPETITOR_TYPES:
+            raise ValueError("Unsupported SMS24 competitor type: " f"{participant.competitor_type}")
 
         if participant.position < 0:
-            raise ValueError(
-                "SMS24 participant position must be non-negative"
-            )
+            raise ValueError("SMS24 participant position must be non-negative")

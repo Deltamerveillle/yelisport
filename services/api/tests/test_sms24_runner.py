@@ -1,6 +1,6 @@
 """Tests for SMS24 resilient provider orchestration."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -16,14 +16,13 @@ from app.sms24.runner import (
     SMS24ProviderRunner,
 )
 
-
 NOW = datetime(
     2026,
     9,
     6,
     23,
     0,
-    tzinfo=timezone.utc,
+    tzinfo=UTC,
 )
 
 

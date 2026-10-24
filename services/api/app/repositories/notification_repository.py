@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Sequence
+from typing import cast
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,12 +32,12 @@ class NotificationRepository:
         self,
         dedupe_key: str,
     ) -> Notification | None:
-        return await self.session.scalar(
+        return cast(Notification | None, await self.session.scalar(
             select(Notification).where(
                 Notification.dedupe_key
                 == dedupe_key
             )
-        )
+        ))
 
     async def list_for_recipient(
         self,
@@ -96,7 +97,7 @@ class NotificationRepository:
         notification_id: uuid.UUID,
         recipient_user_id: uuid.UUID,
     ) -> Notification | None:
-        return await self.session.scalar(
+        return cast(Notification | None, await self.session.scalar(
             select(Notification)
             .where(
                 Notification.id
@@ -105,7 +106,7 @@ class NotificationRepository:
                 == recipient_user_id,
             )
             .with_for_update()
-        )
+        ))
 
     async def save(
         self,

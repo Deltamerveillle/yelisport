@@ -1,6 +1,7 @@
 """Repository for SMS application users."""
 
 import uuid
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,23 +19,23 @@ class UserRepository:
         self,
         user_id: uuid.UUID,
     ) -> User | None:
-        return await self.session.scalar(
+        return cast(User | None, await self.session.scalar(
             select(User).where(
                 User.id == user_id
             )
-        )
+        ))
 
     async def get_by_id_for_update(
         self,
         user_id: uuid.UUID,
     ) -> User | None:
-        return await self.session.scalar(
+        return cast(User | None, await self.session.scalar(
             select(User)
             .where(
                 User.id == user_id
             )
             .with_for_update()
-        )
+        ))
 
     async def create(
         self,

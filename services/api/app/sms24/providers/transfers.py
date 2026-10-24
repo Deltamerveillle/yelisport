@@ -69,7 +69,7 @@ def build_transfer_observation_key(transfer: ProviderTransfer) -> str:
     parts = (
         ["external_id", transfer.external_id]
         if transfer.external_id is not None
-        else ["record_reference", transfer.record_reference]
+        else ["record_reference", transfer.record_reference or ""]
     )
     return (
         "sms24:transfer:"

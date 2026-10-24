@@ -1,7 +1,7 @@
 """Real PostgreSQL tests for the SMS24 historical canonical backfill."""
 
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import select, text
@@ -25,7 +25,6 @@ from app.models.sports_live import (
 from app.sms24.backfill import (
     backfill_historical_canonical_fixtures,
 )
-
 
 PREFIX = "sms24-backfill-pg-"
 
@@ -113,7 +112,7 @@ async def test_historical_backfill_merges_cross_provider_observations_and_is_ide
         10,
         18,
         45,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
 
     primary_home = SportsCompetitor(
@@ -344,7 +343,7 @@ async def test_historical_backfill_skips_fixture_with_insufficient_participants(
             10,
             22,
             0,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         ),
         status="scheduled",
         live_clock=None,
@@ -358,7 +357,7 @@ async def test_historical_backfill_skips_fixture_with_insufficient_participants(
             10,
             21,
             0,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         ),
     )
 

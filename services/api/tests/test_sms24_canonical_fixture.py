@@ -1,16 +1,16 @@
 """Tests for SMS24 canonical cross-provider fixture identity."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
 from app.sms24.canonical import (
     CanonicalFixtureCandidate,
     build_canonical_fixture_key,
+    fixtures_are_same_event,
 )
 
-
-NOW = datetime(2026, 9, 10, 20, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 10, 20, 0, tzinfo=UTC)
 
 
 def make_candidate(
@@ -116,7 +116,7 @@ def test_equivalent_instants_in_different_timezones_have_same_key():
     utc_candidate = make_candidate(
         starts_at=datetime(
             2026, 9, 10, 20, 0,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
     )
 
@@ -144,8 +144,6 @@ def test_naive_datetime_is_rejected():
     ):
         build_canonical_fixture_key(candidate)
 
-
-from app.sms24.canonical import fixtures_are_same_event
 
 
 def test_same_fixture_with_small_start_time_drift_matches():

@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Select
 
 from app.models.sports_live import SportsDataSource, SportsDataSourceCapability
 from app.sms24.ingestion import (
@@ -19,7 +21,6 @@ from app.sms24.providers import (
     ProviderFetchResult,
     ProviderRegistry,
 )
-
 
 logger = logging.getLogger("sms24.runner")
 
@@ -78,7 +79,7 @@ class SMS24RunnerRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
-    def _active_capability_sources(capability: str):
+    def _active_capability_sources(capability: str) -> Select[Any]:
         return (
             select(SportsDataSource)
             .join(SportsDataSourceCapability,
@@ -99,8 +100,13 @@ class SMS24RunnerRepository:
     async def get_active_source_for_capability(
         self, slug: str, capability: str,
     ) -> SportsDataSource | None:
-        return await self.session.scalar(
-            self._active_capability_sources(capability).where(SportsDataSource.slug == slug)
+        return cast(
+            SportsDataSource | None,
+            await self.session.scalar(
+                self._active_capability_sources(capability).where(
+                    SportsDataSource.slug == slug
+                )
+            ),
         )
 
     async def mark_failure(
@@ -157,7 +163,7 @@ class SMS24ProviderRunner:
         self.ingestion_service = ingestion_service
         self.max_result_age = max_result_age
         self.now_fn = now_fn or (
-            lambda: datetime.now(timezone.utc)
+            lambda: datetime.now(UTC)
         )
 
     async def run(

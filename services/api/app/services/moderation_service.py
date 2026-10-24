@@ -19,6 +19,7 @@ from app.models.moderation_report import (
 )
 from app.models.sms_connect_interest import SMSConnectInterest
 from app.models.user import User
+from app.models.user_role import UserRole
 from app.repositories.discover_video_repository import DiscoverVideoRepository
 from app.repositories.moderation_repository import (
     ModerationReportEventRepository,
@@ -29,12 +30,11 @@ from app.repositories.user_role_repository import (
     UserRoleRepository,
 )
 from app.schemas.moderation import (
-    UserModerationAction,
     DiscoverModerationDecision,
     ModerationReportCreate,
     ModerationTransitionRequest,
+    UserModerationAction,
 )
-
 
 _ALLOWED_TRANSITIONS = {
     "submitted": {
@@ -259,7 +259,7 @@ class ModerationService:
         report_id: uuid.UUID,
         admin_user_id: uuid.UUID,
         data: DiscoverModerationDecision,
-    ):
+    ) -> DiscoverVideo:
         """Approve or reject a Discover video under review."""
 
         await self._require_admin(
@@ -343,7 +343,7 @@ class ModerationService:
         report_id: uuid.UUID,
         admin_user_id: uuid.UUID,
         data: UserModerationAction,
-    ):
+    ) -> User:
         """Suspend or reactivate a user from an active moderation case."""
 
         await self._require_admin(
@@ -453,7 +453,7 @@ class ModerationService:
     async def _require_admin(
         self,
         user_id: uuid.UUID,
-    ):
+    ) -> UserRole:
         role = (
             await self.roles
             .get_verified_admin_role(
@@ -488,9 +488,7 @@ class ModerationService:
             )
 
         existing_id = await self.session.scalar(
-            select(model.id).where(
-                model.id == resource_id
-            )
+            select(model).filter_by(id=resource_id)
         )
 
         if existing_id is None:

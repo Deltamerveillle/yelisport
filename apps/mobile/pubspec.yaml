@@ -17,6 +17,7 @@ dependencies:
   go_router: ^14.6.2
   intl: ^0.20.2
   image_picker: ^1.1.2
+  video_player: ^2.9.2
   json_annotation: ^4.9.0
   supabase_flutter: ^2.8.1
 

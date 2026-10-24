@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import CurrentUser
+from app.core.exceptions import ForbiddenError
 from app.db.session import get_db_session
 from app.repositories.athlete_performance_repository import AthletePerformanceRepository
 from app.repositories.athlete_repository import AthleteRepository
@@ -15,6 +16,7 @@ from app.schemas.athlete import AthleteCreate, AthleteResponse, AthleteUpdate
 from app.schemas.athlete_profile import AthleteProfileResponse
 from app.services.athlete_profile_service import AthleteProfileService
 from app.services.athlete_service import AthleteService
+from app.services.subscription_service import SubscriptionService
 from app.sms24.player_statistics_evidence import AthleteStatisticsEvidenceReader
 
 router = APIRouter(prefix="/athletes", tags=["athletes"])
@@ -38,6 +40,11 @@ async def create_athlete(
     )
 
     try:
+        access = await SubscriptionService(session).get_access(
+            _current_user_uuid(current_user)
+        )
+        if not access.has_premium_access:
+            raise ForbiddenError("Abonnement actif requis pour créer un profil sportif")
         athlete = await service.create_athlete(
             payload,
             _current_user_uuid(current_user),
@@ -61,6 +68,20 @@ async def list_athletes(
         CountryRepository(session),
     )
     athletes = await service.list_athletes()
+    return [AthleteResponse.model_validate(athlete) for athlete in athletes]
+
+
+@router.get("/me", response_model=list[AthleteResponse])
+async def list_my_athlete_profiles(
+    current_user: CurrentUser,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> list[AthleteResponse]:
+    """Return only this authenticated user's sport profiles for enrolment resume."""
+    service = AthleteService(
+        AthleteRepository(session),
+        CountryRepository(session),
+    )
+    athletes = await service.list_user_athletes(_current_user_uuid(current_user))
     return [AthleteResponse.model_validate(athlete) for athlete in athletes]
 
 

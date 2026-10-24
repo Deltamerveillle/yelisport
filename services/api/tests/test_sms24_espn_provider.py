@@ -1,24 +1,45 @@
 """Local-only contract tests for the optional ESPN adapter."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 import pytest
 
 from app.sms24.providers.espn import ESPNProvider
 
-
 PAYLOAD = {
-    "leagues": [{"id": "700", "name": "English Premier League", "slug": "eng.1", "season": {"displayName": "2026-27 English Premier League"}}],
-    "events": [{
-        "id": "401878771",
-        "date": "2026-10-17T11:30Z",
-        "status": {"type": {"state": "pre", "name": "STATUS_SCHEDULED"}},
-        "competitions": [{"venue": {"fullName": "Hill Dickinson Stadium"}, "competitors": [
-            {"team": {"id": "368", "displayName": "Everton"}, "homeAway": "home", "score": "0"},
-            {"team": {"id": "363", "displayName": "Chelsea"}, "homeAway": "away", "score": "0"},
-        ]}],
-    }],
+    "leagues": [
+        {
+            "id": "700",
+            "name": "English Premier League",
+            "slug": "eng.1",
+            "season": {"displayName": "2026-27 English Premier League"},
+        }
+    ],
+    "events": [
+        {
+            "id": "401878771",
+            "date": "2026-10-17T11:30Z",
+            "status": {"type": {"state": "pre", "name": "STATUS_SCHEDULED"}},
+            "competitions": [
+                {
+                    "venue": {"fullName": "Hill Dickinson Stadium"},
+                    "competitors": [
+                        {
+                            "team": {"id": "368", "displayName": "Everton"},
+                            "homeAway": "home",
+                            "score": "0",
+                        },
+                        {
+                            "team": {"id": "363", "displayName": "Chelsea"},
+                            "homeAway": "away",
+                            "score": "0",
+                        },
+                    ],
+                }
+            ],
+        }
+    ],
 }
 
 
@@ -54,6 +75,6 @@ async def test_unsupported_sport_and_timezone_validation():
         await provider.fetch_fixtures(starts_from=datetime(2026, 10, 17))
     with pytest.raises(ValueError, match="starts_from"):
         await provider.fetch_fixtures(
-            starts_from=datetime(2026, 10, 18, tzinfo=timezone.utc),
-            starts_until=datetime(2026, 10, 17, tzinfo=timezone.utc),
+            starts_from=datetime(2026, 10, 18, tzinfo=UTC),
+            starts_until=datetime(2026, 10, 17, tzinfo=UTC),
         )

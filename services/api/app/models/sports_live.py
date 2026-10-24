@@ -2,14 +2,15 @@
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
-    Integer,
     Index,
+    Integer,
     String,
     Text,
     UniqueConstraint,
@@ -346,7 +347,7 @@ class SportsCompetitor(Base):
     short_name: Mapped[str | None] = mapped_column(String(100))
     country_code: Mapped[str | None] = mapped_column(String(2), index=True)
     logo_url: Mapped[str | None] = mapped_column(Text)
-    metadata_json: Mapped[dict] = mapped_column(
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
         JSONB, default=dict, server_default="{}"
     )
     source_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -447,10 +448,10 @@ class SportsFixture(Base):
     )
     live_clock: Mapped[str | None] = mapped_column(String(40))
     venue: Mapped[str | None] = mapped_column(String(240))
-    result_json: Mapped[dict] = mapped_column(
+    result_json: Mapped[dict[str, Any]] = mapped_column(
         JSONB, default=dict, server_default="{}"
     )
-    metadata_json: Mapped[dict] = mapped_column(
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
         JSONB, default=dict, server_default="{}"
     )
     source_updated_at: Mapped[datetime | None] = mapped_column(
@@ -492,7 +493,7 @@ class SportsFixtureParticipant(Base):
     )
     position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     role: Mapped[str | None] = mapped_column(String(40))
-    score_json: Mapped[dict] = mapped_column(
+    score_json: Mapped[dict[str, Any]] = mapped_column(
         JSONB, default=dict, server_default="{}"
     )
     result_status: Mapped[str | None] = mapped_column(String(40))

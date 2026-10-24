@@ -1,8 +1,8 @@
 """Public SMS24 Live endpoints."""
 
+import uuid
 from datetime import datetime
 from typing import Annotated
-import uuid
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,12 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db_session
 from app.repositories.sms24_live_repository import SMS24LiveRepository
 from app.schemas.sms24_live import (
+    SMS24CompetitionResponse,
     SMS24FixtureResponse,
+    SMS24PageFixtureResponse,
     SMS24SourceHealthResponse,
     SMS24StandingResponse,
-    SMS24CompetitionResponse,
     SMS24TeamResponse,
-    SMS24PageFixtureResponse,
 )
 from app.services.sms24_live_service import SMS24LiveService
 

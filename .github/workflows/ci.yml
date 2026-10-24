@@ -11,6 +11,23 @@ permissions:
 jobs:
   python:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: yelisport_ci
+          POSTGRES_USER: yelisport_ci
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U yelisport_ci -d yelisport_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgresql+asyncpg://yelisport_ci:ci-only-password@127.0.0.1:5432/yelisport_ci
     strategy:
       matrix:
         service: [api, ai]
@@ -28,9 +45,10 @@ jobs:
       - run: ruff check .
       - run: mypy app
         if: matrix.service == 'api'
+      - name: Prepare isolated PostgreSQL test schema
+        if: matrix.service == 'api'
+        run: alembic upgrade head
       - run: pytest
-        env:
-          APP_ENV: test
 
   mobile:
     runs-on: ubuntu-latest

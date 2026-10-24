@@ -12,13 +12,12 @@ from app.core.exceptions import (
     NotFoundError,
 )
 from app.schemas.moderation import (
-    UserModerationAction,
     DiscoverModerationDecision,
     ModerationReportCreate,
     ModerationTransitionRequest,
+    UserModerationAction,
 )
 from app.services.moderation_service import ModerationService
-
 
 REPORTER_ID = uuid.uuid4()
 ADMIN_ID = uuid.uuid4()

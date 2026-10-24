@@ -10,7 +10,6 @@ from app.db.session import get_db_session
 from app.schemas.auth import AuthUser
 from app.services.country_service import CountryService
 
-
 USER_ID = uuid.UUID("28bbf25e-8d42-4a0a-8bc8-0f41be0fc114")
 CI_ID = uuid.UUID("12d66c6f-f5c7-4f17-a42b-a7933572320d")
 

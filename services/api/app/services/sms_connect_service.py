@@ -4,6 +4,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
@@ -19,6 +20,7 @@ from app.models.sms_connect_interest_event import (
     SMSConnectInterestEvent,
 )
 from app.models.sms_connect_opportunity import SMSConnectOpportunity, SMSConnectOpportunityEvent
+from app.models.user_role import UserRole
 from app.repositories.athlete_passport_repository import (
     AthletePassportRepository,
 )
@@ -221,7 +223,9 @@ class SMSConnectService:
         await self._sync_opportunity(interest, athlete_user_id, now)
         return await self.interests.save(interest)
 
-    async def _sync_opportunity(self, interest, actor_user_id, now) -> None:
+    async def _sync_opportunity(
+        self, interest: SMSConnectInterest, actor_user_id: uuid.UUID, now: datetime
+    ) -> None:
         # Caller already holds the interest lock: all writers lock interest, then opportunity.
         opportunity = await self.opportunities.get_for_interest_for_update(interest.id)
         previous = opportunity.status if opportunity is not None else None
@@ -250,16 +254,20 @@ class SMSConnectService:
             from_status=previous, to_status=opportunity.status, source=source, created_at=now,
         ))
 
-    async def list_athlete_opportunities(self, athlete_user_id: uuid.UUID):
+    async def list_athlete_opportunities(
+        self, athlete_user_id: uuid.UUID
+    ) -> Sequence[RowMapping]:
         return await self.opportunities.list_for_athlete(athlete_user_id)
 
-    async def list_my_opportunities(self, requester_user_id: uuid.UUID):
+    async def list_my_opportunities(
+        self, requester_user_id: uuid.UUID
+    ) -> Sequence[RowMapping]:
         return await self.opportunities.list_for_requester(requester_user_id)
 
     async def transition_opportunity(
         self, *, opportunity_id: uuid.UUID, admin_user_id: uuid.UUID,
         data: SMSConnectOpportunityTransitionRequest,
-    ):
+    ) -> RowMapping:
         await self._require_admin(admin_user_id)
         opportunity = await self.opportunities.get_by_id(opportunity_id)
         if opportunity is None:
@@ -417,7 +425,7 @@ class SMSConnectService:
     async def _require_admin(
         self,
         user_id: uuid.UUID,
-    ):
+    ) -> UserRole:
         role = (
             await self.roles
             .get_verified_admin_role(

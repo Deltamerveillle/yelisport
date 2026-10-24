@@ -1,5 +1,7 @@
 """Local rail preparation only; caller owns the transaction and provider selection."""
 
+from typing import cast
+
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,11 +13,13 @@ from app.schemas.payment_rail import RailCode, RailInitializationRequest, RailIn
 
 
 class YeleniPayRailRepository:
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.payments = PaymentTransactionRepository(session)
 
-    async def prepare(self, *, payment_reference: str, rail_code: str):
+    async def prepare(
+        self, *, payment_reference: str, rail_code: str
+    ) -> tuple[YeleniPayRailTransaction, RailInitializationRequest]:
         rail_code = TypeAdapter(RailCode).validate_python(rail_code, strict=True)
         # Existing repository locks user -> payment. Rail lock always follows.
         payment = await self.payments.get_by_reference(payment_reference)
@@ -23,13 +27,13 @@ class YeleniPayRailRepository:
             raise NotFoundError("Payment not found")
         if payment.provider != "yeleni-pay" or payment.status != "pending":
             raise ConflictError("Payment is not eligible for rail initialization")
-        rail = await self.session.scalar(
+        rail = cast(YeleniPayRailTransaction | None, await self.session.scalar(
             select(YeleniPayRailTransaction)
             .where(
                 YeleniPayRailTransaction.payment_transaction_id == payment.id,
             )
             .with_for_update()
-        )
+        ))
         if rail is not None and rail.rail_code != rail_code:
             raise ConflictError("Payment already assigned to another rail")
         if rail is not None and rail.status not in {"created", "pending"}:

@@ -31,7 +31,7 @@ async def get_my_current_subscription(
 
     service = SubscriptionService(session)
 
-    subscription = await service.get_current_subscription(current_user.id)
+    subscription = await service.get_current_subscription(uuid.UUID(str(current_user.id)))
 
     if subscription is None:
         return None
@@ -51,7 +51,7 @@ async def get_my_subscription_history(
 
     service = SubscriptionService(session)
 
-    subscriptions = await service.list_user_subscriptions(current_user.id)
+    subscriptions = await service.list_user_subscriptions(uuid.UUID(str(current_user.id)))
 
     return [SubscriptionResponse.model_validate(subscription) for subscription in subscriptions]
 
@@ -66,7 +66,7 @@ async def get_my_subscription_access(
 ) -> SubscriptionAccessResponse:
     """Return the authenticated user's current SMS access rights."""
 
-    return await SubscriptionService(session).get_access(current_user.id)
+    return await SubscriptionService(session).get_access(uuid.UUID(str(current_user.id)))
 
 
 @router.post("/me/trial", response_model=SubscriptionResponse)

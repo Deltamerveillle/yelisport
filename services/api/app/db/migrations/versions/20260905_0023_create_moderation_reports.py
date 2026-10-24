@@ -4,10 +4,9 @@ Revision ID: 20260905_0023
 Revises: 20260904_0022
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
-
 
 revision = "20260905_0023"
 down_revision = "20260904_0022"

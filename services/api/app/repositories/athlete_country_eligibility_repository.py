@@ -39,12 +39,13 @@ class AthleteCountryEligibilityRepository:
         athlete_id: uuid.UUID,
         country_id: uuid.UUID,
     ) -> AthleteCountryEligibility | None:
-        return await self.session.scalar(
+        eligibility = await self.session.scalar(
             select(AthleteCountryEligibility).where(
                 AthleteCountryEligibility.athlete_id == athlete_id,
                 AthleteCountryEligibility.country_id == country_id,
             )
         )
+        return eligibility
 
     async def clear_primary_for_athlete(
         self,

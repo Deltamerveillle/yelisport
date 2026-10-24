@@ -1,6 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,7 +11,6 @@ from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.db.session import get_db_session
 from app.schemas.auth import AuthUser
 from app.services.athlete_passport_service import AthletePassportService
-
 
 USER_ID = uuid.UUID("28bbf25e-8d42-4a0a-8bc8-0f41be0fc114")
 OTHER_USER_ID = uuid.UUID("a451c6f7-b023-4bef-a5a1-f84caa15a2ac")
@@ -76,7 +76,11 @@ def passport_dependencies(client: TestClient):
     client.app.dependency_overrides[get_current_user] = override_current_user
     client.app.dependency_overrides[get_db_session] = override_db
 
-    yield session
+    with patch("app.api.v1.endpoints.athlete_passports.SubscriptionService") as subscriptions:
+        subscriptions.return_value.get_access = AsyncMock(
+            return_value=SimpleNamespace(has_premium_access=True)
+        )
+        yield session
 
     client.app.dependency_overrides.clear()
 

@@ -2,6 +2,7 @@
 
 from app.models.athlete import Athlete
 from app.models.athlete_country_eligibility import AthleteCountryEligibility
+from app.models.athlete_media import AthleteMedia
 from app.models.athlete_passport import AthletePassport
 from app.models.athlete_performance import AthletePerformance
 from app.models.athlete_performance_verification import AthletePerformanceVerification
@@ -88,6 +89,8 @@ __all__ = [
     "Sport",
     "Country",
     "Athlete",
+    "AthleteMedia",
+    "AthletePerformanceVerification",
     "AthleteCountryEligibility",
     "AthletePassport",
     "AthletePerformance",

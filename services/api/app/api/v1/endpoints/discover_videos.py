@@ -1,6 +1,7 @@
 """SMS Discover API endpoints."""
 
 import uuid
+from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -8,13 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import CurrentUser
 from app.db.session import get_db_session
+from app.models.discover_video import DiscoverVideo
 from app.schemas.discover_video import (
     DiscoverVideoCreate,
     DiscoverVideoResponse,
     DiscoverVideoUpdate,
 )
 from app.services.discover_video_service import DiscoverVideoService
-
 
 router = APIRouter(
     tags=["SMS Discover"],
@@ -40,7 +41,7 @@ async def list_public_discover(
     ],
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-):
+) -> Sequence[DiscoverVideo]:
     """Public SMS Discover feed."""
 
     return await _service(session).list_public_discover(
@@ -62,7 +63,7 @@ async def create_discover_video(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> DiscoverVideo:
     """Create a Discover video for an owned athlete."""
 
     service = _service(session)
@@ -91,7 +92,7 @@ async def list_athlete_discover_videos(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> Sequence[DiscoverVideo]:
     """List all Discover videos for an owned athlete."""
 
     return await _service(session).list_athlete_videos(
@@ -112,7 +113,7 @@ async def get_discover_video(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> DiscoverVideo:
     """Get one Discover video for an owned athlete."""
 
     return await _service(session).get_video(
@@ -135,7 +136,7 @@ async def update_discover_video(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> DiscoverVideo:
     """Update one Discover video for an owned athlete."""
 
     service = _service(session)
@@ -166,7 +167,7 @@ async def request_discover_publication(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> DiscoverVideo:
     """Submit one owned Discover video for moderation."""
 
     service = _service(session)
@@ -196,7 +197,7 @@ async def delete_discover_video(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> Response:
     """Delete one Discover video for an owned athlete."""
 
     service = _service(session)
