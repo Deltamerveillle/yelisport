@@ -1,5 +1,6 @@
 -- Apply to the SMS24 Supabase instance using the SQL editor.
--- Private bucket: signed-in athletes may upload only within their own user-id prefix.
+-- Private bucket: direct uploads from client JWTs are FORBIDDEN.
+-- The SMS24 backend checks ownership + subscription and issues a signed upload token.
 -- Never grant public read access to unmoderated athlete content.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
@@ -8,13 +9,11 @@ values (
 )
 on conflict (id) do nothing;
 
-create policy "SMS24 athlete media upload own prefix"
-on storage.objects for insert to authenticated
-with check (
-  bucket_id = 'sms24-athlete-media'
-  and (storage.foldername(name))[1] = (select auth.uid()::text)
-);
+-- Remove any previous direct-upload policy. Signed server-granted uploads only.
+drop policy if exists "SMS24 athlete media upload own prefix" on storage.objects;
 
+-- Read and delete are restricted to the file owner; do not allow direct INSERT.
+drop policy if exists "SMS24 athlete media read own prefix" on storage.objects;
 create policy "SMS24 athlete media read own prefix"
 on storage.objects for select to authenticated
 using (
@@ -22,6 +21,7 @@ using (
   and (storage.foldername(name))[1] = (select auth.uid()::text)
 );
 
+drop policy if exists "SMS24 athlete media delete own prefix" on storage.objects;
 create policy "SMS24 athlete media delete own prefix"
 on storage.objects for delete to authenticated
 using (
