@@ -1,7 +1,7 @@
 """API tests for SMS Performance."""
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -12,7 +12,6 @@ from app.schemas.auth import AuthUser
 from app.services.athlete_performance_service import (
     AthletePerformanceService,
 )
-
 
 USER_ID = uuid.UUID(
     "11111111-1111-1111-1111-111111111111"
@@ -72,7 +71,7 @@ def make_performance():
         4,
         20,
         0,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
 
     return SimpleNamespace(

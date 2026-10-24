@@ -9,14 +9,16 @@ from app.sms24.providers.base import (
     SportsDataProvider,
 )
 from app.sms24.providers.registry import ProviderRegistry
-
 from app.sms24.providers.standings import (
     ProviderStanding,
     ProviderStandingsRequest,
     ProviderStandingsResult,
 )
-
-from app.sms24.providers.transfers import ProviderTransfer, ProviderTransfersResult, TransfersProvider
+from app.sms24.providers.transfers import (
+    ProviderTransfer,
+    ProviderTransfersResult,
+    TransfersProvider,
+)
 
 __all__ = [
     "ProviderTransfer",

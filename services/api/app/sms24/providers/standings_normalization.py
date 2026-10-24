@@ -33,7 +33,7 @@ SPORTMONKS_DETAIL_FIELDS = {
 }
 
 
-def _object(value: Any, field: str) -> dict:
+def _object(value: Any, field: str) -> dict[str, Any]:
     if value is None:
         return {}
     if not isinstance(value, dict):
@@ -90,20 +90,20 @@ def validate_standing(row: ProviderStanding) -> None:
     _identifier(row.participant.external_id, "participant id", required=True)
     if not isinstance(row.participant.name, str) or not row.participant.name.strip():
         raise ValueError("Standings participant name is required")
-    for field in fields(row):
-        value = getattr(row, field.name)
-        if field.type == int | None and value is not None and type(value) is not int:
-            raise ValueError(f"Standings {field.name} must be an integer")
+    for dataclass_field in fields(row):
+        value = getattr(row, dataclass_field.name)
+        if dataclass_field.type == int | None and value is not None and type(value) is not int:
+            raise ValueError(f"Standings {dataclass_field.name} must be an integer")
         if (
-            field.name == "external_id"
-            or field.name.endswith("_external_id")
-            or field.name
+            dataclass_field.name == "external_id"
+            or dataclass_field.name.endswith("_external_id")
+            or dataclass_field.name
             in {
                 "external_competition_id",
                 "external_season_id",
             }
         ):
-            _identifier(value, field.name)
+            _identifier(value, dataclass_field.name)
     for field, limit in (
         ("form", 200),
         ("movement_status", 80),
@@ -122,13 +122,18 @@ def validate_standing(row: ProviderStanding) -> None:
 def normalize_api_football_standing(item: Any) -> ProviderStanding:
     item = _object(item, "row")
     team = _object(item.get("team"), "team")
+    team_id = _identifier(team.get("id"), "team.id", required=True)
+    team_name = _text(team.get("name"), "team.name")
+    rank = _integer(item.get("rank"), "rank")
+    if team_id is None or team_name is None or rank is None:
+        raise ValueError("Standings require a team identifier, name and position")
     row = ProviderStanding(
         participant=ProviderParticipant(
-            external_id=_identifier(team.get("id"), "team.id", required=True),
-            name=_text(team.get("name"), "team.name"),
+            external_id=team_id,
+            name=team_name,
             logo_url=_text(team.get("logo"), "team.logo"),
         ),
-        position=_integer(item.get("rank"), "rank"),
+        position=rank,
         points=_integer(item.get("points"), "points"),
         goal_difference=_integer(item.get("goalsDiff"), "goalsDiff"),
         group_name=_text(item.get("group"), "group"),
@@ -164,16 +169,20 @@ def normalize_sportmonks_standing(item: Any) -> ProviderStanding:
     rule = _object(item.get("rule"), "rule")
     rule_type = _object(rule.get("type"), "rule.type")
     group = _object(item.get("group"), "group")
+    participant_name = _text(participant.get("name"), "participant.name")
+    position = _integer(item.get("position"), "position")
+    if participant_id is None or participant_name is None or position is None:
+        raise ValueError("Standings require a participant identifier, name and position")
     row = ProviderStanding(
         external_id=_identifier(item.get("id"), "id", required=True),
         external_competition_id=_identifier(item.get("league_id"), "league_id", required=True),
         external_season_id=_identifier(item.get("season_id"), "season_id", required=True),
         participant=ProviderParticipant(
             external_id=participant_id,
-            name=_text(participant.get("name"), "participant.name"),
+            name=participant_name,
             logo_url=_text(participant.get("image_path"), "participant.image_path"),
         ),
-        position=_integer(item.get("position"), "position"),
+        position=position,
         points=_integer(item.get("points"), "points"),
         movement_status=_text(item.get("result"), "result"),
         description=_text(rule_type.get("name"), "rule.type.name"),
@@ -186,7 +195,7 @@ def normalize_sportmonks_standing(item: Any) -> ProviderStanding:
         details = []
     if not isinstance(details, list):
         raise ValueError("Standings details must be a list")
-    seen = {}
+    seen: dict[str, int | None] = {}
     for detail in details:
         detail = _object(detail, "detail")
         type_id = detail.get("type_id")

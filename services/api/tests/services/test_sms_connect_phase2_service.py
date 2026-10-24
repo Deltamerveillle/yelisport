@@ -18,7 +18,6 @@ from app.services.sms_connect_service import (
     SMSConnectService,
 )
 
-
 ADMIN_ID = uuid.UUID(
     "11111111-1111-1111-1111-111111111111"
 )

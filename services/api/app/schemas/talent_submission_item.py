@@ -6,7 +6,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
-
 TalentSubmissionItemType = Literal[
     "video",
     "document",

@@ -1,7 +1,7 @@
 """API tests for SMS moderation."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -11,7 +11,6 @@ from app.api.dependencies.auth import get_current_user
 from app.db.session import get_db_session
 from app.schemas.auth import AuthUser
 from app.services.moderation_service import ModerationService
-
 
 USER_ID = uuid.uuid4()
 TARGET_ID = uuid.uuid4()
@@ -23,7 +22,7 @@ def make_report(
     *,
     status="submitted",
 ):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     return SimpleNamespace(
         id=REPORT_ID,
@@ -39,7 +38,7 @@ def make_report(
 
 
 def make_event():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     return SimpleNamespace(
         id=EVENT_ID,
@@ -232,11 +231,11 @@ def test_admin_queue_returns_internal_reporter_id(
     )
 
     response = client.get(
-        (
+
             "/api/v1/moderation/admin/reports"
             "?status=submitted"
             "&resource_type=discover_video"
-        )
+
     )
 
     assert response.status_code == 200
@@ -332,10 +331,10 @@ def test_admin_audit_response_hides_actor_user_id(
     )
 
     response = client.get(
-        (
+
             f"/api/v1/moderation/admin/reports/"
             f"{REPORT_ID}/events"
-        )
+
     )
 
     assert response.status_code == 200
@@ -366,7 +365,7 @@ def test_admin_can_approve_discover_video(
         assert admin_user_id == USER_ID
         assert data.decision == "approved"
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         return SimpleNamespace(
             id=TARGET_ID,

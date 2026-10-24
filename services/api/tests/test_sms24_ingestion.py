@@ -1,8 +1,8 @@
 """Tests for the SMS24 ingestion service."""
 
-from datetime import datetime, timezone
-from types import SimpleNamespace
 import uuid
+from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 
@@ -17,8 +17,7 @@ from app.sms24.providers import (
     SportsDataProvider,
 )
 
-
-NOW = datetime(2026, 9, 6, 22, 30, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 6, 22, 30, tzinfo=UTC)
 
 SOURCE_ID = uuid.UUID(
     "11111111-1111-1111-1111-111111111111"

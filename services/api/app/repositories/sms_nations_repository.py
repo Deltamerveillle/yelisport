@@ -1,9 +1,9 @@
 """Repository for SMS Nations athlete discovery."""
 
 import uuid
+from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import Numeric, and_, case, exists, func, or_, select

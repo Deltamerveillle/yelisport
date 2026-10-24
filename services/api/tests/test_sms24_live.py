@@ -1,7 +1,7 @@
 """API tests for public SMS24 Live endpoints."""
 
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 
@@ -14,14 +14,13 @@ from app.repositories.sms24_live_repository import (
 )
 from app.services.sms24_live_service import SMS24LiveService
 
-
 FIXTURE_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 COMPETITION_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
 COMPETITOR_A_ID = uuid.UUID("33333333-3333-3333-3333-333333333333")
 COMPETITOR_B_ID = uuid.UUID("44444444-4444-4444-4444-444444444444")
 SOURCE_ID = uuid.UUID("55555555-5555-5555-5555-555555555555")
 
-NOW = datetime(2026, 9, 6, 20, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 6, 20, 0, tzinfo=UTC)
 
 
 class FakeSession:

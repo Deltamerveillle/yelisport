@@ -6,7 +6,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
-
 PublicationStatus = Literal["draft", "published", "archived"]
 ModerationStatus = Literal["pending", "approved", "rejected", "flagged"]
 VisibilityStatus = Literal["public", "private", "unlisted"]
@@ -29,11 +28,11 @@ class DiscoverVideoUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    video_url: HttpUrl = None
+    video_url: HttpUrl | None = None
     thumbnail_url: HttpUrl | None = None
     caption: str | None = Field(default=None, max_length=1000)
-    duration_seconds: int = Field(default=None, ge=15, le=30)
-    visibility: VisibilityStatus = None
+    duration_seconds: int | None = Field(default=None, ge=15, le=30)
+    visibility: VisibilityStatus | None = None
 
 
 class DiscoverVideoResponse(BaseModel):

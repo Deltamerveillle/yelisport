@@ -12,7 +12,6 @@ from app.services.athlete_country_eligibility_service import (
     AthleteCountryEligibilityService,
 )
 
-
 USER_ID = uuid.uuid4()
 OTHER_USER_ID = uuid.uuid4()
 ATHLETE_ID = uuid.uuid4()

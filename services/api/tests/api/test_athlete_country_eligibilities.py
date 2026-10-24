@@ -13,7 +13,6 @@ from app.services.athlete_country_eligibility_service import (
     AthleteCountryEligibilityService,
 )
 
-
 USER_ID = uuid.UUID("28bbf25e-8d42-4a0a-8bc8-0f41be0fc114")
 ATHLETE_ID = uuid.UUID("f42cc315-a4b8-4da5-9f7b-c1094cae2658")
 COUNTRY_ID = uuid.UUID("12d66c6f-f5c7-4f17-a42b-a7933572320d")

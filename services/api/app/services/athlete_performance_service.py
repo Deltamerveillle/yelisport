@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenError, NotFoundError
+from app.models.athlete import Athlete
 from app.models.athlete_performance import AthletePerformance
 from app.repositories.athlete_performance_repository import (
     AthletePerformanceRepository,
@@ -39,7 +40,7 @@ class AthletePerformanceService:
         self,
         athlete_id: uuid.UUID,
         current_user_id: uuid.UUID,
-    ):
+    ) -> Athlete:
         athlete = await self._get_athlete(athlete_id)
 
         if athlete.user_id != current_user_id:

@@ -1,7 +1,7 @@
 """Real PostgreSQL tests for SMS24 public canonical fixture reads."""
 
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import delete
@@ -16,7 +16,6 @@ from app.models.sports_live import (
     SportsFixture,
 )
 from app.repositories.sms24_live_repository import SMS24LiveRepository
-
 
 PREFIX = "sms24-public-canonical-"
 
@@ -74,7 +73,7 @@ async def test_list_fixtures_returns_one_public_row_per_canonical_fixture():
             10,
             20,
             0,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
 
         canonical = SportsCanonicalFixture(
@@ -110,7 +109,7 @@ async def test_list_fixtures_returns_one_public_row_per_canonical_fixture():
                 10,
                 20,
                 1,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
 
@@ -136,7 +135,7 @@ async def test_list_fixtures_returns_one_public_row_per_canonical_fixture():
                 10,
                 20,
                 4,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
 
@@ -155,7 +154,7 @@ async def test_list_fixtures_returns_one_public_row_per_canonical_fixture():
                 10,
                 21,
                 0,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
             status="scheduled",
             live_clock=None,
@@ -169,7 +168,7 @@ async def test_list_fixtures_returns_one_public_row_per_canonical_fixture():
                 10,
                 20,
                 5,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
 
@@ -285,8 +284,8 @@ async def test_list_fixtures_paginates_after_canonical_deduplication():
         ]
 
         starts = [
-            datetime(2026, 9, 10, 18, 0, tzinfo=timezone.utc),
-            datetime(2026, 9, 10, 19, 0, tzinfo=timezone.utc),
+            datetime(2026, 9, 10, 18, 0, tzinfo=UTC),
+            datetime(2026, 9, 10, 19, 0, tzinfo=UTC),
         ]
 
         for index, canonical_id in enumerate(canonical_ids):
@@ -441,7 +440,7 @@ async def test_live_filter_can_select_secondary_live_observation():
             10,
             20,
             0,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
 
         session.add(
@@ -476,7 +475,7 @@ async def test_live_filter_can_select_secondary_live_observation():
                 10,
                 20,
                 1,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
 
@@ -501,7 +500,7 @@ async def test_live_filter_can_select_secondary_live_observation():
                 10,
                 20,
                 2,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
 

@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenError, NotFoundError
+from app.models.athlete import Athlete
 from app.models.discover_video import DiscoverVideo
 from app.repositories.athlete_repository import AthleteRepository
 from app.repositories.discover_video_repository import DiscoverVideoRepository
@@ -13,8 +14,8 @@ from app.schemas.discover_video import (
     DiscoverVideoCreate,
     DiscoverVideoUpdate,
 )
-
 from app.services.moderation_service import ModerationService
+
 
 class DiscoverVideoService:
     """Business rules for SMS Discover."""
@@ -25,7 +26,7 @@ class DiscoverVideoService:
 
         self.moderation = ModerationService(session)
 
-    async def _get_athlete(self, athlete_id: uuid.UUID):
+    async def _get_athlete(self, athlete_id: uuid.UUID) -> Athlete:
         athlete = await self.athletes.get_by_id(athlete_id)
 
         if athlete is None:
@@ -37,7 +38,7 @@ class DiscoverVideoService:
         self,
         athlete_id: uuid.UUID,
         current_user_id: uuid.UUID,
-    ):
+    ) -> Athlete:
         athlete = await self._get_athlete(athlete_id)
 
         if athlete.user_id != current_user_id:

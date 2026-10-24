@@ -1,7 +1,7 @@
 """Real PostgreSQL UPSERT integration tests for SMS24 ingestion."""
 
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import delete, func, select
@@ -29,7 +29,6 @@ from app.sms24.providers.base import (
     ProviderFixture,
     ProviderParticipant,
 )
-
 
 PREFIX = "sms24-upsert-pg-"
 
@@ -123,7 +122,7 @@ async def test_real_postgres_sms24_upserts_are_idempotent():
             6,
             20,
             0,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
 
         second_fetch = datetime(
@@ -132,7 +131,7 @@ async def test_real_postgres_sms24_upserts_are_idempotent():
             6,
             20,
             5,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
 
         competition_v1 = ProviderCompetition(
@@ -210,7 +209,7 @@ async def test_real_postgres_sms24_upserts_are_idempotent():
                 7,
                 18,
                 0,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
             status="scheduled",
             name="Fixture V1",
@@ -231,7 +230,7 @@ async def test_real_postgres_sms24_upserts_are_idempotent():
                 7,
                 18,
                 0,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
             status="live",
             name="Fixture V2",
@@ -474,7 +473,7 @@ async def test_real_postgres_cross_provider_fixtures_share_one_canonical():
             10,
             18,
             0,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
 
         second_start = datetime(
@@ -483,7 +482,7 @@ async def test_real_postgres_cross_provider_fixtures_share_one_canonical():
             10,
             18,
             3,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
 
         candidate_a = CanonicalFixtureCandidate(

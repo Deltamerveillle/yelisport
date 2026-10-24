@@ -1,7 +1,7 @@
 """Business rules for SMS Talent."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -213,7 +213,7 @@ class TalentService:
             )
 
         application.status = "submitted"
-        application.submitted_at = datetime.now(timezone.utc)
+        application.submitted_at = datetime.now(UTC)
 
         return await self.applications.update(application)
 
@@ -347,7 +347,7 @@ class TalentService:
         if not scores:
             raise ValueError("Evaluation scores are required")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         evaluation.scores = scores
         evaluation.overall_score = overall_score

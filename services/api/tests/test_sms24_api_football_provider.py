@@ -1,6 +1,6 @@
 """Tests for the SMS24 API-Football provider adapter."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 import pytest
@@ -197,7 +197,7 @@ async def test_api_football_single_day_uses_date_param():
             7,
             0,
             0,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         ),
         starts_until=datetime(
             2026,
@@ -206,7 +206,7 @@ async def test_api_football_single_day_uses_date_param():
             23,
             59,
             59,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         ),
     )
 
@@ -228,7 +228,7 @@ async def test_api_football_rejects_multi_day_global_range():
                 2026,
                 9,
                 7,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
             starts_until=datetime(
                 2026,
@@ -236,7 +236,7 @@ async def test_api_football_rejects_multi_day_global_range():
                 8,
                 23,
                 59,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
 

@@ -9,6 +9,14 @@ on:
       - "services/api/app/db/migrations/versions/20261023_0044_seed_multisport_catalogue.py"
       - "infrastructure/docker/api/Dockerfile"
       - ".github/workflows/sms24-release-validation.yml"
+      - "services/api/app/api/v1/endpoints/athlete_media.py"
+      - "services/api/app/api/v1/endpoints/athletes.py"
+      - "services/api/app/models/athlete_media.py"
+      - "services/api/app/schemas/athlete_media.py"
+      - "services/api/app/db/migrations/versions/20261023_0045_athlete_media.py"
+      - "services/api/tests/api/test_athlete_enrollment.py"
+      - "apps/mobile/lib/features/sports/presentation/athlete_enrollment_screen.dart"
+      - "apps/mobile/pubspec.yaml"
   workflow_dispatch:
 
 permissions:
@@ -29,7 +37,7 @@ jobs:
           cache-dependency-path: services/api/requirements.txt
       - run: pip install -r requirements.txt
       - name: Lint changed SMS24 backend files
-        run: ruff check app/api/v1/endpoints/sms24_news.py app/db/migrations/versions/20261023_0044_seed_multisport_catalogue.py
+        run: ruff check app/api/v1/endpoints/sms24_news.py app/db/migrations/versions/20261023_0044_seed_multisport_catalogue.py app/db/migrations/versions/20261023_0045_athlete_media.py app/models/athlete_media.py app/schemas/athlete_media.py app/api/v1/endpoints/athlete_media.py tests/api/test_athlete_enrollment.py
       - name: Compile API modules
         run: python -m compileall -q app
       - name: Verify Alembic migration graph
@@ -39,12 +47,12 @@ jobs:
           from alembic.script import ScriptDirectory
 
           scripts = ScriptDirectory.from_config(Config("alembic.ini"))
-          assert scripts.get_heads() == ["20261023_0044"], scripts.get_heads()
-          print("SMS24 Alembic head confirmed: 20261023_0044")
+          assert scripts.get_heads() == ["20261023_0045"], scripts.get_heads()
+          print("SMS24 Alembic head confirmed: 20261023_0045")
           PY
         env:
           APP_ENV: test
       - name: Run API smoke tests
-        run: pytest -q tests/api/test_sports.py
+        run: pytest -q tests/api/test_sports.py tests/api/test_athlete_enrollment.py
         env:
           APP_ENV: test

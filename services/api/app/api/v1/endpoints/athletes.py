@@ -64,6 +64,20 @@ async def list_athletes(
     return [AthleteResponse.model_validate(athlete) for athlete in athletes]
 
 
+@router.get("/me", response_model=list[AthleteResponse])
+async def list_my_athlete_profiles(
+    current_user: CurrentUser,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> list[AthleteResponse]:
+    """Return only this authenticated user's sport profiles for enrolment resume."""
+    service = AthleteService(
+        AthleteRepository(session),
+        CountryRepository(session),
+    )
+    athletes = await service.list_user_athletes(_current_user_uuid(current_user))
+    return [AthleteResponse.model_validate(athlete) for athlete in athletes]
+
+
 @router.get("/user/{user_id}", response_model=list[AthleteResponse])
 async def list_user_athletes(
     user_id: uuid.UUID,

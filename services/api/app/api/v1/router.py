@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     athlete_country_eligibilities,
+    athlete_media,
     athlete_passports,
     athlete_performances,
     countries,
@@ -32,6 +33,7 @@ router.include_router(sports_router)
 router.include_router(events_router)
 router.include_router(athletes_router)
 router.include_router(athlete_passports.router)
+router.include_router(athlete_media.router)
 router.include_router(athlete_performances.router)
 router.include_router(athlete_country_eligibilities.router)
 router.include_router(countries.router)
