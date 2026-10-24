@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import UTC, datetime
+from typing import cast
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,9 +30,9 @@ class EventRepository:
         return await self.session.get(Event, event_id)
 
     async def get_for_registration(self, event_id: uuid.UUID) -> Event | None:
-        return await self.session.scalar(
+        return cast(Event | None, await self.session.scalar(
             select(Event).where(Event.id == event_id).with_for_update()
-        )
+        ))
 
     async def registered_count(self, event_id: uuid.UUID) -> int:
         count = await self.session.scalar(
@@ -45,12 +46,12 @@ class EventRepository:
     async def get_registration(
         self, event_id: uuid.UUID, user_id: uuid.UUID
     ) -> EventRegistration | None:
-        return await self.session.scalar(
+        return cast(EventRegistration | None, await self.session.scalar(
             select(EventRegistration).where(
                 EventRegistration.event_id == event_id,
                 EventRegistration.user_id == user_id,
             )
-        )
+        ))
 
     async def save_registration(self, registration: EventRegistration) -> EventRegistration:
         self.session.add(registration)
