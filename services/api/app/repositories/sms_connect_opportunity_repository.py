@@ -80,7 +80,7 @@ class SMSConnectOpportunityRepository:
         )
         return result.mappings().all()
 
-    async def list_for_requester(self, user_id: uuid.UUID) -> Sequence[Mapping[str, Any]]:
+    async def list_for_requester(self, user_id: uuid.UUID) -> Sequence[RowMapping]:
         result = await self.session.execute(
             self._read_query()
             .where(
