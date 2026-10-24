@@ -34,11 +34,11 @@ router = APIRouter(
     response_model=list[NotificationResponse],
 )
 async def list_my_notifications(
+    current_user: Annotated[AuthUser, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
     unread_only: Annotated[bool, Query()] = False,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
-    current_user: Annotated[AuthUser, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_db_session)],
 ):
     return await NotificationService(
         session
