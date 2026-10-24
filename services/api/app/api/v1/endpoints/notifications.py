@@ -1,6 +1,7 @@
 """Authenticated notification inbox."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import (
     APIRouter,
@@ -33,22 +34,11 @@ router = APIRouter(
     response_model=list[NotificationResponse],
 )
 async def list_my_notifications(
-    unread_only: bool = Query(False),
-    limit: int = Query(
-        50,
-        ge=1,
-        le=100,
-    ),
-    offset: int = Query(
-        0,
-        ge=0,
-    ),
-    current_user: AuthUser = Depends(
-        get_current_user
-    ),
-    session: AsyncSession = Depends(
-        get_db_session
-    ),
+    unread_only: Annotated[bool, Query()] = False,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    current_user: Annotated[AuthUser, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
 ):
     return await NotificationService(
         session
@@ -67,12 +57,8 @@ async def list_my_notifications(
     ),
 )
 async def unread_count(
-    current_user: AuthUser = Depends(
-        get_current_user
-    ),
-    session: AsyncSession = Depends(
-        get_db_session
-    ),
+    current_user: Annotated[AuthUser, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
 ):
     count = await NotificationService(
         session
@@ -91,12 +77,8 @@ async def unread_count(
 )
 async def mark_notification_read(
     notification_id: uuid.UUID,
-    current_user: AuthUser = Depends(
-        get_current_user
-    ),
-    session: AsyncSession = Depends(
-        get_db_session
-    ),
+    current_user: Annotated[AuthUser, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
 ):
     return await NotificationService(
         session
