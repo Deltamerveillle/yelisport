@@ -28,7 +28,7 @@ class AthletePerformanceService:
     async def _get_athlete(
         self,
         athlete_id: uuid.UUID,
-    ):
+    ) -> Athlete:
         athlete = await self.athletes.get_by_id(athlete_id)
 
         if athlete is None:
