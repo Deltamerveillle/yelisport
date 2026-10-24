@@ -262,8 +262,7 @@ class _DiscoverItem extends StatelessWidget {
         leading: const Icon(Icons.play_circle_outline),
         title: Text(caption != null && caption.trim().isNotEmpty
             ? caption : 'Vidéo sportive'),
-        subtitle: Text('Durée : ' +
-            (data['duration_seconds']?.toString() ?? '?') + ' secondes'),
+        subtitle: Text("Durée : ${data['duration_seconds']?.toString() ?? '?'} secondes"),
         trailing: canPlay ? const Icon(Icons.chevron_right) : null,
         onTap: canPlay
             ? () => _openScreen(context,
