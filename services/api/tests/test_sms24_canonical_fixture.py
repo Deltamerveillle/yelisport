@@ -7,6 +7,7 @@ import pytest
 from app.sms24.canonical import (
     CanonicalFixtureCandidate,
     build_canonical_fixture_key,
+    fixtures_are_same_event,
 )
 
 NOW = datetime(2026, 9, 10, 20, 0, tzinfo=UTC)
@@ -143,8 +144,6 @@ def test_naive_datetime_is_rejected():
     ):
         build_canonical_fixture_key(candidate)
 
-
-from app.sms24.canonical import fixtures_are_same_event
 
 
 def test_same_fixture_with_small_start_time_drift_matches():
