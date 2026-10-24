@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yelisport/app/theme/app_colors.dart';
 import 'package:yelisport/features/home/presentation/home_screen.dart';
 import 'package:yelisport/features/sms24/presentation/fixtures_screen.dart';
 import 'package:yelisport/features/sms24/presentation/news_screen.dart';
@@ -56,15 +57,43 @@ class _AppShellState extends State<AppShell> {
             selectedIndex: _tab == 8 ? 0 : _tab,
             onDestinationSelected: _select,
             extended: width >= 1120,
+            scrollable: true,
+            minExtendedWidth: 235,
             labelType: width >= 1120
                 ? NavigationRailLabelType.none
                 : NavigationRailLabelType.all,
-            leading: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Tooltip(
-                message: 'Succès Mondial Sports',
-                child: Icon(Icons.emoji_events_outlined),
-              ),
+            leading: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 20, 12, 28),
+              child: width >= 1120
+                  ? const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Icon(Icons.public, color: AppColors.secondary,
+                            size: 28),
+                          SizedBox(width: 10),
+                          Text('SMS24', style: TextStyle(
+                            color: AppColors.secondary, fontSize: 23,
+                            fontWeight: FontWeight.w800, letterSpacing: 1.2,
+                          )),
+                        ]),
+                        SizedBox(height: 7),
+                        Text('SUCCÈS MONDIAL SPORTS', style: TextStyle(
+                          color: Colors.white, fontSize: 10,
+                          fontWeight: FontWeight.w700, letterSpacing: 1.1,
+                        )),
+                        SizedBox(height: 4),
+                        Text('LE MONDE VOIT VOTRE TALENT',
+                          style: TextStyle(color: Color(0xFFB4C2D6),
+                            fontSize: 9, letterSpacing: 0.7)),
+                      ],
+                    )
+                  : const Tooltip(
+                      message: 'SMS24 • Le monde voit votre talent',
+                      child: Icon(Icons.public,
+                        color: AppColors.secondary, size: 30),
+                    ),
             ),
             destinations: [
               for (var i = 0; i < _names.length; i++)
@@ -74,7 +103,7 @@ class _AppShellState extends State<AppShell> {
                 ),
             ],
           ),
-          const VerticalDivider(width: 1),
+          const VerticalDivider(width: 1, color: Color(0xFFDCE2E9)),
         ],
         Expanded(child: IndexedStack(index: _tab, children: tabs)),
       ]),
