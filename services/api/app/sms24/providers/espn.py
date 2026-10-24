@@ -132,7 +132,9 @@ class ESPNProvider(SportsDataProvider):
             competition = ProviderCompetition(
                 external_id=str(league["id"]),
                 name=str(league["name"]),
-                season=str(season_name or season.get("year")) if isinstance(season, dict) and (season_name or season.get("year")) else None,
+                season=str(season_name or season.get("year"))
+                if isinstance(season, dict) and (season_name or season.get("year"))
+                else None,
                 logo_url=cls._logo(league),
             )
         venue = detail.get("venue") or {}
@@ -193,7 +195,5 @@ class ESPNProvider(SportsDataProvider):
         try:
             await self._get_payload()
         except (httpx.HTTPError, ValueError) as exc:
-            return ProviderHealthResult(
-                is_healthy=False, checked_at=checked_at, message=str(exc)
-            )
+            return ProviderHealthResult(is_healthy=False, checked_at=checked_at, message=str(exc))
         return ProviderHealthResult(is_healthy=True, checked_at=checked_at)

@@ -93,15 +93,19 @@ class StandingsProviderRunner:
             raise ValueError("Standings require an existing canonical season")
         sources = await self.repository.list_active_sources_for_capability("standings")
         # Ineligible explicit targets are recorded in slug order without probing or health writes.
-        attempts = [SMS24ProviderAttempt(slug, False, "standings_capability_not_active")
-                    for slug in sorted(set(targets) - set(sources))]
+        attempts = [
+            SMS24ProviderAttempt(slug, False, "standings_capability_not_active")
+            for slug in sorted(set(targets) - set(sources))
+        ]
         for slug in sources:
             target = targets.get(slug)
             if target is None:
                 continue
             source = await self.repository.get_active_source_for_capability(slug, "standings")
             if source is None:
-                attempts.append(SMS24ProviderAttempt(slug, False, "standings_capability_not_active"))
+                attempts.append(
+                    SMS24ProviderAttempt(slug, False, "standings_capability_not_active")
+                )
                 continue
             source_id = source.id
             try:

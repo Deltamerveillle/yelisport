@@ -8,16 +8,38 @@ import pytest
 from app.sms24.providers.espn import ESPNProvider
 
 PAYLOAD = {
-    "leagues": [{"id": "700", "name": "English Premier League", "slug": "eng.1", "season": {"displayName": "2026-27 English Premier League"}}],
-    "events": [{
-        "id": "401878771",
-        "date": "2026-10-17T11:30Z",
-        "status": {"type": {"state": "pre", "name": "STATUS_SCHEDULED"}},
-        "competitions": [{"venue": {"fullName": "Hill Dickinson Stadium"}, "competitors": [
-            {"team": {"id": "368", "displayName": "Everton"}, "homeAway": "home", "score": "0"},
-            {"team": {"id": "363", "displayName": "Chelsea"}, "homeAway": "away", "score": "0"},
-        ]}],
-    }],
+    "leagues": [
+        {
+            "id": "700",
+            "name": "English Premier League",
+            "slug": "eng.1",
+            "season": {"displayName": "2026-27 English Premier League"},
+        }
+    ],
+    "events": [
+        {
+            "id": "401878771",
+            "date": "2026-10-17T11:30Z",
+            "status": {"type": {"state": "pre", "name": "STATUS_SCHEDULED"}},
+            "competitions": [
+                {
+                    "venue": {"fullName": "Hill Dickinson Stadium"},
+                    "competitors": [
+                        {
+                            "team": {"id": "368", "displayName": "Everton"},
+                            "homeAway": "home",
+                            "score": "0",
+                        },
+                        {
+                            "team": {"id": "363", "displayName": "Chelsea"},
+                            "homeAway": "away",
+                            "score": "0",
+                        },
+                    ],
+                }
+            ],
+        }
+    ],
 }
 
 
