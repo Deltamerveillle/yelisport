@@ -110,7 +110,7 @@ class PublicHomeScreen extends StatelessWidget {
             label: const Text('Créer mon compte'),
           ),
           OutlinedButton.icon(
-            onPressed: () => onNavigate(12),
+            onPressed: () => onNavigate(13),
             icon: const Icon(Icons.badge_outlined),
             label: const Text('Découvrir SMS Passport'),
           ),
