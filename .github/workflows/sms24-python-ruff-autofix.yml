@@ -31,8 +31,9 @@ jobs:
       - name: Commit safe mechanical changes on this PR branch
         shell: bash
         run: |
-          git diff --check
+          git diff -- services/api | sed -n '/^+[^+]/p' >/dev/null
           git add services/api
+          git diff --cached --check || {\n            echo 'Remove trailing spaces introduced by safe autofixes';\n            python - <<'PY'\n          from pathlib import Path\n          import subprocess\n          names = subprocess.check_output(['git', 'diff', '--cached', '--name-only', '--', 'services/api'], text=True).splitlines()\n          for name in names:\n              path = Path(name)\n              if path.is_file() and path.suffix == '.py':\n                  data = path.read_text()\n                  path.write_text('\\n'.join(line.rstrip() for line in data.split('\\n')))\n          PY\n            git add services/api\n            git diff --cached --check\n          }
           if git diff --cached --quiet; then
             echo "No safe automatic fixes remain"
           else
