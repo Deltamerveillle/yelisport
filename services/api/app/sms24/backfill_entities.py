@@ -55,20 +55,20 @@ async def backfill_historical_canonical_entities(
         .order_by(SportsCompetition.id)
         .with_for_update()
     )
-    for observation in competitions:
+    for competition_observation in competitions:
         result.competitions_processed += 1
-        has_season = bool(observation.season and observation.season.strip())
+        has_season = bool(competition_observation.season and competition_observation.season.strip())
         if has_season:
             result.seasons_processed += 1
         try:
             canonical = await repository.resolve_canonical_competition(
-                sport_id=observation.sport_id,
-                source_id=observation.source_id,
+                sport_id=competition_observation.sport_id,
+                source_id=competition_observation.source_id,
                 competition=ProviderCompetition(
-                    jurisdiction_name=observation.jurisdiction_name,
-                    external_id=observation.external_id,
-                    name=observation.name,
-                    country_code=observation.country_code,
+                    jurisdiction_name=competition_observation.jurisdiction_name,
+                    external_id=competition_observation.external_id,
+                    name=competition_observation.name,
+                    country_code=competition_observation.country_code,
                 ),
             )
         except ValueError:
@@ -76,13 +76,14 @@ async def backfill_historical_canonical_entities(
             if has_season:
                 result.seasons_skipped += 1
             continue
-        observation.canonical_competition_id = canonical.id
+        competition_observation.canonical_competition_id = canonical.id
         result.competitions_resolved += 1
         if has_season:
             try:
+                assert competition_observation.season is not None
                 await repository.resolve_season(
                     canonical_competition_id=canonical.id,
-                    label=observation.season,
+                    label=competition_observation.season,
                 )
             except ValueError:
                 result.seasons_skipped += 1
@@ -98,7 +99,7 @@ async def backfill_historical_canonical_entities(
     for observation in competitors:
         result.competitors_processed += 1
         try:
-            canonical = await repository.resolve_canonical_competitor(
+            competitor_canonical = await repository.resolve_canonical_competitor(
                 sport_id=observation.sport_id,
                 source_id=observation.source_id,
                 participant=ProviderParticipant(
@@ -111,15 +112,15 @@ async def backfill_historical_canonical_entities(
         except ValueError:
             result.competitors_skipped += 1
             continue
-        observation.canonical_competitor_id = canonical.id
+        observation.canonical_competitor_id = competitor_canonical.id
         result.competitors_resolved += 1
 
     await session.flush()
     result.canonical_competitions_total = await session.scalar(
         select(func.count()).select_from(SportsCanonicalCompetition)
-    )
+    ) or 0
     result.canonical_competitors_total = await session.scalar(
         select(func.count()).select_from(SportsCanonicalCompetitor)
-    )
-    result.seasons_total = await session.scalar(select(func.count()).select_from(SportsSeason))
+    ) or 0
+    result.seasons_total = await session.scalar(select(func.count()).select_from(SportsSeason)) or 0
     return result
