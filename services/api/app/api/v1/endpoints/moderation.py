@@ -1,6 +1,7 @@
 """SMS moderation API endpoints."""
 
 import uuid
+from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import (
@@ -13,6 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import CurrentUser
 from app.db.session import get_db_session
+from app.models.discover_video import DiscoverVideo
+from app.models.moderation_report import ModerationReport, ModerationReportEvent
+from app.models.user import User
 from app.schemas.discover_video import DiscoverVideoResponse
 from app.schemas.moderation import (
     DiscoverModerationDecision,
@@ -60,7 +64,7 @@ async def create_moderation_report(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> ModerationReport:
     """Submit a report about an SMS resource."""
 
     service = _service(session)
@@ -93,7 +97,7 @@ async def list_my_moderation_reports(
     ],
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
-):
+) -> Sequence[ModerationReport]:
     """List reports created by the current user."""
 
     return await _service(
@@ -123,7 +127,7 @@ async def admin_list_moderation_reports(
     resource_type: Annotated[ModerationResourceType | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
-):
+) -> Sequence[ModerationReport]:
     """Administrative moderation queue."""
 
     return await _service(
@@ -151,7 +155,7 @@ async def admin_transition_moderation_report(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> ModerationReport:
     """Move a moderation report through its review lifecycle."""
 
     service = _service(session)
@@ -184,7 +188,7 @@ async def admin_list_moderation_events(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> Sequence[ModerationReportEvent]:
     """Return immutable moderation audit history."""
 
     return await _service(
@@ -210,7 +214,7 @@ async def decide_discover_video(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> DiscoverVideo:
     """Approve or reject a Discover video under review."""
 
     service = _service(session)
@@ -243,7 +247,7 @@ async def moderate_user(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> User:
     """Suspend or reactivate a user from a moderation case."""
 
     service = _service(session)
