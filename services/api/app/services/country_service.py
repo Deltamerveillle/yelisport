@@ -1,6 +1,7 @@
 """Country catalogue service."""
 
 from app.core.exceptions import NotFoundError
+from app.models.country import Country
 from app.repositories.country_repository import CountryRepository
 
 
@@ -13,7 +14,7 @@ class CountryService:
         *,
         continent_code: str | None = None,
         search: str | None = None,
-    ):
+    ) -> list[Country]:
         countries = await self.country_repository.list_active(
             continent_code=continent_code,
         )
@@ -30,7 +31,7 @@ class CountryService:
 
         return countries
 
-    async def get_country(self, iso2: str):
+    async def get_country(self, iso2: str) -> Country:
         country = await self.country_repository.get_by_iso2(
             iso2.strip().upper()
         )
