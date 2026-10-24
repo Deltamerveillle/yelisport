@@ -27,6 +27,8 @@ jobs:
         shell: bash
         run: |
           ruff check . --fix --output-format concise || true
+          ruff format app/sms24/ingestion.py app/sms24/providers/espn.py app/sms24/providers/sportmonks.py app/sms24/standings_runner.py tests/test_sms24_espn_provider.py tests/test_sms24_sportmonks_provider.py tests/test_sms24_worker.py
+          ruff check . --fix --output-format concise || true
           ruff check . --statistics || true
       - name: Commit safe mechanical changes on this PR branch
         shell: bash
