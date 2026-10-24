@@ -6,7 +6,7 @@ propagate. Only this observation table is written, never any human/graph entity.
 
 import uuid
 from datetime import datetime
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from app.db.base import Base
 
