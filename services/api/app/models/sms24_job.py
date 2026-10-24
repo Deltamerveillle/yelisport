@@ -1,6 +1,7 @@
 """Technical job state, separate from provider facts and human identities."""
 
 from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import CheckConstraint, Date, DateTime, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -34,8 +35,8 @@ class SMS24JobCheckpoint(Base):
     job_key: Mapped[str] = mapped_column(String(160), primary_key=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="idle")
     reference_date: Mapped[date | None] = mapped_column(Date)
-    cursor: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
-    parameters: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    cursor: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")
+    parameters: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")
     failed_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
