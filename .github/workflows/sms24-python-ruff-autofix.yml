@@ -1,0 +1,41 @@
+name: SMS24 Python Safe Autofix
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/sms24-python-ruff-autofix.yml"
+      - "services/api/**"
+
+permissions:
+  contents: write
+
+jobs:
+  apply-safe-autofixes:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feature/sms24-portail-live-news-publicite'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install repository-pinned Ruff
+        run: python -m pip install ruff==0.8.4
+      - name: Apply only Ruff safe fixes
+        working-directory: services/api
+        shell: bash
+        run: |
+          ruff check . --fix --output-format concise || true
+          ruff check . --statistics || true
+      - name: Commit safe mechanical changes on this PR branch
+        shell: bash
+        run: |
+          git diff --check
+          git add services/api
+          if git diff --cached --quiet; then
+            echo "No safe automatic fixes remain"
+          else
+            git -c user.name='sms24-ci-bot' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'chore(api): apply Ruff safe autofixes throughout backend'
+            git push origin HEAD:${{ github.head_ref }}
+          fi
