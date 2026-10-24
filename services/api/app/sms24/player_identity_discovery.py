@@ -15,6 +15,7 @@ from app.sms24.ingestion import SMS24IngestionRepository
 from app.sms24.providers.base import ProviderParticipant
 from app.sms24.providers.errors import ProviderAccessRestrictedError
 from app.sms24.providers.player_identity import (
+    PlayerIdentityProvider,
     validate_player_identity,
     validate_player_identity_text,
 )
@@ -87,11 +88,13 @@ class PlayerIdentityDiscovery:
                 for method in ("fetch_team_player_ids", "fetch_player_identity")
             ):
                 raise ValueError("Team provider is inconsistent or unsupported")
+            if not isinstance(provider, PlayerIdentityProvider):
+                raise ValueError("Provider does not implement player identity methods")
             validated.append((target, team, source, sport, provider))
 
         result = PlayerIdentityDiscoveryResult()
         # A source-owned ID cannot acquire different sports within the same run.
-        players = {}
+        players: dict[tuple[uuid.UUID, str], uuid.UUID] = {}
         seen_teams = set()
         for target, team, source, sport, provider in validated:
             if team.id in seen_teams:
