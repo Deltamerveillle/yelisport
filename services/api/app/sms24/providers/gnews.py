@@ -8,8 +8,8 @@ actual upstream availability is established by fetch_news.
 """
 
 import re
-from typing import Any
 from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 from pydantic import SecretStr
