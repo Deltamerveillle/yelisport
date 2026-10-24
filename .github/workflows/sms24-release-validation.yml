@@ -36,8 +36,6 @@ jobs:
           cache: pip
           cache-dependency-path: services/api/requirements.txt
       - run: pip install -r requirements.txt
-      - name: Diagnose statistics import ordering without changing files
-        run: ruff check app/sms24/player_statistics.py --select I --fix --diff
       - name: Lint changed SMS24 backend files
         run: ruff check app/api/v1/endpoints/sms24_news.py app/db/migrations/versions/20261023_0044_seed_multisport_catalogue.py app/db/migrations/versions/20261023_0045_athlete_media.py app/models/athlete_media.py app/schemas/athlete_media.py app/api/v1/endpoints/athlete_media.py tests/api/test_athlete_enrollment.py
       - name: Compile API modules
