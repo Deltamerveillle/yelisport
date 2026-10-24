@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:yelisport/app/theme/app_colors.dart';
+import 'package:yelisport/features/sports/presentation/sms24_sport_banner.dart';
+import 'package:yelisport/features/sports/presentation/sport_detail_screen.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -254,7 +257,7 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Inscription • ${widget.sport.name}')),
+      appBar: AppBar(title: const Text('SMS24 • Espace athlète')),
       body: FutureBuilder<Map<String, dynamic>>(
         key: ValueKey(_refreshKey),
         future: _accessFuture,
@@ -281,12 +284,23 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                Text('Passeport sportif • ${widget.sport.name}',
-                  style: Theme.of(context).textTheme.headlineSmall),
+                Sms24SportBanner(
+                  title: 'Mon passeport • ${widget.sport.name}',
+                  subtitle: 'Présentez votre parcours et déposez vos médias '
+                      'en toute confidentialité avant vérification.',
+                  icon: iconForSport(widget.sport.slug),
+                  eyebrow: 'SMS PASSPORT • ESPACE ATHLÈTE',
+                ),
                 const SizedBox(height: 12),
                 const Text('Renseigne ton profil. Tes informations ne sont '
                     'pas publiées automatiquement.'),
                 const SizedBox(height: 16),
+                const Row(children: [
+                  Icon(Icons.verified_user_outlined, color: AppColors.success),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Abonnement actif • Dépôts soumis à vérification')),
+                ]),
+                const SizedBox(height: 18),
                 if (_athleteId == null) ...[
                   _field(_firstName, 'Prénom', required: true),
                   _field(_lastName, 'Nom', required: true),
@@ -390,8 +404,13 @@ class _SubscriptionStepState extends ConsumerState<_SubscriptionStep> {
     builder: (context, snapshot) => ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Text('Abonnement requis',
-          style: Theme.of(context).textTheme.headlineSmall),
+        Sms24SportBanner(
+          title: 'Abonnement sportif',
+          subtitle: 'Un abonnement vérifié ouvre votre espace athlète '
+              'et le dépôt privé de vos photos et vidéos.',
+          icon: Icons.workspace_premium_outlined,
+          eyebrow: 'SMS24 • ÉTAPE 1 SUR 3',
+        ),
         const SizedBox(height: 10),
         const Text('Pour créer ton dossier sportif et déposer des médias, '
             'ton abonnement doit être actif. '
