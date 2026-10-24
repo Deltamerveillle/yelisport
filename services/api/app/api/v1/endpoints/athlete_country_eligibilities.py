@@ -1,6 +1,7 @@
 """SMS Nations athlete country eligibility endpoints."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,8 +36,8 @@ router = APIRouter(
 async def declare_country_eligibility(
     athlete_id: uuid.UUID,
     data: AthleteCountryEligibilityCreate,
-    current_user: AuthUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
+    current_user: Annotated[AuthUser, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
 ):
     service = AthleteCountryEligibilityService(
         AthleteCountryEligibilityRepository(session),
@@ -63,8 +64,8 @@ async def declare_country_eligibility(
 )
 async def list_country_eligibilities(
     athlete_id: uuid.UUID,
-    current_user: AuthUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
+    current_user: Annotated[AuthUser, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
 ):
     service = AthleteCountryEligibilityService(
         AthleteCountryEligibilityRepository(session),
