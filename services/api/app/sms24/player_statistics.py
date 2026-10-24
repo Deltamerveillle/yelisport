@@ -6,6 +6,9 @@ propagate. Only this observation table is written, never any human/graph entity.
 
 import uuid
 from datetime import datetime
+from typing import Any, TypeVar
+
+from app.db.base import Base
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -28,14 +31,17 @@ from app.sms24.providers.player_statistics import (
 )
 
 
+_Model = TypeVar('_Model', bound=Base)
+
+
 class SMS24PlayerStatisticsRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def _locked(self, model, identity):
+    async def _locked(self, model: type[_Model], identity: uuid.UUID) -> _Model:
         row = await self.session.scalar(
             select(model)
-            .where(model.id == identity)
+            .where(getattr(model, 'id') == identity)
             .with_for_update()
             .execution_options(populate_existing=True),
         )
@@ -45,13 +51,13 @@ class SMS24PlayerStatisticsRepository:
 
     async def _validate_graph(
         self,
-        row,
+        row: SportsPlayerStatisticObservation,
         *,
-        athlete_competitor_id,
-        fixture_id,
-        canonical_fixture_id,
-        season_id,
-        fixture_external_id,
+        athlete_competitor_id: uuid.UUID | None,
+        fixture_id: uuid.UUID | None,
+        canonical_fixture_id: uuid.UUID | None,
+        season_id: uuid.UUID | None,
+        fixture_external_id: str | None,
     ) -> None:
         if athlete_competitor_id is not None:
             athlete = await self._locked(SportsCompetitor, athlete_competitor_id)
@@ -63,11 +69,11 @@ class SMS24PlayerStatisticsRepository:
             ):
                 raise ValueError("Statistics athlete must match source, ID, sport and type")
             if athlete.canonical_competitor_id is not None:
-                canonical = await self._locked(
+                canonical_athlete = await self._locked(
                     SportsCanonicalCompetitor,
                     athlete.canonical_competitor_id,
                 )
-                if canonical.sport_id != row.sport_id or canonical.competitor_type != "athlete":
+                if canonical_athlete.sport_id != row.sport_id or canonical_athlete.competitor_type != "athlete":
                     raise ValueError("Incompatible canonical athlete graph")
         fixture = None
         competition = None
@@ -84,26 +90,26 @@ class SMS24PlayerStatisticsRepository:
                 if competition.sport_id != row.sport_id or competition.source_id != row.source_id:
                     raise ValueError("Incompatible provider competition graph")
                 if competition.canonical_competition_id is not None:
-                    canonical = await self._locked(
+                    canonical_competition = await self._locked(
                         SportsCanonicalCompetition,
                         competition.canonical_competition_id,
                     )
-                    if canonical.sport_id != row.sport_id:
+                    if canonical_competition.sport_id != row.sport_id:
                         raise ValueError("Incompatible canonical competition sport")
             if fixture.canonical_fixture_id is not None:
-                canonical = await self._locked(SportsCanonicalFixture, fixture.canonical_fixture_id)
-                if canonical.sport_id != row.sport_id:
+                canonical_fixture = await self._locked(SportsCanonicalFixture, fixture.canonical_fixture_id)
+                if canonical_fixture.sport_id != row.sport_id:
                     raise ValueError("Incompatible canonical fixture sport")
         if canonical_fixture_id is not None:
             if fixture is None or fixture.canonical_fixture_id != canonical_fixture_id:
                 raise ValueError("Canonical fixture requires the explicit provider fixture mapping")
         if season_id is not None:
             season = await self._locked(SportsSeason, season_id)
-            canonical = await self._locked(
+            canonical_season_competition = await self._locked(
                 SportsCanonicalCompetition,
                 season.canonical_competition_id,
             )
-            if canonical.sport_id != row.sport_id:
+            if canonical_season_competition.sport_id != row.sport_id:
                 raise ValueError("Incompatible statistics season sport")
             if fixture is not None and (
                 competition is None
@@ -159,6 +165,8 @@ class SMS24PlayerStatisticsRepository:
                 .with_for_update()
                 .execution_options(populate_existing=True),
             )
+            if row is None:
+                raise ValueError('Statistics observation missing after insert')
             if row.sport_id != sport_id or row.athlete_external_id != statistic.athlete_external_id:
                 raise ValueError("A statistics record cannot change sport or athlete implicitly")
             if fetched_at < row.fetched_at:
