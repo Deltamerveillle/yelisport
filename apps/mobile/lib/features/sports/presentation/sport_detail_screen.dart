@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:yelisport/app/theme/app_colors.dart';
+import 'package:yelisport/features/sports/presentation/sms24_sport_banner.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yelisport/features/sports/presentation/sports_providers.dart';
 import 'package:yelisport/features/sports/presentation/athlete_enrollment_screen.dart';
@@ -42,40 +44,80 @@ class SportDetailScreen extends ConsumerWidget {
             ],
           ),
         ),
-        data: (item) => ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            TextButton.icon(
-              onPressed: onReturn ?? () => Navigator.of(context).maybePop(),
-              icon: const Icon(Icons.home_outlined),
-              label: const Text('Accueil › Tous les sports'),
-            ),
-            const SizedBox(height: 18),
-            CircleAvatar(
-              radius: 44,
-              child: Icon(iconForSport(item.slug), size: 44),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              item.name,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              icon: const Icon(Icons.person_add_alt_1),
-              label: const Text('Je suis athlète • créer mon passeport'),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => AthleteEnrollmentScreen(sport: item),
+        data: (item) => Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1040),
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: onReturn ?? () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Accueil  ›  Tous les sports'),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 12),
+                Sms24SportBanner(
+                  title: item.name,
+                  subtitle: 'Explorez cette discipline et créez votre profil '
+                      'sportif pour présenter vos performances au monde.',
+                  icon: iconForSport(item.slug),
+                ),
+                const SizedBox(height: 22),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(22),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Votre talent mérite d’être vu',
+                          style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Sélectionnez votre sport, vérifiez votre abonnement, '
+                          'complétez votre passeport et déposez une vidéo '
+                          'courte ou vos photos, sous réserve de modération.',
+                        ),
+                        const SizedBox(height: 18),
+                        FilledButton.icon(
+                          icon: const Icon(Icons.person_add_alt_1),
+                          label: const Text('Créer mon passeport sportif'),
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => AthleteEnrollmentScreen(sport: item),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (item.description != null && item.description!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(item.description!),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                Row(children: [
+                  const Icon(Icons.info_outline, color: AppColors.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Rencontres, classements et actualités apparaîtront '
+                      'lorsque des sources vérifiées alimenteront ce sport.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ]),
+              ],
             ),
-            if (item.description != null) ...[
-              const SizedBox(height: 20),
-              Text(item.description!, textAlign: TextAlign.center),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -96,6 +138,16 @@ IconData iconForSport(String sportSlug) {
     'golf' => Icons.sports_golf,
     'athletics' => Icons.directions_run,
     'football' => Icons.sports_soccer,
+    'badminton' => Icons.sports_tennis,
+    'boxing' => Icons.sports_mma,
+    'cycling' => Icons.directions_bike,
+    'futsal' => Icons.sports_soccer,
+    'judo' => Icons.sports_martial_arts,
+    'wrestling' => Icons.sports_mma,
+    'swimming' => Icons.pool,
+    'taekwondo' => Icons.sports_martial_arts,
+    'table-tennis' => Icons.sports_tennis,
+    'cricket' => Icons.sports_cricket,
     _ => Icons.sports,
   };
 }
