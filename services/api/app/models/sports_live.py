@@ -1,8 +1,8 @@
 """Provider-neutral and multisport SMS24 / Live data models."""
 
 import uuid
-from typing import Any
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
