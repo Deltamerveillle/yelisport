@@ -48,7 +48,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "evidence",
-            postgresql.JSONB(),
+            postgresql.JSONB(),  # type: ignore[no-untyped-call]
             nullable=False,
             server_default=sa.text("'{}'::jsonb"),
         ),

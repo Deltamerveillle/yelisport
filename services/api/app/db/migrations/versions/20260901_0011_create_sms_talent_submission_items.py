@@ -49,7 +49,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "metadata_json",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(astext_type=sa.Text()),  # type: ignore[no-untyped-call]
             nullable=True,
         ),
         sa.Column(

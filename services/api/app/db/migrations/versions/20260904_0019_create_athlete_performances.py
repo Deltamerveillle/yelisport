@@ -59,7 +59,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "metrics",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(astext_type=sa.Text()),  # type: ignore[no-untyped-call]
             server_default=sa.text("'{}'::jsonb"),
             nullable=False,
         ),

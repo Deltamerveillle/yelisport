@@ -179,7 +179,7 @@ def upgrade() -> None:
         sa.Column("reported_type", sa.String(length=200), nullable=True),
         sa.Column(
             "metadata_json",
-            postgresql.JSONB(),
+            postgresql.JSONB(),  # type: ignore[no-untyped-call]
             server_default="{}",
             nullable=False,
         ),

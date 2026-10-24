@@ -20,8 +20,18 @@ def upgrade() -> None:
         sa.Column("job_key", sa.String(160), primary_key=True),
         sa.Column("status", sa.String(32), nullable=False, server_default="idle"),
         sa.Column("reference_date", sa.Date(), nullable=True),
-        sa.Column("cursor", postgresql.JSONB(), nullable=False, server_default="{}"),
-        sa.Column("parameters", postgresql.JSONB(), nullable=False, server_default="{}"),
+        sa.Column(
+            "cursor",
+            postgresql.JSONB(),  # type: ignore[no-untyped-call]
+            nullable=False,
+            server_default="{}",
+        ),
+        sa.Column(
+            "parameters",
+            postgresql.JSONB(),  # type: ignore[no-untyped-call]
+            nullable=False,
+            server_default="{}",
+        ),
         sa.Column("failed_attempts", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),

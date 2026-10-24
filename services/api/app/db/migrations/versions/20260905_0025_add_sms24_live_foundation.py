@@ -223,7 +223,7 @@ def upgrade() -> None:
         sa.Column("logo_url", sa.Text(), nullable=True),
         sa.Column(
             "metadata_json",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(astext_type=sa.Text()),  # type: ignore[no-untyped-call]
             server_default=sa.text("'{}'::jsonb"),
             nullable=False,
         ),
@@ -322,13 +322,13 @@ def upgrade() -> None:
         sa.Column("venue", sa.String(length=240), nullable=True),
         sa.Column(
             "result_json",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(astext_type=sa.Text()),  # type: ignore[no-untyped-call]
             server_default=sa.text("'{}'::jsonb"),
             nullable=False,
         ),
         sa.Column(
             "metadata_json",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(astext_type=sa.Text()),  # type: ignore[no-untyped-call]
             server_default=sa.text("'{}'::jsonb"),
             nullable=False,
         ),
@@ -420,7 +420,7 @@ def upgrade() -> None:
         sa.Column("role", sa.String(length=40), nullable=True),
         sa.Column(
             "score_json",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(astext_type=sa.Text()),  # type: ignore[no-untyped-call]
             server_default=sa.text("'{}'::jsonb"),
             nullable=False,
         ),
