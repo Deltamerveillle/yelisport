@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import CurrentUser
+from app.core.exceptions import ForbiddenError
 from app.db.session import get_db_session
 from app.repositories.athlete_passport_repository import AthletePassportRepository
 from app.repositories.athlete_repository import AthleteRepository
@@ -16,6 +17,7 @@ from app.schemas.athlete_passport import (
     AthletePassportUpdate,
 )
 from app.services.athlete_passport_service import AthletePassportService
+from app.services.subscription_service import SubscriptionService
 
 router = APIRouter(
     prefix="/athletes/{athlete_id}/passport",
@@ -48,6 +50,11 @@ async def create_passport(
     service = _service(session)
 
     try:
+        access = await SubscriptionService(session).get_access(
+            _current_user_uuid(current_user)
+        )
+        if not access.has_premium_access:
+            raise ForbiddenError("Abonnement actif requis pour créer un passeport")
         passport = await service.create_passport(
             athlete_id=athlete_id,
             data=payload,
