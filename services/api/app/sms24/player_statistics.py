@@ -8,11 +8,11 @@ import uuid
 from datetime import datetime
 from typing import TypeVar
 
-from app.db.base import Base
-
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.base import Base
 
 from app.models.sports_live import (
     SportsCanonicalCompetition,
@@ -73,7 +73,10 @@ class SMS24PlayerStatisticsRepository:
                     SportsCanonicalCompetitor,
                     athlete.canonical_competitor_id,
                 )
-                if canonical_athlete.sport_id != row.sport_id or canonical_athlete.competitor_type != "athlete":
+                if (
+                    canonical_athlete.sport_id != row.sport_id
+                    or canonical_athlete.competitor_type != "athlete"
+                ):
                     raise ValueError("Incompatible canonical athlete graph")
         fixture = None
         competition = None
@@ -97,7 +100,9 @@ class SMS24PlayerStatisticsRepository:
                     if canonical_competition.sport_id != row.sport_id:
                         raise ValueError("Incompatible canonical competition sport")
             if fixture.canonical_fixture_id is not None:
-                canonical_fixture = await self._locked(SportsCanonicalFixture, fixture.canonical_fixture_id)
+                canonical_fixture = await self._locked(
+                    SportsCanonicalFixture, fixture.canonical_fixture_id
+                )
                 if canonical_fixture.sport_id != row.sport_id:
                     raise ValueError("Incompatible canonical fixture sport")
         if canonical_fixture_id is not None:
