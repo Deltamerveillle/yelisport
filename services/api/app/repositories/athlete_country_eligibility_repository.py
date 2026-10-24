@@ -1,7 +1,6 @@
 """Repository for SMS Nations athlete country eligibility."""
 
 import uuid
-from typing import cast
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,7 +45,7 @@ class AthleteCountryEligibilityRepository:
                 AthleteCountryEligibility.country_id == country_id,
             )
         )
-        return cast(AthleteCountryEligibility | None, eligibility)
+        return eligibility
 
     async def clear_primary_for_athlete(
         self,
