@@ -140,10 +140,10 @@ class _AppShellState extends ConsumerState<AppShell> {
             onGenerateRoute: (_) => MaterialPageRoute<void>(
               builder: (_) => ValueListenableBuilder<int>(
                 valueListenable: _activeTab,
-                builder: (context, active, _) => IndexedStack(
-                  index: active,
-                  children: tabs,
-                ),
+                // Build only the active destination. IndexedStack eagerly
+                // mounted every API-backed page and flooded the Render
+                // backend during its cold start.
+                builder: (context, active, _) => tabs[active],
               ),
             ),
           ),
