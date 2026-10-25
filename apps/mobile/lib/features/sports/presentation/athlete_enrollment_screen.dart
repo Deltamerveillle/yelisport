@@ -23,7 +23,8 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
   final _city = TextEditingController();
-  final _country = TextEditingController();
+  String? _primaryCountryId;
+  late final Future<List<dynamic>> _countriesFuture;
   final _speciality = TextEditingController();
   final _club = TextEditingController();
   final _summary = TextEditingController();
@@ -38,6 +39,7 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
   void initState() {
     super.initState();
     _accessFuture = _access();
+    _countriesFuture = ref.read(apiClientProvider).getList('/countries');
   }
 
   Future<void> _resumeProfile() async {
@@ -61,7 +63,7 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
   @override
   void dispose() {
     for (final c in [
-      _firstName, _lastName, _city, _country, _speciality, _club, _summary,
+      _firstName, _lastName, _city, _speciality, _club, _summary,
     ]) { c.dispose(); }
     super.dispose();
   }
@@ -76,6 +78,7 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
 
   Future<void> _createAthlete() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_primaryCountryId == null) return;
     setState(() { _busy = true; _error = null; });
     try {
       final access = await _access();
@@ -94,7 +97,7 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
         'first_name': _firstName.text.trim(),
         'last_name': _lastName.text.trim(),
         'city': _city.text.trim(),
-        'country': _country.text.trim(),
+        'primary_country_id': _primaryCountryId,
       });
       final id = profile['id'].toString();
       if (mounted) setState(() => _athleteId = id);
@@ -304,7 +307,53 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
                 if (_athleteId == null) ...[
                   _field(_firstName, 'Prénom', required: true),
                   _field(_lastName, 'Nom', required: true),
-                  _field(_country, 'Pays'),
+                  FutureBuilder<List<dynamic>>(
+                    future: _countriesFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return const Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: Text('Liste des pays indisponible. '
+                              'Le passeport ne peut pas être créé sans pays.'),
+                        );
+                      }
+                      if (!snapshot.hasData) {
+                        return const Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: LinearProgressIndicator(),
+                        );
+                      }
+                      final countries = snapshot.data!
+                          .whereType<Map>()
+                          .where((c) => c['id'] is String && c['name'] is String)
+                          .toList()
+                        ..sort((a, b) =>
+                            a['name'].toString().compareTo(b['name'].toString()));
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: DropdownButtonFormField<String>(
+                          value: _primaryCountryId,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Pays représenté dans SMS Nations',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: [
+                            for (final country in countries)
+                              DropdownMenuItem<String>(
+                                value: country['id'] as String,
+                                child: Text(country['name'] as String),
+                              ),
+                          ],
+                          onChanged: _busy
+                              ? null
+                              : (id) => setState(() => _primaryCountryId = id),
+                          validator: (id) =>
+                              id == null ? 'Choisissez votre pays sportif.' : null,
+                        ),
+                      );
+                    },
+                  ),
                   _field(_city, 'Ville'),
                   _field(_speciality, 'Discipline / spécialité'),
                   _field(_club, 'Club actuel'),
