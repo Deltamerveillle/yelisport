@@ -17,6 +17,8 @@ class AthleteCreate(BaseModel):
     nationality: str | None = Field(None, max_length=100)
     country: str | None = Field(None, max_length=100)
     residence_country_id: uuid.UUID | None = None
+    # Country the athlete declares for SMS Nations grouping (not verified).
+    primary_country_id: uuid.UUID | None = None
     city: str | None = Field(None, max_length=100)
     biography: str | None = None
 
