@@ -9,6 +9,7 @@ import 'package:yelisport/features/home/presentation/sms_space_screen.dart';
 import 'package:yelisport/features/sms24/presentation/fixtures_screen.dart';
 import 'package:yelisport/features/sms24/presentation/news_screen.dart';
 import 'package:yelisport/features/sms_nations/presentation/sms_nations_screen.dart';
+import 'package:yelisport/features/sms_nations/presentation/public_sms_nations_screen.dart';
 import 'package:yelisport/features/sms_connect/presentation/my_opportunities_screen.dart';
 import 'package:yelisport/features/events/presentation/events_screen.dart';
 import 'package:yelisport/features/profile/presentation/profile_screen.dart';
@@ -67,7 +68,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       const FixturesScreen(),
       const NewsScreen(),
       loggedIn ? const SmsNationsScreen()
-          : SmsSpaceScreen(space: SmsSpace.talent),
+          : const PublicSmsNationsScreen(),
       const MyOpportunitiesScreen(),
       loggedIn ? const EventsScreen() : const SignInScreen(),
       loggedIn ? const ProfileScreen() : const SignInScreen(),
