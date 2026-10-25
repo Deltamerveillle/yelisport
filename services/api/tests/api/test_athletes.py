@@ -566,3 +566,89 @@ def test_service_update_can_clear_residence_country() -> None:
 
     assert updated.residence_country_id is None
     assert athlete_repository.updated is athlete
+
+
+def test_enrollment_indexes_declared_primary_country_and_sport(
+    client: TestClient,
+    athlete_dependencies,
+    monkeypatch,
+) -> None:
+    from app.services.athlete_country_eligibility_service import (
+        AthleteCountryEligibilityService,
+    )
+
+    primary_country_id = uuid.UUID("aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa")
+    captured = {}
+
+    async def fake_create(self, data, current_user_id):
+        captured["sport_id"] = data.sport_id
+        captured["country_id"] = data.primary_country_id
+        return athlete_object(user_id=current_user_id)
+
+    async def fake_declare(self, athlete_id, data, current_user_id):
+        captured["athlete_id"] = athlete_id
+        captured["declared_country_id"] = data.country_id
+        captured["is_primary"] = data.is_primary
+        captured["user_id"] = current_user_id
+        return SimpleNamespace()
+
+    monkeypatch.setattr(AthleteService, "create_athlete", fake_create)
+    monkeypatch.setattr(
+        AthleteCountryEligibilityService, "declare_eligibility", fake_declare
+    )
+
+    response = client.post(
+        "/api/v1/athletes",
+        json={
+            "sport_id": str(SPORT_ID),
+            "first_name": "Awa",
+            "last_name": "Kouassi",
+            "primary_country_id": str(primary_country_id),
+        },
+    )
+
+    assert response.status_code == 201
+    assert captured == {
+        "sport_id": SPORT_ID,
+        "country_id": primary_country_id,
+        "athlete_id": ATHLETE_ID,
+        "declared_country_id": primary_country_id,
+        "is_primary": True,
+        "user_id": USER_ID,
+    }
+    assert athlete_dependencies.committed is True
+
+
+def test_enrollment_rolls_back_if_country_linking_fails(
+    client: TestClient,
+    athlete_dependencies,
+    monkeypatch,
+) -> None:
+    from app.services.athlete_country_eligibility_service import (
+        AthleteCountryEligibilityService,
+    )
+
+    async def fake_create(self, data, current_user_id):
+        return athlete_object(user_id=current_user_id)
+
+    async def fake_declare(self, athlete_id, data, current_user_id):
+        raise NotFoundError("Country not found or inactive")
+
+    monkeypatch.setattr(AthleteService, "create_athlete", fake_create)
+    monkeypatch.setattr(
+        AthleteCountryEligibilityService, "declare_eligibility", fake_declare
+    )
+
+    response = client.post(
+        "/api/v1/athletes",
+        json={
+            "sport_id": str(SPORT_ID),
+            "first_name": "Awa",
+            "last_name": "Kouassi",
+            "primary_country_id": str(uuid.uuid4()),
+        },
+    )
+
+    assert response.status_code == 404
+    assert athlete_dependencies.rolled_back is True
+    assert athlete_dependencies.committed is False
