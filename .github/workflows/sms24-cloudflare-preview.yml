@@ -1,0 +1,100 @@
+name: SMS24 Cloudflare Preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_preview:
+        description: "Publier sur Cloudflare Pages en apercu (jamais en production)"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sms24-cloudflare-preview
+  cancel-in-progress: false
+
+jobs:
+  flutter-web:
+    name: Verify and build SMS24 web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the current SMS24 development branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/sms24-portail-live-news-publicite
+          persist-credentials: false
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve Flutter dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+
+      - name: Analyze and test existing Flutter sources
+        working-directory: apps/mobile
+        run: |
+          flutter analyze
+          flutter test
+
+      - name: Add web scaffolding to ephemeral CI checkout
+        working-directory: apps/mobile
+        run: flutter create . --platforms web
+
+      - name: Build SMS24 web for preview
+        working-directory: apps/mobile
+        env:
+          SMS24_API_BASE_URL: https://sms24-backend.onrender.com/api/v1
+          SMS24_SUPABASE_URL: https://zusmceitxslwydijtvtp.supabase.co
+          SMS24_SUPABASE_PUBLISHABLE_KEY: sb_publishable_3R-x3_tsS0B8wA_jO0Snug_n0clXXMU
+        run: |
+          flutter build web --release \
+            --dart-define=APP_ENV=production \
+            --dart-define=API_BASE_URL="$SMS24_API_BASE_URL" \
+            --dart-define=SUPABASE_URL="$SMS24_SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SMS24_SUPABASE_PUBLISHABLE_KEY"
+          test -s build/web/index.html
+
+      - name: Retain build files for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: sms24-flutter-web-preview
+          path: apps/mobile/build/web/
+          if-no-files-found: error
+          retention-days: 7
+
+  cloudflare-preview:
+    name: Publish a preview only with explicit approval
+    if: ${{ inputs.publish_preview == true }}
+    needs: flutter-web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download verified Flutter web build
+        uses: actions/download-artifact@v4
+        with:
+          name: sms24-flutter-web-preview
+          path: ./dist
+
+      - name: Check Pages authentication is configured
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo '::error::GitHub secret CLOUDFLARE_API_TOKEN missing'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo '::error::GitHub variable CLOUDFLARE_ACCOUNT_ID missing'; exit 1; }
+          test -s dist/index.html || { echo '::error::Flutter build artifact not found'; exit 1; }
+
+      - name: Deploy to SMS24 preview branch, never production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@4 pages deploy ./dist \
+            --project-name=sms24-web \
+            --branch=sms24-demo-20261025
