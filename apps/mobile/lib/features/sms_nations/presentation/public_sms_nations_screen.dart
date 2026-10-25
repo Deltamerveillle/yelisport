@@ -22,7 +22,8 @@ class PublicSmsNationsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('SMS Nations')),
       body: RefreshIndicator(
         onRefresh: () async {
-          await ref.refresh(publicNationsAthletesProvider.future);
+          final refreshed = ref.refresh(publicNationsAthletesProvider.future);
+          await refreshed;
         },
         child: ListView(
           padding: const EdgeInsets.all(20),
