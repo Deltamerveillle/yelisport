@@ -46,10 +46,8 @@ async def list_countries(
 @router.get("/{iso2}", response_model=CountryResponse)
 async def get_country(
     iso2: str,
-    current_user: CurrentUser,
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> CountryResponse:
-    del current_user
 
     country = await CountryService(
         CountryRepository(session)
