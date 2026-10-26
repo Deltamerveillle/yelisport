@@ -80,6 +80,7 @@ async def get_passport(
 
     passport = await service.get_passport(
         athlete_id=athlete_id,
+        current_user_id=_current_user_uuid(current_user),
     )
 
     return AthletePassportResponse.model_validate(passport)

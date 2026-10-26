@@ -87,8 +87,10 @@ class AthletePassportService:
     async def get_passport(
         self,
         athlete_id: uuid.UUID,
+        current_user_id: uuid.UUID,
     ) -> AthletePassport:
-        await self._get_athlete(athlete_id)
+        # Private dossier reads require the same ownership check as edits.
+        await self._get_owned_athlete(athlete_id, current_user_id)
 
         passport = await self.passport_repository.get_by_athlete_id(
             athlete_id

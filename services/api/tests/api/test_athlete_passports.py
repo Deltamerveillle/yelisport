@@ -233,8 +233,9 @@ def test_get_passport(
     passport_dependencies,
     monkeypatch,
 ) -> None:
-    async def fake_get(self, athlete_id):
+    async def fake_get(self, athlete_id, current_user_id):
         assert athlete_id == ATHLETE_ID
+        assert current_user_id == USER_ID
         return passport_object()
 
     monkeypatch.setattr(
@@ -258,7 +259,7 @@ def test_missing_passport_returns_404(
     passport_dependencies,
     monkeypatch,
 ) -> None:
-    async def fake_get(self, athlete_id):
+    async def fake_get(self, athlete_id, current_user_id):
         raise NotFoundError("SMS Passport not found")
 
     monkeypatch.setattr(
@@ -416,3 +417,19 @@ def test_non_owner_cannot_delete_passport(
 
     assert response.status_code == 403
     assert passport_dependencies.rolled_back is True
+
+
+def test_non_owner_cannot_read_private_passport(
+    client: TestClient,
+    passport_dependencies,
+    monkeypatch,
+) -> None:
+    async def fake_get(self, athlete_id, current_user_id):
+        assert athlete_id == ATHLETE_ID
+        assert current_user_id == USER_ID
+        raise ForbiddenError("You do not have permission to read this athlete passport")
+
+    monkeypatch.setattr(AthletePassportService, "get_passport", fake_get)
+
+    response = client.get(f"/api/v1/athletes/{ATHLETE_ID}/passport")
+    assert response.status_code == 403
