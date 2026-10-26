@@ -117,6 +117,7 @@ def test_discover_athletes_forwards_filters_and_pagination(
     async def fake_search(self, **kwargs):
         assert kwargs == {
             "sport_id": SPORT_ID,
+            "nationality_country_id": COUNTRY_ID,
             "residence_country_id": COUNTRY_ID,
             "discipline": "Football",
             "category": "Senior",
@@ -139,6 +140,7 @@ def test_discover_athletes_forwards_filters_and_pagination(
         "/api/v1/discover/athletes",
         params={
             "sport_id": str(SPORT_ID),
+            "nationality_country_id": str(COUNTRY_ID),
             "residence_country_id": str(COUNTRY_ID),
             "discipline": "Football",
             "category": "Senior",
