@@ -82,6 +82,11 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
   Future<void> _createAthlete() async {
     if (!_formKey.currentState!.validate()) return;
     if (_primaryCountryId == null || _residenceCountryId == null) return;
+    if (!_publicVisibilityOptIn) {
+      setState(() => _error = 'Pour créer un passeport public SMS24, '
+          'vous devez accepter la publication de votre profil sportif.');
+      return;
+    }
     setState(() { _busy = true; _error = null; });
     try {
       final access = await _access();
@@ -415,12 +420,13 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
                     onChanged: _busy ? null : (allowed) => setState(
                       () => _publicVisibilityOptIn = allowed ?? false,
                     ),
-                    title: const Text('Rendre mon profil visible dans SMS Nations et SMS Discover'),
+                    title: const Text('J’accepte la visibilité de mon profil sportif avec mon abonnement SMS24'),
                     subtitle: const Text(
                       'J’autorise SMS24 à présenter mon profil sportif et les '
                       'informations sélectionnées. Les photos et vidéos restent '
                       'soumis à vérification avant publication. '
-                      'Cette autorisation peut être retirée.',
+                      'L’abonnement n’est pas une garantie de recrutement. '
+                      'Cette autorisation peut être retirée, ce qui suspend la diffusion.',
                     ),
                     controlAffinity: ListTileControlAffinity.leading,
                   ),
