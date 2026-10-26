@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy import Select, select
+from sqlalchemy.sql.selectable import Exists
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.athlete import Athlete
@@ -26,7 +27,7 @@ class DiscoverAthleteRepository:
         self.session = session
 
     @staticmethod
-    def _has_current_paid_subscription():
+    def _has_current_paid_subscription() -> Exists:
         # Public visibility is granted only to a verified, unexpired
         # paid subscription. Pending payments and internal trials are excluded.
         return (
