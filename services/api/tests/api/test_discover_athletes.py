@@ -297,12 +297,11 @@ def test_discover_athlete_profile_returns_404_when_not_discoverable(
 
 
 def test_public_discovery_requires_paid_active_subscription_in_query() -> None:
-    from datetime import UTC, datetime
+    from sqlalchemy import select
     from sqlalchemy.dialects import postgresql
 
-    from app.repositories.discover_athlete_repository import DiscoverAthleteRepository
     from app.models.athlete import Athlete
-    from sqlalchemy import select
+    from app.repositories.discover_athlete_repository import DiscoverAthleteRepository
 
     condition = DiscoverAthleteRepository._has_current_paid_subscription()
     statement = select(Athlete.id).where(condition)
