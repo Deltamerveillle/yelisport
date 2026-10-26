@@ -1,11 +1,10 @@
-"""Authenticated country catalogue endpoints."""
+"""Public read-only country catalogue for SMS Nations and athlete onboarding."""
 
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies.auth import CurrentUser
 from app.db.session import get_db_session
 from app.repositories.country_repository import CountryRepository
 from app.schemas.country import CountryResponse
@@ -16,7 +15,6 @@ router = APIRouter(prefix="/countries", tags=["countries"])
 
 @router.get("", response_model=list[CountryResponse])
 async def list_countries(
-    current_user: CurrentUser,
     session: Annotated[AsyncSession, Depends(get_db_session)],
     continent_code: Annotated[
         str | None,
@@ -27,7 +25,6 @@ async def list_countries(
         Query(min_length=2, max_length=80),
     ] = None,
 ) -> list[CountryResponse]:
-    del current_user
 
     countries = await CountryService(
         CountryRepository(session)
