@@ -7,6 +7,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.athlete import Athlete
+from app.models.athlete_country_eligibility import AthleteCountryEligibility
 from app.models.athlete_passport import AthletePassport
 
 
@@ -26,6 +27,7 @@ class DiscoverAthleteRepository:
         self,
         *,
         sport_id: uuid.UUID | None = None,
+        nationality_country_id: uuid.UUID | None = None,
         residence_country_id: uuid.UUID | None = None,
         discipline: str | None = None,
         category: str | None = None,
@@ -47,6 +49,17 @@ class DiscoverAthleteRepository:
 
         if sport_id is not None:
             stmt = stmt.where(Athlete.sport_id == sport_id)
+
+        if nationality_country_id is not None:
+            # Multiple nationalities are supported without duplicate athlete rows.
+            stmt = stmt.where(
+                select(AthleteCountryEligibility.id)
+                .where(
+                    AthleteCountryEligibility.athlete_id == Athlete.id,
+                    AthleteCountryEligibility.country_id == nationality_country_id,
+                )
+                .exists()
+            )
 
         if residence_country_id is not None:
             stmt = stmt.where(
