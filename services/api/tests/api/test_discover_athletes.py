@@ -117,6 +117,7 @@ def test_discover_athletes_forwards_filters_and_pagination(
     async def fake_search(self, **kwargs):
         assert kwargs == {
             "sport_id": SPORT_ID,
+            "nationality_country_id": COUNTRY_ID,
             "residence_country_id": COUNTRY_ID,
             "discipline": "Football",
             "category": "Senior",
@@ -139,6 +140,7 @@ def test_discover_athletes_forwards_filters_and_pagination(
         "/api/v1/discover/athletes",
         params={
             "sport_id": str(SPORT_ID),
+            "nationality_country_id": str(COUNTRY_ID),
             "residence_country_id": str(COUNTRY_ID),
             "discipline": "Football",
             "category": "Senior",
@@ -292,3 +294,23 @@ def test_discover_athlete_profile_returns_404_when_not_discoverable(
     )
 
     assert response.status_code == 404
+
+
+def test_public_discovery_requires_paid_active_subscription_in_query() -> None:
+    from sqlalchemy import select
+    from sqlalchemy.dialects import postgresql
+
+    from app.models.athlete import Athlete
+    from app.repositories.discover_athlete_repository import DiscoverAthleteRepository
+
+    condition = DiscoverAthleteRepository._has_current_paid_subscription()
+    statement = select(Athlete.id).where(condition)
+    sql = str(statement.compile(
+        dialect=postgresql.dialect(),
+        compile_kwargs={"literal_binds": True},
+    )).lower()
+    assert "subscriptions.user_id = athletes.user_id" in sql
+    assert "subscriptions.status = 'active'" in sql
+    assert "subscriptions.plan_code != 'free'" in sql
+    assert "current_period_end is not null" in sql
+    assert "current_period_end >" in sql

@@ -9,11 +9,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies.auth import CurrentUser
 from app.core.exceptions import ForbiddenError
 from app.db.session import get_db_session
+from app.repositories.athlete_country_eligibility_repository import (
+    AthleteCountryEligibilityRepository,
+)
 from app.repositories.athlete_performance_repository import AthletePerformanceRepository
 from app.repositories.athlete_repository import AthleteRepository
 from app.repositories.country_repository import CountryRepository
 from app.schemas.athlete import AthleteCreate, AthleteResponse, AthleteUpdate
+from app.schemas.athlete_country_eligibility import AthleteCountryEligibilityCreate
 from app.schemas.athlete_profile import AthleteProfileResponse
+from app.services.athlete_country_eligibility_service import (
+    AthleteCountryEligibilityService,
+)
 from app.services.athlete_profile_service import AthleteProfileService
 from app.services.athlete_service import AthleteService
 from app.services.subscription_service import SubscriptionService
@@ -49,6 +56,21 @@ async def create_athlete(
             payload,
             _current_user_uuid(current_user),
         )
+        if payload.primary_country_id is not None:
+            # Register the country/sport classification atomically with the athlete.
+            # A declaration never implies verified eligibility or public visibility.
+            await AthleteCountryEligibilityService(
+                AthleteCountryEligibilityRepository(session),
+                AthleteRepository(session),
+                CountryRepository(session),
+            ).declare_eligibility(
+                athlete_id=athlete.id,
+                data=AthleteCountryEligibilityCreate(
+                    country_id=payload.primary_country_id,
+                    is_primary=True,
+                ),
+                current_user_id=_current_user_uuid(current_user),
+            )
         await session.commit()
         return AthleteResponse.model_validate(athlete)
     except Exception:

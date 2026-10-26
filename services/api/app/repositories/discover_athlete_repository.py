@@ -2,12 +2,16 @@
 
 import uuid
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.selectable import Exists
 
 from app.models.athlete import Athlete
+from app.models.athlete_country_eligibility import AthleteCountryEligibility
 from app.models.athlete_passport import AthletePassport
+from app.models.subscription import Subscription
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,10 +26,27 @@ class DiscoverAthleteRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
+    @staticmethod
+    def _has_current_paid_subscription() -> Exists:
+        # Public visibility is granted only to a verified, unexpired
+        # paid subscription. Pending payments and internal trials are excluded.
+        return (
+            select(Subscription.id)
+            .where(
+                Subscription.user_id == Athlete.user_id,
+                Subscription.status == "active",
+                Subscription.plan_code != "free",
+                Subscription.current_period_end.is_not(None),
+                Subscription.current_period_end > datetime.now(UTC),
+            )
+            .exists()
+        )
+
     async def search(
         self,
         *,
         sport_id: uuid.UUID | None = None,
+        nationality_country_id: uuid.UUID | None = None,
         residence_country_id: uuid.UUID | None = None,
         discipline: str | None = None,
         category: str | None = None,
@@ -43,10 +64,22 @@ class DiscoverAthleteRepository:
                 AthletePassport.athlete_id == Athlete.id,
             )
             .where(AthletePassport.available_for_opportunities.is_(True))
+            .where(self._has_current_paid_subscription())
         )
 
         if sport_id is not None:
             stmt = stmt.where(Athlete.sport_id == sport_id)
+
+        if nationality_country_id is not None:
+            # Multiple nationalities are supported without duplicate athlete rows.
+            stmt = stmt.where(
+                select(AthleteCountryEligibility.id)
+                .where(
+                    AthleteCountryEligibility.athlete_id == Athlete.id,
+                    AthleteCountryEligibility.country_id == nationality_country_id,
+                )
+                .exists()
+            )
 
         if residence_country_id is not None:
             stmt = stmt.where(
@@ -100,6 +133,7 @@ class DiscoverAthleteRepository:
             .where(
                 Athlete.id == athlete_id,
                 AthletePassport.available_for_opportunities.is_(True),
+                self._has_current_paid_subscription(),
             )
         )
 

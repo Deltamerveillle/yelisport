@@ -23,10 +23,14 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
   final _city = TextEditingController();
-  final _country = TextEditingController();
+  // Nationality determines SMS Nations placement, not where the athlete lives.
+  String? _primaryCountryId;
+  String? _residenceCountryId;
+  late final Future<List<dynamic>> _countriesFuture;
   final _speciality = TextEditingController();
   final _club = TextEditingController();
   final _summary = TextEditingController();
+  bool _publicVisibilityOptIn = false;
   bool _busy = false;
   String? _athleteId;
   String? _error;
@@ -38,6 +42,7 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
   void initState() {
     super.initState();
     _accessFuture = _access();
+    _countriesFuture = ref.read(apiClientProvider).getList('/countries');
   }
 
   Future<void> _resumeProfile() async {
@@ -61,7 +66,7 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
   @override
   void dispose() {
     for (final c in [
-      _firstName, _lastName, _city, _country, _speciality, _club, _summary,
+      _firstName, _lastName, _city, _speciality, _club, _summary,
     ]) { c.dispose(); }
     super.dispose();
   }
@@ -76,6 +81,12 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
 
   Future<void> _createAthlete() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_primaryCountryId == null || _residenceCountryId == null) return;
+    if (!_publicVisibilityOptIn) {
+      setState(() => _error = 'Pour créer un passeport public SMS24, '
+          'vous devez accepter la publication de votre profil sportif.');
+      return;
+    }
     setState(() { _busy = true; _error = null; });
     try {
       final access = await _access();
@@ -83,6 +94,11 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
         throw StateError('Abonnement actif requis pour continuer.');
       }
       final api = ref.read(apiClientProvider);
+      final countries = await _countriesFuture;
+      String countryName(String? id) => countries
+          .whereType<Map>()
+          .firstWhere((country) => country['id'] == id)['name']
+          .toString();
       final profiles = await api.getList('/athletes/me');
       if (profiles.any((raw) => raw is Map &&
           raw['sport_id']?.toString() == widget.sport.id)) {
@@ -94,7 +110,12 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
         'first_name': _firstName.text.trim(),
         'last_name': _lastName.text.trim(),
         'city': _city.text.trim(),
-        'country': _country.text.trim(),
+        // Nationality and current residence are distinct. A national in the
+        // diaspora remains indexed in their nationality's SMS Nations page.
+        'nationality': countryName(_primaryCountryId),
+        'primary_country_id': _primaryCountryId,
+        'residence_country_id': _residenceCountryId,
+        'country': countryName(_residenceCountryId),
       });
       final id = profile['id'].toString();
       if (mounted) setState(() => _athleteId = id);
@@ -103,6 +124,7 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
             ? widget.sport.name : _speciality.text.trim(),
         'club_name': _club.text.trim(),
         'sporting_summary': _summary.text.trim(),
+        'available_for_opportunities': _publicVisibilityOptIn,
       });
       if (mounted) setState(() => _athleteId = id);
     } catch (_) {
@@ -304,11 +326,110 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
                 if (_athleteId == null) ...[
                   _field(_firstName, 'Prénom', required: true),
                   _field(_lastName, 'Nom', required: true),
-                  _field(_country, 'Pays'),
+                  FutureBuilder<List<dynamic>>(
+                    future: _countriesFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return const Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: Text('Liste des pays indisponible. '
+                              'Réessayez ultérieurement.'),
+                        );
+                      }
+                      if (!snapshot.hasData) {
+                        return const Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: LinearProgressIndicator(),
+                        );
+                      }
+                      final countries = snapshot.data!
+                          .whereType<Map>()
+                          .where((c) => c['id'] is String && c['name'] is String)
+                          .toList()
+                        ..sort((a, b) => a['name']
+                            .toString()
+                            .compareTo(b['name'].toString()));
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _primaryCountryId,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Nationalité (pays SMS Nations)',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: [
+                                for (final country in countries)
+                                  DropdownMenuItem<String>(
+                                    value: country['id'] as String,
+                                    child: Text(country['name'] as String),
+                                  ),
+                              ],
+                              onChanged: _busy ? null : (id) =>
+                                  setState(() => _primaryCountryId = id),
+                              validator: (id) => id == null
+                                  ? 'Choisissez votre nationalité.'
+                                  : null,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _residenceCountryId,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Pays de résidence actuel',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: [
+                                for (final country in countries)
+                                  DropdownMenuItem<String>(
+                                    value: country['id'] as String,
+                                    child: Text(country['name'] as String),
+                                  ),
+                              ],
+                              onChanged: _busy ? null : (id) =>
+                                  setState(() => _residenceCountryId = id),
+                              validator: (id) => id == null
+                                  ? 'Indiquez votre pays de résidence.'
+                                  : null,
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: Text(
+                              'Un Ivoirien résidant en France figure sous '
+                              'Côte d’Ivoire dans SMS Nations, avec France '
+                              'comme résidence. La nationalité déclarée ne '
+                              'constitue pas une éligibilité sportive vérifiée.',
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                   _field(_city, 'Ville'),
                   _field(_speciality, 'Discipline / spécialité'),
                   _field(_club, 'Club actuel'),
                   _field(_summary, 'Parcours sportif', lines: 3),
+                  CheckboxListTile(
+                    value: _publicVisibilityOptIn,
+                    onChanged: _busy ? null : (allowed) => setState(
+                      () => _publicVisibilityOptIn = allowed ?? false,
+                    ),
+                    title: const Text('J’accepte la visibilité de mon profil sportif avec mon abonnement SMS24'),
+                    subtitle: const Text(
+                      'J’autorise SMS24 à présenter mon profil sportif et les '
+                      'informations sélectionnées. Les photos et vidéos restent '
+                      'soumis à vérification avant publication. '
+                      'L’abonnement n’est pas une garantie de recrutement. '
+                      'Cette autorisation peut être retirée, ce qui suspend la diffusion.',
+                    ),
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
                   FilledButton(
                     onPressed: _busy ? null : _createAthlete,
                     child: Text(_busy ? 'Enregistrement…' : 'Créer mon passeport'),

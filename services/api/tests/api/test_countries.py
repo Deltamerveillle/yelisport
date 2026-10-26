@@ -192,3 +192,16 @@ def test_invalid_continent_code_returns_422(
     )
 
     assert response.status_code == 422
+
+
+def test_country_catalogue_is_public_for_anonymous_athletes(
+    client: TestClient, monkeypatch,
+) -> None:
+    async def fake_list(self, *, continent_code=None, search=None):
+        return [country_object()]
+
+    monkeypatch.setattr(CountryService, "list_countries", fake_list)
+
+    response = client.get("/api/v1/countries")
+    assert response.status_code == 200
+    assert response.json()[0]["iso2"] == "CI"

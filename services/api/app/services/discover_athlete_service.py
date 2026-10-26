@@ -22,6 +22,7 @@ class DiscoverAthleteService:
         self,
         *,
         sport_id: uuid.UUID | None = None,
+        nationality_country_id: uuid.UUID | None = None,
         residence_country_id: uuid.UUID | None = None,
         discipline: str | None = None,
         category: str | None = None,
@@ -34,6 +35,7 @@ class DiscoverAthleteService:
     ) -> list[DiscoverAthleteResponse]:
         results = await self.repository.search(
             sport_id=sport_id,
+            nationality_country_id=nationality_country_id,
             residence_country_id=residence_country_id,
             discipline=discipline,
             category=category,

@@ -57,6 +57,7 @@ async def search_discover_athletes(
         Depends(get_db_session),
     ],
     sport_id: uuid.UUID | None = None,
+    nationality_country_id: uuid.UUID | None = None,
     residence_country_id: uuid.UUID | None = None,
     discipline: str | None = Query(default=None, max_length=120),
     category: str | None = Query(default=None, max_length=120),
@@ -71,6 +72,7 @@ async def search_discover_athletes(
 
     return await DiscoverAthleteService(session).search(
         sport_id=sport_id,
+        nationality_country_id=nationality_country_id,
         residence_country_id=residence_country_id,
         discipline=discipline,
         category=category,
