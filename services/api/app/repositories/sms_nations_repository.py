@@ -16,8 +16,8 @@ from app.models.athlete_passport import AthletePassport
 from app.models.athlete_performance import AthletePerformance
 from app.models.country import Country
 from app.models.discover_video import DiscoverVideo
-from app.models.subscription import Subscription
 from app.models.sport import Sport
+from app.models.subscription import Subscription
 from app.models.talent_application import TalentApplication
 from app.models.talent_evaluation import TalentEvaluation
 from app.models.user import Profile
