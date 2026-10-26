@@ -482,3 +482,19 @@ async def test_performance_filter_is_correlated_to_athlete_and_sport():
         "athlete_performances.sport_id = athletes.sport_id"
         in sql
     )
+
+
+@pytest.mark.asyncio
+async def test_nations_directory_requires_paid_active_subscription_and_opt_in():
+    session = FakeSession(total=0)
+    repository = SMSNationsRepository(session)
+
+    await repository.search_athletes(eligibility_country_id=CI_ID, sport_id=SPORT_ID)
+
+    for statement in (session.execute_statements[0], session.scalar_statements[0]):
+        sql = sql_text(statement).lower()
+        assert "subscriptions.user_id = athletes.user_id" in sql
+        assert "subscriptions.status = 'active'" in sql
+        assert "subscriptions.plan_code != 'free'" in sql
+        assert "current_period_end is not null" in sql
+        assert "available_for_opportunities is true" in sql
