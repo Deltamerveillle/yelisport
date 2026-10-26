@@ -9,7 +9,6 @@ import pytest
 from app.core.exceptions import ForbiddenError, NotFoundError
 from app.services.sms_proof_service import SMSProofService
 
-
 PERFORMANCE_ID = uuid.uuid4()
 ADMIN_ID = uuid.uuid4()
 

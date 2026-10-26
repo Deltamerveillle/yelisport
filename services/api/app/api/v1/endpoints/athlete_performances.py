@@ -1,6 +1,7 @@
 """SMS Performance API endpoints."""
 
 import uuid
+from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import CurrentUser
 from app.db.session import get_db_session
+from app.models.athlete_performance import AthletePerformance
 from app.schemas.athlete_performance import (
     AthletePerformanceCreate,
     AthletePerformanceResponse,
@@ -16,7 +18,6 @@ from app.schemas.athlete_performance import (
 from app.services.athlete_performance_service import (
     AthletePerformanceService,
 )
-
 
 router = APIRouter(
     tags=["SMS Performance"],
@@ -48,7 +49,7 @@ async def create_athlete_performance(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> AthletePerformance:
     """Create a self-declared performance."""
 
     service = _service(session)
@@ -77,7 +78,7 @@ async def list_athlete_performances(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> Sequence[AthletePerformance]:
     """List performances belonging to an owned athlete."""
 
     return await _service(
@@ -100,7 +101,7 @@ async def get_athlete_performance(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> AthletePerformance:
     """Get one performance belonging to an owned athlete."""
 
     return await _service(session).get_performance(
@@ -123,7 +124,7 @@ async def update_athlete_performance(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> AthletePerformance:
     """Update one non-verified performance."""
 
     service = _service(session)
@@ -154,7 +155,7 @@ async def delete_athlete_performance(
         AsyncSession,
         Depends(get_db_session),
     ],
-):
+) -> Response:
     """Delete one non-verified performance."""
 
     service = _service(session)

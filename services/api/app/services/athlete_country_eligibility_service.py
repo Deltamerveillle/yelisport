@@ -3,6 +3,7 @@
 import uuid
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.models.athlete import Athlete
 from app.models.athlete_country_eligibility import AthleteCountryEligibility
 from app.repositories.athlete_country_eligibility_repository import (
     AthleteCountryEligibilityRepository,
@@ -29,7 +30,7 @@ class AthleteCountryEligibilityService:
         self,
         athlete_id: uuid.UUID,
         current_user_id: uuid.UUID,
-    ):
+    ) -> Athlete:
         athlete = await self.athlete_repository.get_by_id(
             athlete_id,
             for_update=True,

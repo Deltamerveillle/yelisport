@@ -1,12 +1,12 @@
 """Tests for SMS Nations discovery repository."""
 
 import uuid
+from datetime import UTC
 
 import pytest
 from sqlalchemy.dialects import postgresql
 
 from app.repositories.sms_nations_repository import SMSNationsRepository
-
 
 ATHLETE_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 SPORT_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
@@ -343,7 +343,7 @@ async def test_latest_completed_talent_evaluation_is_selected():
 
 @pytest.mark.asyncio
 async def test_result_exposes_only_aggregate_talent_data():
-    from datetime import datetime, timezone
+    from datetime import datetime
     from decimal import Decimal
 
     completed_at = datetime(
@@ -352,7 +352,7 @@ async def test_result_exposes_only_aggregate_talent_data():
         4,
         18,
         30,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
 
     session = FakeSession(
@@ -482,3 +482,19 @@ async def test_performance_filter_is_correlated_to_athlete_and_sport():
         "athlete_performances.sport_id = athletes.sport_id"
         in sql
     )
+
+
+@pytest.mark.asyncio
+async def test_nations_directory_requires_paid_active_subscription_and_opt_in():
+    session = FakeSession(total=0)
+    repository = SMSNationsRepository(session)
+
+    await repository.search_athletes(eligibility_country_id=CI_ID, sport_id=SPORT_ID)
+
+    for statement in (session.execute_statements[0], session.scalar_statements[0]):
+        sql = sql_text(statement).lower()
+        assert "subscriptions.user_id = athletes.user_id" in sql
+        assert "subscriptions.status = 'active'" in sql
+        assert "subscriptions.plan_code != 'free'" in sql
+        assert "current_period_end is not null" in sql
+        assert "available_for_opportunities is true" in sql

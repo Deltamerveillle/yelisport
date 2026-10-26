@@ -7,8 +7,9 @@ class ApiClient {
         _dio = Dio(
           BaseOptions(
             baseUrl: baseUrl.toString(),
-            connectTimeout: const Duration(seconds: 10),
-            receiveTimeout: const Duration(seconds: 10),
+            connectTimeout: const Duration(seconds: 30),
+            // The free Render backend may need time to wake from an idle state.
+            receiveTimeout: const Duration(seconds: 75),
             headers: const {'Accept': 'application/json'},
           ),
         );
@@ -16,17 +17,46 @@ class ApiClient {
   final Dio _dio;
   final SupabaseClient _supabase;
 
+  /// Retry only idempotent reads after transient network/gateway failures.
+  /// A 401/403 or other application response is never retried.
+  Future<Response<T>> _readWithRetry<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    for (var attempt = 0; ; attempt++) {
+      try {
+        final token = _supabase.auth.currentSession?.accessToken;
+        return await _dio.get<T>(
+          path,
+          queryParameters: queryParameters,
+          options: Options(
+            headers: token == null ? null : {'Authorization': 'Bearer $token'},
+          ),
+        );
+      } on DioException catch (error) {
+        if (attempt >= 1 || !_isTransientReadFailure(error)) rethrow;
+        await Future<void>.delayed(const Duration(seconds: 2));
+      }
+    }
+  }
+
+  static bool _isTransientReadFailure(DioException error) {
+    if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.connectionError) {
+      return true;
+    }
+    final status = error.response?.statusCode;
+    return status == 502 || status == 503 || status == 504;
+  }
+
   Future<List<dynamic>> getList(
     String path, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    final token = _supabase.auth.currentSession?.accessToken;
-    final response = await _dio.get<List<dynamic>>(
+    final response = await _readWithRetry<List<dynamic>>(
       path,
       queryParameters: queryParameters,
-      options: Options(
-        headers: token == null ? null : {'Authorization': 'Bearer $token'},
-      ),
     );
     return response.data ?? const [];
   }
@@ -35,13 +65,9 @@ class ApiClient {
     String path, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    final token = _supabase.auth.currentSession?.accessToken;
-    final response = await _dio.get<Map<String, dynamic>>(
+    final response = await _readWithRetry<Map<String, dynamic>>(
       path,
       queryParameters: queryParameters,
-      options: Options(
-        headers: token == null ? null : {'Authorization': 'Bearer $token'},
-      ),
     );
     return response.data ?? const {};
   }

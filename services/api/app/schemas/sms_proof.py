@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class SMSProofDecisionRequest(BaseModel):
     decision: Literal["declared", "documented", "verified"]
     reason: str = Field(min_length=1, max_length=5000)
-    evidence: dict = Field(default_factory=dict)
+    evidence: dict[str, Any] = Field(default_factory=dict)
 
 
 class SMSProofVerificationResponse(BaseModel):
@@ -21,5 +21,5 @@ class SMSProofVerificationResponse(BaseModel):
     verifier_user_id: uuid.UUID
     decision: Literal["declared", "documented", "verified"]
     reason: str
-    evidence: dict
+    evidence: dict[str, Any]
     created_at: datetime

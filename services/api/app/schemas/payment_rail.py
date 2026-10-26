@@ -1,7 +1,7 @@
 """Internal rail contracts. Normalized PSP evidence is not a trusted SMS event."""
 
 import uuid
-from typing import Annotated, Literal, Protocol
+from typing import Annotated, Any, Literal, Protocol
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
@@ -14,7 +14,7 @@ class RailMessage(BaseModel):
 
     @field_validator("*", check_fields=False)
     @classmethod
-    def safe_text(cls, value):
+    def safe_text(cls, value: Any) -> Any:
         if isinstance(value, str) and (not value.strip() or "\x00" in value):
             raise ValueError("Invalid rail text")
         return value

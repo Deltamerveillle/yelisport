@@ -1,6 +1,7 @@
 """Secure SMS Proof verification decisions and audit history."""
 
 import uuid
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +34,7 @@ class SMSProofService:
         verifier_user_id: uuid.UUID,
         decision: str,
         reason: str,
-        evidence: dict | None = None,
+        evidence: dict[str, Any] | None = None,
     ) -> AthletePerformanceVerification:
         """Record a decision and update the performance atomically."""
 

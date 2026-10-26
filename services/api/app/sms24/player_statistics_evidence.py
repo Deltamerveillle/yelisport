@@ -7,6 +7,7 @@ AthletePerformance and this module never creates or infers human identity.
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,8 +26,8 @@ class AthleteStatisticsEvidence:
     athlete_external_id: str
     scope: str
     period_label: str | None
-    metrics: dict
-    metadata: dict
+    metrics: dict[str, Any]
+    metadata: dict[str, Any]
     fetched_at: datetime
     source_updated_at: datetime | None
 

@@ -10,7 +10,6 @@ from app.db.session import get_db_session
 from app.schemas.auth import AuthUser
 from app.services.country_service import CountryService
 
-
 USER_ID = uuid.UUID("28bbf25e-8d42-4a0a-8bc8-0f41be0fc114")
 CI_ID = uuid.UUID("12d66c6f-f5c7-4f17-a42b-a7933572320d")
 
@@ -193,3 +192,16 @@ def test_invalid_continent_code_returns_422(
     )
 
     assert response.status_code == 422
+
+
+def test_country_catalogue_is_public_for_anonymous_athletes(
+    client: TestClient, monkeypatch,
+) -> None:
+    async def fake_list(self, *, continent_code=None, search=None):
+        return [country_object()]
+
+    monkeypatch.setattr(CountryService, "list_countries", fake_list)
+
+    response = client.get("/api/v1/countries")
+    assert response.status_code == 200
+    assert response.json()[0]["iso2"] == "CI"

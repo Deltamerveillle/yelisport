@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     DateTime,
@@ -58,7 +59,7 @@ class TalentSubmissionItem(Base):
         nullable=True,
     )
 
-    metadata_json: Mapped[dict | None] = mapped_column(
+    metadata_json: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
     )

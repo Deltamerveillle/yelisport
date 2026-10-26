@@ -7,7 +7,7 @@ canonical identity. This layer never resolves, creates, or infers a human identi
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.sport import Sport
@@ -104,7 +104,7 @@ class PlayerStatisticsTargetDiscovery:
                         SportsCompetitor.external_id.collate("C")
                         > after_player_external_id
                         if after_player_external_id is not None
-                        else True,
+                        else true(),
                     )
                     .order_by(SportsCompetitor.external_id.collate("C"))
                     .limit(self.max_players + 1)

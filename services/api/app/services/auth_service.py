@@ -2,11 +2,10 @@
 
 from typing import Any
 
-from supabase import Client, create_client
-
 from app.core.config import Settings, get_settings
 from app.core.exceptions import ApplicationError
 from app.schemas.auth import AuthSession, AuthUser, SignUpResponse
+from supabase import Client, create_client
 
 
 class AuthService:
@@ -76,6 +75,10 @@ class AuthService:
             raise ApplicationError(
                 "Jeton invalide ou expiré", code="invalid_access_token", status_code=401
             ) from exc
+        if response is None:
+            raise ApplicationError(
+                "Jeton invalide ou expiré", code="invalid_access_token", status_code=401
+            )
         return self._user(response.user)
 
     def sign_out(self, access_token: str) -> None:

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import time
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -16,10 +16,11 @@ from app.sms24.providers.base import (
     ProviderParticipant,
     SportsDataProvider,
 )
-
 from app.sms24.providers.errors import ProviderAccessRestrictedError
 from app.sms24.providers.standings import (
-    ProviderStandingsRequest, ProviderStandingsResult, validate_standings_request,
+    ProviderStandingsRequest,
+    ProviderStandingsResult,
+    validate_standings_request,
 )
 from app.sms24.providers.standings_normalization import normalize_api_football_standing
 
@@ -87,7 +88,7 @@ class APIFootballProvider(SportsDataProvider):
         if sport_slug not in (None, "football"):
             return ProviderFetchResult(
                 fixtures=[],
-                fetched_at=datetime.now(timezone.utc),
+                fetched_at=datetime.now(UTC),
                 raw_count=0,
             )
 
@@ -148,7 +149,7 @@ class APIFootballProvider(SportsDataProvider):
 
         return ProviderFetchResult(
             fixtures=fixtures,
-            fetched_at=datetime.now(timezone.utc),
+            fetched_at=datetime.now(UTC),
             raw_count=len(raw_response),
         )
 
@@ -188,10 +189,10 @@ class APIFootballProvider(SportsDataProvider):
                     row.external_competition_id = str(league["id"])
                     row.external_season_id = str(league["season"])
                     rows.append(row)
-        return ProviderStandingsResult(rows=rows, fetched_at=datetime.now(timezone.utc))
+        return ProviderStandingsResult(rows=rows, fetched_at=datetime.now(UTC))
 
     async def check_health(self) -> ProviderHealthResult:
-        checked_at = datetime.now(timezone.utc)
+        checked_at = datetime.now(UTC)
         started = time.perf_counter()
 
         try:

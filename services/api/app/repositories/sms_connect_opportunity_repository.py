@@ -1,9 +1,13 @@
 """Opportunity persistence and explicitly projected, ownership-scoped reads."""
 
 import uuid
+from collections.abc import Sequence
+from typing import Any, cast
 
 from sqlalchemy import select
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Select
 
 from app.models.athlete import Athlete
 from app.models.sms_connect_interest import SMSConnectInterest as Interest
@@ -19,13 +23,16 @@ class SMSConnectOpportunityRepository:
         return await self.session.get(Opportunity, opportunity_id)
 
     async def get_for_interest_for_update(self, interest_id: uuid.UUID) -> Opportunity | None:
-        return await self.session.scalar(
+        return cast(
+            Opportunity | None,
+            await self.session.scalar(
             select(Opportunity)
             .where(
                 Opportunity.interest_id == interest_id,
             )
             .with_for_update()
             .execution_options(populate_existing=True)
+            ),
         )
 
     async def create(self, opportunity: Opportunity) -> Opportunity:
@@ -38,7 +45,7 @@ class SMSConnectOpportunityRepository:
         await self.session.flush()
 
     @staticmethod
-    def _read_query():
+    def _read_query() -> Select[Any]:
         # Neither user IDs nor personal contact fields are loaded into the response.
         return select(
             Opportunity.id,
@@ -55,13 +62,13 @@ class SMSConnectOpportunityRepository:
             Interest.message,
         ).join(Interest, Interest.id == Opportunity.interest_id)
 
-    async def get_response(self, opportunity_id: uuid.UUID):
+    async def get_response(self, opportunity_id: uuid.UUID) -> RowMapping:
         result = await self.session.execute(
             self._read_query().where(Opportunity.id == opportunity_id)
         )
         return result.mappings().one()
 
-    async def list_for_athlete(self, user_id: uuid.UUID):
+    async def list_for_athlete(self, user_id: uuid.UUID) -> Sequence[RowMapping]:
         result = await self.session.execute(
             self._read_query()
             .join(
@@ -73,7 +80,7 @@ class SMSConnectOpportunityRepository:
         )
         return result.mappings().all()
 
-    async def list_for_requester(self, user_id: uuid.UUID):
+    async def list_for_requester(self, user_id: uuid.UUID) -> Sequence[RowMapping]:
         result = await self.session.execute(
             self._read_query()
             .where(

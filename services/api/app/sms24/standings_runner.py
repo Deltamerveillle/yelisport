@@ -85,23 +85,27 @@ class StandingsProviderRunner:
     ) -> StandingsRunnerResult:
         if not targets or any(not isinstance(slug, str) or not slug.strip() for slug in targets):
             raise ValueError("Supply explicit standings provider mappings")
-        for slug, target in targets.items():
-            validate_standings_request(target)
-            if slug == "api-football" and target.league_external_id is None:
+        for slug, requested_target in targets.items():
+            validate_standings_request(requested_target)
+            if slug == "api-football" and requested_target.league_external_id is None:
                 raise ValueError("API-Football standings require a league mapping")
         if await self.session.get(SportsSeason, season_id) is None:
             raise ValueError("Standings require an existing canonical season")
         sources = await self.repository.list_active_sources_for_capability("standings")
         # Ineligible explicit targets are recorded in slug order without probing or health writes.
-        attempts = [SMS24ProviderAttempt(slug, False, "standings_capability_not_active")
-                    for slug in sorted(set(targets) - set(sources))]
+        attempts = [
+            SMS24ProviderAttempt(slug, False, "standings_capability_not_active")
+            for slug in sorted(set(targets) - set(sources))
+        ]
         for slug in sources:
             target = targets.get(slug)
             if target is None:
                 continue
             source = await self.repository.get_active_source_for_capability(slug, "standings")
             if source is None:
-                attempts.append(SMS24ProviderAttempt(slug, False, "standings_capability_not_active"))
+                attempts.append(
+                    SMS24ProviderAttempt(slug, False, "standings_capability_not_active")
+                )
                 continue
             source_id = source.id
             try:

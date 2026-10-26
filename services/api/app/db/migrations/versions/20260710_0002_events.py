@@ -73,4 +73,4 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("event_registrations")
     op.drop_table("events")
-    sa.Enum(name="registration_status").drop(op.get_bind())
+    sa.Enum(name="registration_status").drop(op.get_bind())  # type: ignore[no-untyped-call]

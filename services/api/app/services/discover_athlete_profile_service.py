@@ -6,6 +6,7 @@ from app.core.exceptions import NotFoundError
 from app.repositories.athlete_performance_repository import AthletePerformanceRepository
 from app.repositories.discover_athlete_repository import DiscoverAthleteRepository
 from app.repositories.discover_video_repository import DiscoverVideoRepository
+from app.schemas.athlete_passport import AthletePassportResponse
 from app.schemas.athlete_performance import AthletePerformanceResponse
 from app.schemas.discover_athlete import (
     DiscoverAthleteIdentityResponse,
@@ -69,7 +70,11 @@ class DiscoverAthleteProfileService:
 
         return DiscoverAthleteProfileResponse(
             athlete=DiscoverAthleteIdentityResponse.model_validate(athlete),
-            passport=discoverable.passport,
+            passport=(
+                AthletePassportResponse.model_validate(discoverable.passport)
+                if discoverable.passport is not None
+                else None
+            ),
             performances=[
                 AthletePerformanceResponse.model_validate(performance)
                 for performance in performances

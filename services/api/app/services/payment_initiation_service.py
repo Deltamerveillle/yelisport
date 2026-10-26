@@ -41,7 +41,9 @@ class PaymentInitiationService:
             )
         )
 
-    async def get_owned(self, *, user_id: uuid.UUID, transaction_id: uuid.UUID):
+    async def get_owned(
+        self, *, user_id: uuid.UUID, transaction_id: uuid.UUID
+    ) -> PaymentTransaction:
         transaction = await self.payments.get_by_id(transaction_id)
         if transaction is None or transaction.user_id != user_id:
             raise NotFoundError("Paiement introuvable")

@@ -3,6 +3,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -68,7 +69,7 @@ class TalentEvaluation(Base):
         index=True,
     )
 
-    scores: Mapped[dict | None] = mapped_column(
+    scores: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
     )

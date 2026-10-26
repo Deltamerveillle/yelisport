@@ -1,7 +1,7 @@
 """Tests for the SMS Proof verification API endpoint."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -9,7 +9,6 @@ import pytest
 
 from app.api.v1.endpoints.sms_proof import verify_athlete_performance
 from app.schemas.sms_proof import SMSProofDecisionRequest
-
 
 PERFORMANCE_ID = uuid.uuid4()
 ADMIN_ID = uuid.uuid4()
@@ -30,7 +29,7 @@ async def test_sms_proof_endpoint_commits(monkeypatch):
         decision="verified",
         reason="Official result checked",
         evidence={},
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
     service = SimpleNamespace(

@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
@@ -16,7 +17,7 @@ from app.core.logging import configure_logging
 
 
 @asynccontextmanager
-async def sms24_lifespan(_application: FastAPI):
+async def sms24_lifespan(_application: FastAPI) -> AsyncIterator[None]:
     """Run optional SMS24 ingestion while this web instance is active.
 
     This is a best-effort fallback for a single-instance deployment, not a

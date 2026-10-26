@@ -1,9 +1,9 @@
 """Repository for SMS Nations athlete discovery."""
 
 import uuid
-from datetime import date, datetime
-from decimal import Decimal
 from dataclasses import dataclass
+from datetime import UTC, date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import Numeric, and_, case, exists, func, or_, select
@@ -17,6 +17,7 @@ from app.models.athlete_performance import AthletePerformance
 from app.models.country import Country
 from app.models.discover_video import DiscoverVideo
 from app.models.sport import Sport
+from app.models.subscription import Subscription
 from app.models.talent_application import TalentApplication
 from app.models.talent_evaluation import TalentEvaluation
 from app.models.user import Profile
@@ -227,6 +228,17 @@ class SMSNationsRepository:
 
         conditions: list[Any] = [
             Sport.is_active.is_(True),
+            AthletePassport.available_for_opportunities.is_(True),
+            # Never expose a private or expired subscription in Nations.
+            exists(
+                select(Subscription.id).where(
+                    Subscription.user_id == Athlete.user_id,
+                    Subscription.status == "active",
+                    Subscription.plan_code != "free",
+                    Subscription.current_period_end.is_not(None),
+                    Subscription.current_period_end > datetime.now(UTC),
+                )
+            ),
         ]
 
         if sport_id is not None:

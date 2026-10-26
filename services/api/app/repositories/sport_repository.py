@@ -1,5 +1,7 @@
 """Persistence operations for the sport catalogue."""
 
+from typing import cast
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +20,6 @@ class SportRepository:
         return list(result.all())
 
     async def get_active_by_slug(self, slug: str) -> Sport | None:
-        return await self.session.scalar(
+        return cast(Sport | None, await self.session.scalar(
             select(Sport).where(Sport.slug == slug, Sport.is_active.is_(True))
-        )
+        ))

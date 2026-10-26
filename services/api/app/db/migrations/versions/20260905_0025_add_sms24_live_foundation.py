@@ -4,17 +4,16 @@ Revision ID: 20260905_0025
 Revises: 20260905_0024
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-
 revision: str = "20260905_0025"
-down_revision: Union[str, None] = "20260905_0024"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20260905_0024"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -224,7 +223,7 @@ def upgrade() -> None:
         sa.Column("logo_url", sa.Text(), nullable=True),
         sa.Column(
             "metadata_json",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(astext_type=sa.Text()),  # type: ignore[no-untyped-call]
             server_default=sa.text("'{}'::jsonb"),
             nullable=False,
         ),
@@ -323,13 +322,13 @@ def upgrade() -> None:
         sa.Column("venue", sa.String(length=240), nullable=True),
         sa.Column(
             "result_json",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(astext_type=sa.Text()),  # type: ignore[no-untyped-call]
             server_default=sa.text("'{}'::jsonb"),
             nullable=False,
         ),
         sa.Column(
             "metadata_json",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(astext_type=sa.Text()),  # type: ignore[no-untyped-call]
             server_default=sa.text("'{}'::jsonb"),
             nullable=False,
         ),
@@ -421,7 +420,7 @@ def upgrade() -> None:
         sa.Column("role", sa.String(length=40), nullable=True),
         sa.Column(
             "score_json",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(astext_type=sa.Text()),  # type: ignore[no-untyped-call]
             server_default=sa.text("'{}'::jsonb"),
             nullable=False,
         ),

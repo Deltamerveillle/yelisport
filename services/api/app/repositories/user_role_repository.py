@@ -1,6 +1,7 @@
 """Repository for SMS multi-role authorization."""
 
 import uuid
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +21,7 @@ class UserRoleRepository:
         role: str,
     ) -> UserRole | None:
         """Return the role only when the owning user account is active."""
-        return await self.session.scalar(
+        return cast(UserRole | None, await self.session.scalar(
             select(UserRole)
             .join(
                 User,
@@ -31,7 +32,7 @@ class UserRoleRepository:
                 UserRole.role == role,
                 User.is_active.is_(True),
             )
-        )
+        ))
 
     async def get_verified_professional_role(
         self,
@@ -40,7 +41,7 @@ class UserRoleRepository:
     ) -> UserRole | None:
         """Return one active verified SMS Connect role."""
 
-        return await self.session.scalar(
+        return cast(UserRole | None, await self.session.scalar(
             select(UserRole)
             .join(
                 User,
@@ -60,7 +61,7 @@ class UserRoleRepository:
                 User.is_active.is_(True),
             )
             .order_by(UserRole.created_at.asc())
-        )
+        ))
 
 
     async def get_verified_admin_role(
@@ -70,7 +71,7 @@ class UserRoleRepository:
     ) -> UserRole | None:
         """Return an active verified SMS administrator role."""
 
-        return await self.session.scalar(
+        return cast(UserRole | None, await self.session.scalar(
             select(UserRole)
             .join(
                 User,
@@ -83,4 +84,4 @@ class UserRoleRepository:
                 UserRole.is_verified.is_(True),
                 User.is_active.is_(True),
             )
-        )
+        ))

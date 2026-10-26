@@ -1,7 +1,7 @@
 """API tests for SMS Nations athlete discovery."""
 
 import uuid
-from types import SimpleNamespace
+from datetime import UTC
 
 import pytest
 
@@ -13,7 +13,6 @@ from app.repositories.sms_nations_repository import (
 )
 from app.schemas.auth import AuthUser
 from app.services.sms_nations_service import SMSNationsService
-
 
 USER_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 ATHLETE_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
@@ -397,7 +396,7 @@ def test_sms_nations_response_exposes_talent_aggregate(
     sms_nations_dependencies,
     monkeypatch,
 ):
-    from datetime import datetime, timezone
+    from datetime import datetime
     from decimal import Decimal
 
     row = make_row()
@@ -409,7 +408,7 @@ def test_sms_nations_response_exposes_talent_aggregate(
         4,
         18,
         30,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
 
     async def fake_search(self, **kwargs):

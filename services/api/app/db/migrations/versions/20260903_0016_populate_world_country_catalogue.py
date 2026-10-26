@@ -6,9 +6,8 @@ Revises: 20260902_0015
 
 import uuid
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "20260903_0016"
 down_revision = "20260902_0015"

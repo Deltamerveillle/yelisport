@@ -4,10 +4,9 @@ Revision ID: 20260901_0010
 Revises: 20260901_0009
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
-
 
 revision = "20260901_0010"
 down_revision = "20260901_0009"
@@ -130,7 +129,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "scores",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(astext_type=sa.Text()),  # type: ignore[no-untyped-call]
             nullable=True,
         ),
         sa.Column(

@@ -71,11 +71,12 @@ class SMS24TransfersCheckpointRepository:
     async def _read(self) -> SMS24JobCheckpoint | None:
         if not await self.try_acquire_lock():
             raise CheckpointLockNotAcquired("checkpoint_lock_not_acquired")
-        return await self.session.scalar(
+        checkpoint = await self.session.scalar(
             select(SMS24JobCheckpoint)
             .where(SMS24JobCheckpoint.job_key == self.job_key)
             .execution_options(populate_existing=True),
         )
+        return checkpoint
 
     @staticmethod
     def _snapshot(row: SMS24JobCheckpoint) -> TransfersCheckpoint:

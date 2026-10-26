@@ -29,7 +29,7 @@ def _json_object(value: Any) -> None:
     except (ValueError, TypeError, RecursionError) as exc:
         raise ValueError("Statistics JSON must contain finite JSON values") from exc
 
-    def check(item):
+    def check(item: Any) -> None:
         if type(item) is dict:
             for key, child in item.items():
                 if type(key) is not str or "\x00" in key:
@@ -84,7 +84,7 @@ def build_player_statistic_observation_key(value: ProviderPlayerStatistic) -> st
     identity = (
         ["external_id", value.external_id]
         if value.external_id is not None
-        else ["record_reference", value.record_reference]
+        else ["record_reference", value.record_reference or ""]
     )
     encoded = json.dumps(identity, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     return "sms24:player-statistic:" + hashlib.sha256(encoded).hexdigest()

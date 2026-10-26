@@ -1,7 +1,7 @@
 """Tests for SMS notification business rules."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -9,7 +9,6 @@ import pytest
 
 from app.core.exceptions import NotFoundError
 from app.services.notification_service import NotificationService
-
 
 USER_ID = uuid.uuid4()
 OTHER_USER_ID = uuid.uuid4()
@@ -34,7 +33,7 @@ async def test_create_sms_connect_delivery_creates_notification():
     async def fake_create(notification):
         notification.id = NOTIFICATION_ID
         notification.created_at = datetime.now(
-            timezone.utc
+            UTC
         )
         return notification
 
@@ -175,7 +174,7 @@ async def test_mark_read_is_idempotent():
         5,
         0,
         0,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
 
     notification = SimpleNamespace(

@@ -12,7 +12,6 @@ from app.schemas.discover_video import (
 )
 from app.services.discover_video_service import DiscoverVideoService
 
-
 USER_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 OTHER_USER_ID = uuid.UUID("99999999-9999-9999-9999-999999999999")
 ATHLETE_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")

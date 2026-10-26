@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:yelisport/app/theme/app_colors.dart';
 import 'package:yelisport/features/ads/presentation/ad_slot.dart';
+import 'package:yelisport/features/home/presentation/sms_space_screen.dart';
 import 'package:yelisport/features/sms_nations/presentation/sms_nations_screen.dart';
 import 'package:yelisport/core/localization/generated/app_localizations.dart';
 import 'package:yelisport/features/sms_connect/presentation/my_opportunities_screen.dart';
@@ -15,6 +17,8 @@ import 'package:yelisport/features/settings/presentation/settings_screen.dart';
 import 'package:yelisport/features/sports/presentation/sport_detail_screen.dart';
 import 'package:yelisport/features/sports/presentation/sports_providers.dart';
 
+final selectedSportSlugProvider = StateProvider.autoDispose<String?>((ref) => null);
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({this.onNavigate, super.key});
 
@@ -28,9 +32,16 @@ class HomeScreen extends ConsumerWidget {
     final favoriteSports =
         ref.watch(favoriteSportIdsProvider).valueOrNull ?? const <String>{};
     final displayName = profile.valueOrNull?.displayName;
+    final selectedSlug = ref.watch(selectedSportSlugProvider);
+    if (selectedSlug != null) {
+      return SportDetailScreen(
+        slug: selectedSlug,
+        onReturn: () => ref.read(selectedSportSlugProvider.notifier).state = null,
+      );
+    }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SMS24 • Succès Mondial Sports'),
+        title: const Text('SMS24  •  SUCCÈS MONDIAL SPORTS'),
         actions: [
           IconButton(
             tooltip: 'Mes favoris',
@@ -81,7 +92,7 @@ class HomeScreen extends ConsumerWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF101B30),
+                        color: AppColors.primary,
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: const Column(
@@ -90,7 +101,7 @@ class HomeScreen extends ConsumerWidget {
                           Text(
                             'SUCCÈS MONDIAL SPORTS',
                             style: TextStyle(
-                              color: Color(0xFFD6A847),
+                              color: AppColors.secondary,
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1.5,
@@ -108,6 +119,10 @@ class HomeScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    const Text('LE MONDE VOIT VOTRE TALENT',
+                      style: TextStyle(color: AppColors.success,
+                        fontWeight: FontWeight.w700, letterSpacing: 1.3)),
                     const SizedBox(height: 18),
                     const AdSlot(),
                     const SizedBox(height: 18),
@@ -138,6 +153,21 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(height: 10),
                     Column(
                       children: [
+                          for (final space in const [SmsSpace.tripleVision, SmsSpace.intelligence])
+                            Card(
+                              child: ListTile(
+                                leading: Icon(space == SmsSpace.tripleVision
+                                    ? Icons.psychology_outlined : Icons.analytics_outlined),
+                                title: Text(space.title),
+                                subtitle: Text(space.introduction),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => SmsSpaceScreen(space: space),
+                                  ),
+                                ),
+                              ),
+                            ),
                           Card(
                             child: ListTile(
                               leading: const Icon(Icons.public),
@@ -162,8 +192,12 @@ class HomeScreen extends ConsumerWidget {
                               leading: const Icon(Icons.stars),
                               title: const Text('SMS Talent'),
                               subtitle: const Text('Talents sportifs'),
-                              trailing: const Text('En préparation',
-                                  style: TextStyle(fontSize: 11)),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const SmsSpaceScreen(space: SmsSpace.talent),
+                                ),
+                              ),
                             ),
                           ),
                           Card(
@@ -171,8 +205,12 @@ class HomeScreen extends ConsumerWidget {
                               leading: const Icon(Icons.play_circle_outline),
                               title: const Text('SMS Discover'),
                               subtitle: const Text('Vidéos et découvertes'),
-                              trailing: const Text('En préparation',
-                                  style: TextStyle(fontSize: 11)),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const SmsSpaceScreen(space: SmsSpace.discover),
+                                ),
+                              ),
                             ),
                           ),
                           Card(
@@ -180,8 +218,12 @@ class HomeScreen extends ConsumerWidget {
                               leading: const Icon(Icons.badge_outlined),
                               title: const Text('SMS Passport'),
                               subtitle: const Text('Passeport sportif'),
-                              trailing: const Text('En préparation',
-                                  style: TextStyle(fontSize: 11)),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const SmsSpaceScreen(space: SmsSpace.passport),
+                                ),
+                              ),
                             ),
                           ),
                           Card(
@@ -189,8 +231,12 @@ class HomeScreen extends ConsumerWidget {
                               leading: const Icon(Icons.verified_outlined),
                               title: const Text('SMS Proof'),
                               subtitle: const Text('Performances'),
-                              trailing: const Text('En préparation',
-                                  style: TextStyle(fontSize: 11)),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const SmsSpaceScreen(space: SmsSpace.proof),
+                                ),
+                              ),
                             ),
                           ),
                           Card(
@@ -325,11 +371,8 @@ class HomeScreen extends ConsumerWidget {
                           const Icon(Icons.chevron_right),
                         ],
                       ),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => SportDetailScreen(slug: sport.slug),
-                        ),
-                      ),
+                      onTap: () =>
+                          ref.read(selectedSportSlugProvider.notifier).state = sport.slug,
                     );
                   },
                 );

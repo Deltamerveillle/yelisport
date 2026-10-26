@@ -1,7 +1,7 @@
 """HTTP tests for authenticated SMS notifications."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -10,7 +10,6 @@ from app.api.dependencies.auth import get_current_user
 from app.db.session import get_db_session
 from app.schemas.auth import AuthUser
 from app.services.notification_service import NotificationService
-
 
 USER_ID = uuid.uuid4()
 NOTIFICATION_ID = uuid.uuid4()
@@ -21,7 +20,7 @@ def make_notification(
     *,
     is_read=False,
 ):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     return SimpleNamespace(
         id=NOTIFICATION_ID,
@@ -170,10 +169,10 @@ def test_mark_notification_read(
     )
 
     response = client.patch(
-        (
+
             f"/api/v1/notifications/"
             f"{NOTIFICATION_ID}/read"
-        )
+
     )
 
     assert response.status_code == 200

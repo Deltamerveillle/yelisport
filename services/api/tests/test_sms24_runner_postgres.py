@@ -1,7 +1,7 @@
 """PostgreSQL integration tests for SMS24 runner persistence."""
 
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import delete, select
@@ -11,7 +11,6 @@ from sqlalchemy.pool import NullPool
 from app.core.config import get_settings
 from app.models.sports_live import SportsDataSource
 from app.sms24.runner import SMS24RunnerRepository
-
 
 PREFIX = "sms24-pg-test-"
 
@@ -110,7 +109,7 @@ async def test_postgres_persists_degraded_health_state():
             6,
             23,
             30,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
 
         await repository.mark_failure(
@@ -161,7 +160,7 @@ async def test_postgres_persists_unavailable_health_state():
             6,
             23,
             45,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
 
         await repository.mark_unavailable(

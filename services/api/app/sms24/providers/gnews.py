@@ -9,6 +9,7 @@ actual upstream availability is established by fetch_news.
 
 import re
 from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 from pydantic import SecretStr
@@ -144,7 +145,7 @@ class GNewsProvider(NewsProvider):
             raise GNewsError("gnews_network_error") from None
 
     @staticmethod
-    def _article(row: dict, language: str | None) -> ProviderNewsArticle:
+    def _article(row: dict[str, Any], language: str | None) -> ProviderNewsArticle:
         if not isinstance(row, dict):
             raise ValueError
         publisher = row.get("source")
@@ -158,9 +159,13 @@ class GNewsProvider(NewsProvider):
         article_language = row.get("lang")
         if article_language is None:
             article_language = language  # Explicit API language filter, never title inference.
+        title = row.get("title")
+        source_url = row.get("url")
+        if not isinstance(title, str) or not isinstance(source_url, str):
+            raise ValueError("GNews article needs a title and source URL")
         return ProviderNewsArticle(
-            title=row.get("title"),
-            source_url=row.get("url"),
+            title=title,
+            source_url=source_url,
             excerpt=row.get("description"),
             publisher_name=publisher.get("name") if publisher else None,
             published_at=published,

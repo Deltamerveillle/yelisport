@@ -57,6 +57,7 @@ async def search_discover_athletes(
         Depends(get_db_session),
     ],
     sport_id: uuid.UUID | None = None,
+    nationality_country_id: uuid.UUID | None = None,
     residence_country_id: uuid.UUID | None = None,
     discipline: str | None = Query(default=None, max_length=120),
     category: str | None = Query(default=None, max_length=120),
@@ -66,11 +67,12 @@ async def search_discover_athletes(
     team_name: str | None = Query(default=None, max_length=180),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-):
+) -> list[DiscoverAthleteResponse]:
     """Search athletes who explicitly opted in to opportunities."""
 
     return await DiscoverAthleteService(session).search(
         sport_id=sport_id,
+        nationality_country_id=nationality_country_id,
         residence_country_id=residence_country_id,
         discipline=discipline,
         category=category,

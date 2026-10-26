@@ -1,6 +1,6 @@
 import asyncio
-from datetime import datetime, timezone
 import signal
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -23,7 +23,7 @@ def test_sms24_worker_builds_current_utc_day_window():
             12,
             34,
             56,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
     )
 
@@ -34,14 +34,12 @@ def test_sms24_worker_builds_current_utc_day_window():
         0,
         0,
         0,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
 
-    assert starts_until.date().isoformat() == (
-        "2026-09-07"
-    )
+    assert starts_until.date().isoformat() == ("2026-09-07")
 
-    assert starts_until.tzinfo == timezone.utc
+    assert starts_until.tzinfo == UTC
 
 
 def test_sms24_worker_rejects_invalid_interval(
@@ -65,7 +63,9 @@ def test_sms24_worker_rejects_invalid_interval(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("failure", [None, RuntimeError, SMS24AllProvidersFailed])
 @pytest.mark.parametrize("provider_key", ["sms24_api_football_key", "sms24_sportmonks_key"])
-async def test_worker_default_cadence_and_failure_backoff(monkeypatch, caplog, failure, provider_key):
+async def test_worker_default_cadence_and_failure_backoff(
+    monkeypatch, caplog, failure, provider_key
+):
     clock = SimpleNamespace(now=0)
     calls = []
 
@@ -86,14 +86,27 @@ async def test_worker_default_cadence_and_failure_backoff(monkeypatch, caplog, f
         "SMS24_WORKER_IDLE_SECONDS",
     ):
         monkeypatch.delenv(name, raising=False)
-    monkeypatch.setattr(worker, "get_settings", lambda: SimpleNamespace(**{
-        "sms24_api_football_key": None, "sms24_sportmonks_key": None, "sms24_espn_enabled": False, provider_key: "test-key",
-    }))
+    monkeypatch.setattr(
+        worker,
+        "get_settings",
+        lambda: SimpleNamespace(
+            **{
+                "sms24_api_football_key": None,
+                "sms24_sportmonks_key": None,
+                "sms24_espn_enabled": False,
+                provider_key: "test-key",
+            }
+        ),
+    )
     monkeypatch.setattr(worker, "_run_ingestion", ingest)
-    monkeypatch.setattr(worker, "asyncio", SimpleNamespace(
-        get_running_loop=lambda: SimpleNamespace(time=lambda: clock.now),
-        sleep=sleep,
-    ))
+    monkeypatch.setattr(
+        worker,
+        "asyncio",
+        SimpleNamespace(
+            get_running_loop=lambda: SimpleNamespace(time=lambda: clock.now),
+            sleep=sleep,
+        ),
+    )
 
     with pytest.raises(asyncio.CancelledError):
         await worker.run_worker()
@@ -107,10 +120,18 @@ async def test_worker_default_cadence_and_failure_backoff(monkeypatch, caplog, f
 @pytest.mark.parametrize("enabled,key", [(False, "test-key"), (True, "")])
 async def test_worker_does_not_ingest_when_disabled_or_key_missing(monkeypatch, enabled, key):
     monkeypatch.setenv("SMS24_WORKER_ENABLED", str(enabled))
-    monkeypatch.setattr(worker, "get_settings", lambda: SimpleNamespace(sms24_api_football_key=key, sms24_sportmonks_key=None, sms24_espn_enabled=False))
+    monkeypatch.setattr(
+        worker,
+        "get_settings",
+        lambda: SimpleNamespace(
+            sms24_api_football_key=key, sms24_sportmonks_key=None, sms24_espn_enabled=False
+        ),
+    )
     ingest = AsyncMock()
     monkeypatch.setattr(worker, "_run_ingestion", ingest)
-    monkeypatch.setattr(worker, "asyncio", SimpleNamespace(sleep=AsyncMock(side_effect=asyncio.CancelledError)))
+    monkeypatch.setattr(
+        worker, "asyncio", SimpleNamespace(sleep=AsyncMock(side_effect=asyncio.CancelledError))
+    )
     with pytest.raises(asyncio.CancelledError):
         await worker.run_worker()
     ingest.assert_not_awaited()
@@ -122,7 +143,9 @@ async def test_worker_signal_cancels_ingestion_and_disposes_engine(monkeypatch, 
     handlers = {}
     closed = []
     loop = asyncio.get_running_loop()
-    monkeypatch.setattr(loop, "add_signal_handler", lambda sig, callback: handlers.__setitem__(sig, callback))
+    monkeypatch.setattr(
+        loop, "add_signal_handler", lambda sig, callback: handlers.__setitem__(sig, callback)
+    )
     monkeypatch.setattr(loop, "remove_signal_handler", lambda sig: handlers.pop(sig))
     dispose = AsyncMock()
     monkeypatch.setattr(worker, "engine", SimpleNamespace(dispose=dispose))

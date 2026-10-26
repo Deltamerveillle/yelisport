@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import hashlib
 import re
 import unicodedata
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,7 +41,7 @@ def _normalize_starts_at(value: datetime) -> str:
         )
 
     return (
-        value.astimezone(timezone.utc)
+        value.astimezone(UTC)
         .replace(second=0, microsecond=0)
         .isoformat()
     )
@@ -116,7 +116,7 @@ def _utc_datetime(value: datetime) -> datetime:
             "Canonical fixture starts_at must be timezone-aware"
         )
 
-    return value.astimezone(timezone.utc)
+    return value.astimezone(UTC)
 
 
 def fixtures_are_same_event(

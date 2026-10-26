@@ -13,7 +13,6 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.auth import AuthUser
 from app.services.auth_service import AuthService
 
-
 bearer = HTTPBearer(auto_error=True)
 
 
