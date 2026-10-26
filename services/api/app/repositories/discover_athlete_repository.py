@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy import Select, select
-from sqlalchemy.sql.selectable import Exists
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.selectable import Exists
 
 from app.models.athlete import Athlete
 from app.models.athlete_country_eligibility import AthleteCountryEligibility
