@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:yelisport/app/theme/app_colors.dart';
+import 'package:yelisport/features/auth/presentation/auth_providers.dart';
+import 'package:yelisport/features/auth/presentation/sign_in_screen.dart';
+import 'package:yelisport/features/auth/presentation/sign_up_screen.dart';
 import 'package:yelisport/features/sports/presentation/sms24_sport_banner.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yelisport/features/sports/presentation/sports_providers.dart';
@@ -13,6 +16,9 @@ class SportDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Rebuild when a visitor signs in without losing the chosen discipline.
+    ref.watch(authStateProvider);
+    final loggedIn = ref.watch(authRepositoryProvider).currentSession != null;
     final sport = ref.watch(sportDetailProvider(slug));
     return Scaffold(
       appBar: AppBar(
@@ -82,14 +88,38 @@ class SportDetailScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 18),
                         FilledButton.icon(
-                          icon: const Icon(Icons.person_add_alt_1),
-                          label: const Text('Créer mon passeport sportif'),
+                          icon: Icon(loggedIn
+                              ? Icons.badge_outlined
+                              : Icons.person_add_alt_1),
+                          label: Text(loggedIn
+                              ? 'Accéder à mon passeport sportif'
+                              : 'Créer mon compte pour poursuivre'),
                           onPressed: () => Navigator.of(context).push(
                             MaterialPageRoute<void>(
-                              builder: (_) => AthleteEnrollmentScreen(sport: item),
+                              builder: (_) => loggedIn
+                                  ? AthleteEnrollmentScreen(sport: item)
+                                  : const SignUpScreen(),
                             ),
                           ),
                         ),
+                        if (!loggedIn) ...[
+                          const SizedBox(height: 10),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.login),
+                            label: const Text('Déjà inscrit ? Se connecter'),
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const SignInScreen(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'La création du compte est gratuite. '
+                            'La création du passeport et le dépôt de médias '
+                            'nécessitent ensuite un abonnement actif.',
+                          ),
+                        ],
                       ],
                     ),
                   ),
