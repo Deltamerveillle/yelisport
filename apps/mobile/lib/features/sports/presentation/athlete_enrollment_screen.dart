@@ -30,6 +30,7 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
   final _speciality = TextEditingController();
   final _club = TextEditingController();
   final _summary = TextEditingController();
+  bool _publicVisibilityOptIn = false;
   bool _busy = false;
   String? _athleteId;
   String? _error;
@@ -118,6 +119,7 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
             ? widget.sport.name : _speciality.text.trim(),
         'club_name': _club.text.trim(),
         'sporting_summary': _summary.text.trim(),
+        'available_for_opportunities': _publicVisibilityOptIn,
       });
       if (mounted) setState(() => _athleteId = id);
     } catch (_) {
@@ -408,6 +410,20 @@ class _AthleteEnrollmentState extends ConsumerState<AthleteEnrollmentScreen> {
                   _field(_speciality, 'Discipline / spécialité'),
                   _field(_club, 'Club actuel'),
                   _field(_summary, 'Parcours sportif', lines: 3),
+                  CheckboxListTile(
+                    value: _publicVisibilityOptIn,
+                    onChanged: _busy ? null : (allowed) => setState(
+                      () => _publicVisibilityOptIn = allowed ?? false,
+                    ),
+                    title: const Text('Rendre mon profil visible dans SMS Nations et SMS Discover'),
+                    subtitle: const Text(
+                      'J’autorise SMS24 à présenter mon profil sportif et les '
+                      'informations sélectionnées. Les photos et vidéos restent '
+                      'soumis à vérification avant publication. '
+                      'Cette autorisation peut être retirée.',
+                    ),
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
                   FilledButton(
                     onPressed: _busy ? null : _createAthlete,
                     child: Text(_busy ? 'Enregistrement…' : 'Créer mon passeport'),
