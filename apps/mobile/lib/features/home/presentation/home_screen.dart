@@ -15,7 +15,9 @@ import 'package:yelisport/features/sports/presentation/sport_detail_screen.dart'
 import 'package:yelisport/features/sports/presentation/sports_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.onNavigate});
+
+  final ValueChanged<int>? onNavigate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

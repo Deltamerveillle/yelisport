@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     sms_connect,
     sms_nations,
     sms_proof,
+    sms_talent,
     subscriptions,
 )
 from app.api.v1.endpoints.athletes import router as athletes_router
@@ -49,3 +50,4 @@ router.include_router(
     tags=["subscriptions"],
 )
 router.include_router(moderation.router)
+router.include_router(sms_talent.router)
