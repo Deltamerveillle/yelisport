@@ -67,3 +67,30 @@ IconData iconForSport(String sportSlug) {
     _ => Icons.sports,
   };
 }
+
+IconData iconForSport(String sportSlug) {
+  return switch (sportSlug) {
+    'basketball' => Icons.sports_basketball,
+    'rugby' => Icons.sports_rugby,
+    'handball' => Icons.sports_handball,
+    'volleyball' => Icons.sports_volleyball,
+    'tennis' => Icons.sports_tennis,
+    'baseball' => Icons.sports_baseball,
+    'american-football' => Icons.sports_football,
+    'hockey' => Icons.sports_hockey,
+    'golf' => Icons.sports_golf,
+    'athletics' => Icons.directions_run,
+    'football' => Icons.sports_soccer,
+    'badminton' => Icons.sports_tennis,
+    'boxing' => Icons.sports_mma,
+    'cycling' => Icons.directions_bike,
+    'futsal' => Icons.sports_soccer,
+    'judo' => Icons.sports_martial_arts,
+    'wrestling' => Icons.sports_mma,
+    'swimming' => Icons.pool,
+    'taekwondo' => Icons.sports_martial_arts,
+    'table-tennis' => Icons.sports_tennis,
+    'cricket' => Icons.sports_cricket,
+    _ => Icons.sports,
+  };
+}

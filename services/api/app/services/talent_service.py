@@ -21,6 +21,7 @@ from app.repositories.talent_submission_item_repository import (
 )
 from app.repositories.user_role_repository import UserRoleRepository
 from app.services.subscription_service import SubscriptionService
+from app.services.talent_qualification import qualify_talent
 
 
 class TalentService:
@@ -411,3 +412,26 @@ class TalentService:
             )
 
         return evaluations
+
+    async def get_qualification_status(
+        self,
+        *,
+        application_id: uuid.UUID,
+    ) -> str:
+        """Calculate qualification from three completed human evaluations."""
+        evaluations = await self.get_completed_evaluations(
+            application_id=application_id
+        )
+
+        evaluator_ids = {
+            evaluation.evaluator_user_id
+            for evaluation in evaluations
+        }
+
+        if len(evaluator_ids) != self.MAX_EVALUATORS:
+            raise ValueError("Three distinct human evaluators are required")
+
+        return qualify_talent([
+            evaluation.overall_score
+            for evaluation in evaluations
+        ])

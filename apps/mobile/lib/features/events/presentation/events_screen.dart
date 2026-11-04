@@ -63,8 +63,9 @@ class EventsScreen extends ConsumerWidget {
             ? const Center(child: Text('Aucun événement à venir.'))
             : RefreshIndicator(
                 onRefresh: () async {
-                  final updatedEvents = ref.refresh(upcomingEventsProvider.future);
-                  await updatedEvents;
+                  final refreshedEvents = await ref.refresh(upcomingEventsProvider.future);
+                  if (!context.mounted) return;
+                  debugPrint('Événements actualisés : ${refreshedEvents.length}');
                 },
                 child: ListView.builder(
                   itemCount: items.length,

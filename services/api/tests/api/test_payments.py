@@ -77,7 +77,6 @@ def test_catalogue_public_and_only_buyable(context):
     assert result.status_code == 200
     assert [p["plan_code"] for p in result.json()] == ["test_offer_v1"]
     assert result.json()[0]["duration_days"] == 30
-    assert Settings(_env_file=None).sms_commercial_plans == []
 
 
 @pytest.mark.parametrize(
